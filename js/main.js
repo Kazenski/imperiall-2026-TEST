@@ -49,6 +49,15 @@ onAuthStateChanged(auth, async (user) => {
         if (dom.auth_view) dom.auth_view.classList.add('hidden');
         if (dom.app_view) dom.app_view.classList.remove('hidden');
         
+        const navAoMestre = document.getElementById('nav-ao-mestre');
+        if (navAoMestre) {
+            if (globalState.isAdmin) {
+                navAoMestre.classList.remove('hidden');
+            } else {
+                navAoMestre.classList.add('hidden');
+            }
+        }
+        
         await loadCache();
         await preencherCachesEstaticos();
         initWorldHeader();

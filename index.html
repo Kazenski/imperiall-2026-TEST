@@ -44,11 +44,51 @@
                 
                 <div class="hidden md:flex items-center gap-1 text-sm font-medium text-slate-300 h-full">
                     <button class="px-4 h-full hover:text-white transition-colors border-b-2 border-amber-500 text-amber-500">Início</button>
-                    <button class="px-4 h-full hover:text-white transition-colors border-b-2 border-transparent hover:border-slate-500 flex items-center gap-1">O Mundo <i class="fas fa-caret-down text-[10px] ml-1"></i></button>
-                    <button class="px-4 h-full hover:text-white transition-colors border-b-2 border-transparent hover:border-slate-500 flex items-center gap-1">Manual e regras <i class="fas fa-caret-down text-[10px] ml-1"></i></button>
-                    <button class="px-4 h-full hover:text-white transition-colors border-b-2 border-transparent hover:border-slate-500 flex items-center gap-1">Ao Mestre <i class="fas fa-caret-down text-[10px] ml-1"></i></button>
-                    <button class="px-4 h-full hover:text-white transition-colors border-b-2 border-transparent hover:border-slate-500 flex items-center gap-1">Ao Jogador <i class="fas fa-caret-down text-[10px] ml-1"></i></button>
-                    <button class="px-4 h-full hover:text-white transition-colors border-b-2 border-transparent hover:border-slate-500 flex items-center gap-1">Atualizações <i class="fas fa-caret-down text-[10px] ml-1"></i></button>
+                    
+                    <div class="relative h-full flex items-center group">
+                        <button class="px-4 h-full hover:text-white transition-colors border-b-2 border-transparent group-hover:border-slate-500 flex items-center gap-1">O Mundo <i class="fas fa-caret-down text-[10px] ml-1"></i></button>
+                        <div class="absolute top-full left-0 w-48 bg-slate-800 border border-slate-700 rounded-b-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 flex flex-col py-2 z-50">
+                            <a href="#" class="px-4 py-2 text-xs text-slate-300 hover:bg-slate-700 hover:text-amber-400 transition-colors">Conheça o mundo</a>
+                            <a href="#" class="px-4 py-2 text-xs text-slate-300 hover:bg-slate-700 hover:text-amber-400 transition-colors">Os Deuses</a>
+                            <a href="#" class="px-4 py-2 text-xs text-slate-300 hover:bg-slate-700 hover:text-amber-400 transition-colors">Lendas do Mundo</a>
+                            <a href="#" class="px-4 py-2 text-xs text-slate-300 hover:bg-slate-700 hover:text-amber-400 transition-colors">NPCs Importantes</a>
+                        </div>
+                    </div>
+
+                    <div class="relative h-full flex items-center group">
+                        <button class="px-4 h-full hover:text-white transition-colors border-b-2 border-transparent group-hover:border-slate-500 flex items-center gap-1">Manual e Regras <i class="fas fa-caret-down text-[10px] ml-1"></i></button>
+                        <div class="absolute top-full left-0 w-48 bg-slate-800 border border-slate-700 rounded-b-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 flex flex-col py-2 z-50">
+                            <a href="#" class="px-4 py-2 text-xs text-slate-300 hover:bg-slate-700 hover:text-amber-400 transition-colors">Manual</a>
+                            <a href="#" class="px-4 py-2 text-xs text-slate-300 hover:bg-slate-700 hover:text-amber-400 transition-colors">Raças</a>
+                            <a href="#" class="px-4 py-2 text-xs text-slate-300 hover:bg-slate-700 hover:text-amber-400 transition-colors">Classes</a>
+                            <a href="#" class="px-4 py-2 text-xs text-slate-300 hover:bg-slate-700 hover:text-amber-400 transition-colors">Subclasses</a>
+                            <a href="#" class="px-4 py-2 text-xs text-slate-300 hover:bg-slate-700 hover:text-amber-400 transition-colors">Habilidades</a>
+                            <a href="#" class="px-4 py-2 text-xs text-slate-300 hover:bg-slate-700 hover:text-amber-400 transition-colors">Profissões</a>
+                        </div>
+                    </div>
+
+                    <div id="nav-ao-mestre" class="relative h-full flex items-center group hidden">
+                        <button class="px-4 h-full hover:text-white transition-colors border-b-2 border-transparent group-hover:border-slate-500 flex items-center gap-1">Ao Mestre <i class="fas fa-caret-down text-[10px] ml-1"></i></button>
+                        <div class="absolute top-full left-0 w-48 bg-slate-800 border border-slate-700 rounded-b-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 flex flex-col py-2 z-50">
+                            <a href="#" class="px-4 py-2 text-xs text-slate-300 hover:bg-slate-700 hover:text-amber-400 transition-colors">Comandos</a>
+                            <a href="#" class="px-4 py-2 text-xs text-slate-300 hover:bg-slate-700 hover:text-amber-400 transition-colors">Cad. NPCs</a>
+                            <a href="#" class="px-4 py-2 text-xs text-slate-300 hover:bg-slate-700 hover:text-amber-400 transition-colors">Cad. Crafts</a>
+                            <a href="#" class="px-4 py-2 text-xs text-slate-300 hover:bg-slate-700 hover:text-amber-400 transition-colors">Cad. Monstros/Seres</a>
+                            <a href="#" class="px-4 py-2 text-xs text-slate-300 hover:bg-slate-700 hover:text-amber-400 transition-colors">Cad. Itens</a>
+                            <a href="#" class="px-4 py-2 text-xs text-slate-300 hover:bg-slate-700 hover:text-amber-400 transition-colors">Lores Jogadores</a>
+                        </div>
+                    </div>
+
+                    <div class="relative h-full flex items-center group">
+                        <button class="px-4 h-full hover:text-white transition-colors border-b-2 border-transparent group-hover:border-slate-500 flex items-center gap-1">Ao Jogador <i class="fas fa-caret-down text-[10px] ml-1"></i></button>
+                        <div class="absolute top-full left-0 w-48 bg-slate-800 border border-slate-700 rounded-b-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 flex flex-col py-2 z-50">
+                            <a href="#" class="px-4 py-2 text-xs text-slate-300 hover:bg-slate-700 hover:text-amber-400 transition-colors">Simular Ficha</a>
+                            <a href="#" class="px-4 py-2 text-xs text-slate-300 hover:bg-slate-700 hover:text-amber-400 transition-colors">Ficha de Personagem</a>
+                            <a href="#" class="px-4 py-2 text-xs text-slate-300 hover:bg-slate-700 hover:text-amber-400 transition-colors">Galeria de Imagens</a>
+                        </div>
+                    </div>
+
+                    <button class="px-4 h-full hover:text-white transition-colors border-b-2 border-transparent hover:border-slate-500 flex items-center gap-1">Atualizações</button>
                 </div>
             </div>
 
