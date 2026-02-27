@@ -1028,15 +1028,16 @@ select.std-height, input.std-height {
     transition: all 0.3s;
 }
 
-/* --- ESTILOS DO MENU MASTER SUPERIOR --- */
+/* --- MENU SUPERIOR MASTER (BOTÕES ESPAÇADOS) --- */
 .master-nav-btn {
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 1.25rem;
     font-size: 0.75rem;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: #94a3b8; /* text-slate-400 */
     background-color: transparent;
+    border: 1px solid transparent;
     border-radius: 6px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     white-space: nowrap;
@@ -1044,16 +1045,18 @@ select.std-height, input.std-height {
 
 .master-nav-btn:hover {
     color: #e2e8f0; 
-    background-color: rgba(30, 41, 59, 0.8);
+    background-color: rgba(30, 41, 59, 0.5); /* bg-slate-800 */
+    border-color: #334155;
 }
 
 .master-nav-btn.active {
     color: #f59e0b; /* text-amber-500 */
     background-color: rgba(245, 158, 11, 0.1);
-    box-shadow: inset 0 -3px 0 #f59e0b;
+    border-color: #f59e0b;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.1);
 }
 
-/* Oculta o texto da calha vermelha quando não tem hover */
+/* Oculta o texto da calha lateral de sub-abas (Área Vermelha) quando o mouse não está sobre ela */
 #sub-menu-bar:not(:hover) span {
     display: none;
 }
@@ -1064,7 +1067,7 @@ select.std-height, input.std-height {
     flex-direction: column; 
     align-items: center; 
     justify-content: center;
-    background: #1e293b; 
+    background: #0f172a; 
     border: 1px solid #334155; 
     border-radius: 6px;
     padding: 6px 0; 
@@ -1074,7 +1077,7 @@ select.std-height, input.std-height {
 }
 
 .dice-quick-btn:hover {
-    background: #334155; 
+    background: #1e293b; 
     border-color: #f59e0b; 
     transform: translateY(-2px);
     box-shadow: 0 4px 10px rgba(245, 158, 11, 0.2);

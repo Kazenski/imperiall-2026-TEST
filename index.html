@@ -13,13 +13,13 @@
 </head>
 <body class="bg-[#0f172a] text-slate-200 font-sans h-screen w-screen flex flex-col overflow-hidden">
 
-    <div id="auth-view" class="fixed inset-0 z-[9999] bg-[#020617] flex items-center justify-center">
+    <div id="auth-view" class="fixed inset-0 z-[9999] bg-[#020617] flex items-center justify-center p-4">
         <div class="max-w-md w-full bg-[#1e293b] p-8 rounded-xl border border-amber-500/30 shadow-2xl">
-            <h2 class="text-3xl font-bold text-center text-amber-400 mb-6 font-cinzel">Acesso Imperiall</h2>
+            <h2 class="text-3xl font-bold text-center text-amber-400 mb-8 font-cinzel tracking-widest uppercase">Acesso Imperiall</h2>
             <div class="space-y-4">
-                <input type="email" id="auth-email" placeholder="Email" class="w-full bg-[#0f172a] border border-slate-700 rounded px-4 py-3 outline-none focus:border-amber-500 text-white">
-                <input type="password" id="auth-password" placeholder="Senha" class="w-full bg-[#0f172a] border border-slate-700 rounded px-4 py-3 outline-none focus:border-amber-500 text-white">
-                <button id="btn-login" class="w-full bg-amber-600 hover:bg-amber-500 text-black font-bold uppercase py-3 rounded mt-4 transition-all w-full shadow-lg">Entrar</button>
+                <input type="email" id="auth-email" placeholder="Email" class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-4 py-3 outline-none focus:border-amber-500 text-white">
+                <input type="password" id="auth-password" placeholder="Senha" class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-4 py-3 outline-none focus:border-amber-500 text-white">
+                <button id="btn-login" class="w-full bg-amber-600 hover:bg-amber-500 text-black font-black uppercase py-4 rounded-lg mt-4 transition-all shadow-lg active:scale-95">Entrar no Reino</button>
             </div>
         </div>
     </div>
@@ -28,112 +28,98 @@
         
         <nav id="global-top-nav" class="bg-[#0b1120] border-b border-slate-800 flex items-center justify-between px-6 h-16 shrink-0 z-50 shadow-md">
             <div class="flex items-center gap-10 h-full">
-                <div class="font-cinzel text-2xl font-bold text-amber-500 tracking-wider">IMPERIALL</div>
+                <div class="font-cinzel text-2xl font-bold text-amber-500 tracking-wider drop-shadow-md">IMPERIALL</div>
                 
                 <div id="master-tabs" class="flex items-center gap-2 h-full py-2">
                     <button onclick="window.setMasterContext('Início')" class="master-nav-btn active">Início</button>
                     <button onclick="window.setMasterContext('O Mundo')" class="master-nav-btn">O Mundo</button>
                     <button onclick="window.setMasterContext('Manual e Regras')" class="master-nav-btn">Manual e Regras</button>
-                    <button onclick="window.setMasterContext('Ao Mestre')" class="master-nav-btn !text-red-400 hover:!text-red-300">Ao Mestre</button>
+                    <button onclick="window.setMasterContext('Ao Mestre')" class="master-nav-btn !text-red-400 hover:!text-red-300 border-red-900/50">Ao Mestre</button>
                     <button onclick="window.setMasterContext('Ao Jogador')" class="master-nav-btn">Ao Jogador</button>
                     <button onclick="window.setMasterContext('Atualizações')" class="master-nav-btn">Atualizações</button>
                 </div>
             </div>
-            <button id="btn-logout" class="bg-transparent border border-slate-700 text-slate-400 hover:text-red-400 hover:border-red-900/50 px-6 py-2 rounded text-xs font-bold uppercase transition">Sair</button>
+            <div class="flex items-center gap-4">
+                <div id="header-world-widget" class="hidden lg:block text-xs font-mono text-slate-400"></div>
+                <button id="btn-logout" class="bg-slate-800 hover:bg-red-900/40 border border-slate-700 text-slate-300 hover:text-red-400 px-6 py-2 rounded text-xs font-bold uppercase transition-all shadow-sm">Sair</button>
+            </div>
         </nav>
 
         <div class="flex flex-1 overflow-hidden">
             
-            <aside id="main-sidebar" class="w-64 bg-[#0a0f18] border-r border-slate-800 flex flex-col shrink-0 z-40 overflow-y-auto custom-scroll shadow-2xl">
-                <div class="p-3 border-b border-slate-800">
-                    <select id="character-select" class="w-full bg-[#1e293b] border border-slate-700 rounded text-amber-500 font-bold p-2 text-[11px] outline-none focus:border-amber-500 transition-colors uppercase tracking-widest"></select>
+            <aside id="main-sidebar" class="w-72 bg-[#0a0f18] border-r border-slate-800 flex flex-col shrink-0 z-40 overflow-hidden shadow-2xl">
+                <div class="p-3 border-b border-slate-800 bg-[#1e293b]">
+                    <label class="block text-[9px] text-slate-400 font-bold uppercase mb-1 tracking-widest text-center">Personagem Ativo</label>
+                    <select id="character-select" class="w-full bg-[#0f172a] border border-slate-600 rounded text-amber-500 font-bold p-2 text-xs outline-none focus:border-amber-500 transition-colors uppercase tracking-widest text-center"></select>
                 </div>
-                <div class="w-full aspect-square bg-black border-b border-slate-800 relative">
-                    <img id="sidebar-char-img" src="https://placehold.co/400x400/1e293b/d4af37?text=Sem+Foto" class="w-full h-full object-cover opacity-90">
-                </div>
-                <div class="px-4 py-3 text-center border-b border-slate-800">
-                    <h2 id="sidebar-char-name" class="font-cinzel text-lg text-amber-400 font-bold truncate">---</h2>
-                    <div class="flex items-center justify-center gap-1.5 text-[10px] text-slate-300 uppercase font-bold mt-1">
-                        <span id="sidebar-char-class" class="text-sky-400">---</span>
-                        <span class="w-1 h-1 rounded-full bg-slate-600"></span>
-                        <span id="sidebar-char-subclass" class="text-emerald-400">---</span>
+                
+                <div class="w-full aspect-square bg-black border-b border-slate-800 relative shrink-0">
+                    <img id="sidebar-char-img" src="https://placehold.co/400x400/0f172a/d4af37?text=Sem+Foto" class="w-full h-full object-cover opacity-90">
+                    <div class="absolute bottom-0 left-0 w-full p-2 bg-gradient-to-t from-black to-transparent">
+                        <h2 id="sidebar-char-name" class="font-cinzel text-lg text-amber-400 font-bold truncate drop-shadow-md text-center">---</h2>
                     </div>
                 </div>
-                <div class="p-3 border-b border-slate-800 bg-[#0f172a] space-y-2">
-                    <select id="session-select" class="w-full bg-[#1e293b] border border-slate-700 text-[10px] text-indigo-400 font-bold rounded p-1.5 outline-none"></select>
-                    <div class="grid grid-cols-2 gap-2 text-center">
-                        <div class="bg-[#1e293b] rounded p-1.5 border border-slate-700">
-                            <span class="block text-[8px] text-slate-500 uppercase font-bold mb-0.5">Horário</span>
-                            <span id="sidebar-world-time" class="text-xs font-mono text-white">--:--</span>
+
+                <div class="flex-1 overflow-y-auto custom-scroll flex flex-col">
+                    <div class="p-3 border-b border-slate-800 bg-slate-900/50 space-y-2 shrink-0">
+                        <select id="session-select" class="w-full bg-[#0f172a] border border-slate-700 text-[10px] text-indigo-400 font-bold rounded p-1.5 outline-none text-center"></select>
+                        <div class="grid grid-cols-2 gap-2 text-center">
+                            <div class="bg-[#1e293b] rounded p-1.5 border border-slate-700">
+                                <span class="block text-[8px] text-slate-500 uppercase font-bold mb-0.5">Horário</span>
+                                <span id="sidebar-world-time" class="text-xs font-mono text-white">--:--</span>
+                            </div>
+                            <div class="bg-[#1e293b] rounded p-1.5 border border-slate-700">
+                                <span class="block text-[8px] text-slate-500 uppercase font-bold mb-0.5">Clima</span>
+                                <span id="sidebar-weather" class="text-[9px] font-mono text-emerald-400 truncate block mt-0.5">---</span>
+                            </div>
                         </div>
-                        <div class="bg-[#1e293b] rounded p-1.5 border border-slate-700">
-                            <span class="block text-[8px] text-slate-500 uppercase font-bold mb-0.5">Clima</span>
-                            <span id="sidebar-weather" class="text-[9px] font-mono text-emerald-400 truncate block mt-0.5">---</span>
+                    </div>
+
+                    <div class="p-4 border-b border-slate-800 space-y-3 bg-[#0a0f18] shrink-0 shadow-inner">
+                        <div class="relative w-full h-4 bg-[#1e293b] rounded border border-slate-700 overflow-hidden shadow-inner">
+                            <div id="hdr-hp-base" class="absolute h-full bg-red-600 transition-all w-0"></div>
+                            <div id="hdr-hp-shield" class="absolute h-full bg-amber-500 transition-all w-0"></div>
+                            <div class="absolute inset-0 flex items-center justify-between px-2 text-[9px] font-bold text-white z-10 drop-shadow-md"><span>HP</span><span id="hdr-hp-text">0/0</span></div>
+                        </div>
+                        <div class="relative w-full h-4 bg-[#1e293b] rounded border border-slate-700 overflow-hidden shadow-inner">
+                            <div id="hdr-mp-base" class="absolute h-full bg-blue-600 transition-all w-0"></div>
+                            <div id="hdr-mp-shield" class="absolute h-full bg-cyan-400 transition-all w-0"></div>
+                            <div class="absolute inset-0 flex items-center justify-between px-2 text-[9px] font-bold text-white z-10 drop-shadow-md"><span>MP</span><span id="hdr-mp-text">0/0</span></div>
+                        </div>
+                        <div class="relative w-full h-2 bg-[#1e293b] rounded border border-slate-700 overflow-hidden shadow-inner">
+                            <div id="bar-fome-fill" class="absolute h-full bg-orange-500 transition-all w-full"></div>
+                            <div class="absolute inset-0 flex items-center justify-center text-[7px] font-bold text-white z-10 drop-shadow-md"><span id="hdr-fome-text">100/100</span></div>
                         </div>
                     </div>
-                    <div class="bg-[#1e293b] rounded p-1.5 border border-slate-700 text-center flex items-center justify-center gap-2">
-                        <i class="fas fa-map-marker-alt text-amber-500 text-[10px]"></i>
-                        <span id="sidebar-location" class="text-[9px] font-bold text-slate-300 truncate uppercase">---</span>
+
+                    <div class="p-3 border-b border-slate-800 flex flex-col flex-1 min-h-[140px] bg-[#0f172a]">
+                        <label class="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-2 block text-center">Log de Rolagens</label>
+                        <div id="sidebar-dice-log" class="flex-grow overflow-y-auto custom-scroll bg-[#020617] p-2 rounded border border-slate-800 space-y-1">
+                            </div>
                     </div>
-                </div>
-                <div class="p-4 border-b border-slate-800 space-y-3 bg-[#0a0f18]">
-                    <div class="relative w-full h-3 bg-[#1e293b] rounded border border-slate-700 overflow-hidden shadow-inner">
-                        <div id="hdr-hp-base" class="absolute h-full bg-red-600 transition-all w-0"></div>
-                        <div id="hdr-hp-shield" class="absolute h-full bg-amber-500 transition-all w-0"></div>
-                        <div class="absolute inset-0 flex items-center justify-between px-2 text-[8px] font-bold text-white z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"><span>HP</span><span id="hdr-hp-text">0/0</span></div>
+
+                    <div class="p-3 grid grid-cols-4 gap-2 bg-[#1e293b] shrink-0 border-t border-slate-800 shadow-lg">
+                        <button class="dice-quick-btn" onclick="window.rollDiceSidebar('moeda', 2, 'Moeda')"><i class="fas fa-coins text-amber-400"></i><span>Moeda</span></button>
+                        <button class="dice-quick-btn" onclick="window.rollDiceSidebar('d4', 4, 'D4')"><i class="fas fa-dice-d20"></i><span>D4</span></button>
+                        <button class="dice-quick-btn" onclick="window.rollDiceSidebar('d6', 6, 'D6')"><i class="fas fa-dice-d6"></i><span>D6</span></button>
+                        <button class="dice-quick-btn" onclick="window.rollDiceSidebar('d8', 8, 'D8')"><i class="fas fa-dice-d20"></i><span>D8</span></button>
+                        <button class="dice-quick-btn" onclick="window.rollDiceSidebar('d10', 10, 'D10')"><i class="fas fa-dice-d20"></i><span>D10</span></button>
+                        <button class="dice-quick-btn" onclick="window.rollDiceSidebar('d12', 12, 'D12')"><i class="fas fa-dice-d20"></i><span>D12</span></button>
+                        <button class="dice-quick-btn border-amber-500/50" onclick="window.rollDiceSidebar('d20', 20, 'D20')"><i class="fas fa-dice-d20 text-amber-500"></i><span class="text-amber-500">D20</span></button>
+                        <button class="dice-quick-btn border-red-500/50" onclick="window.rollDiceSidebar('d100', 100, 'D100')"><i class="fas fa-dice-d20 text-red-400"></i><span class="text-red-400">D100</span></button>
                     </div>
-                    <div class="relative w-full h-3 bg-[#1e293b] rounded border border-slate-700 overflow-hidden shadow-inner">
-                        <div id="hdr-mp-base" class="absolute h-full bg-blue-600 transition-all w-0"></div>
-                        <div id="hdr-mp-shield" class="absolute h-full bg-cyan-400 transition-all w-0"></div>
-                        <div class="absolute inset-0 flex items-center justify-between px-2 text-[8px] font-bold text-white z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"><span>MP</span><span id="hdr-mp-text">0/0</span></div>
-                    </div>
-                    <div class="relative w-full h-2 bg-[#1e293b] rounded border border-slate-700 overflow-hidden shadow-inner">
-                        <div id="bar-fome-fill" class="absolute h-full bg-orange-500 transition-all w-full"></div>
-                        <div class="absolute inset-0 flex items-center justify-center text-[7px] font-bold text-white z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"><span id="hdr-fome-text">100/100</span></div>
-                    </div>
-                </div>
-                <div class="p-3 border-b border-slate-800 flex flex-col h-32 bg-[#0f172a]">
-                    <label class="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1 block">Log de Rolagens</label>
-                    <div id="sidebar-dice-log" class="flex-grow overflow-y-auto custom-scroll bg-[#020617] p-2 rounded border border-slate-800 space-y-1"></div>
-                </div>
-                <div class="p-3 grid grid-cols-4 gap-2 bg-[#0f172a] mt-auto">
-                    <button class="dice-quick-btn" onclick="window.rollDiceSidebar('moeda', 2, 'Moeda')"><i class="fas fa-coins text-amber-400"></i><span>Moeda</span></button>
-                    <button class="dice-quick-btn" onclick="window.rollDiceSidebar('d4', 4, 'D4')"><i class="fas fa-dice-d20"></i><span>D4</span></button>
-                    <button class="dice-quick-btn" onclick="window.rollDiceSidebar('d6', 6, 'D6')"><i class="fas fa-dice-d6"></i><span>D6</span></button>
-                    <button class="dice-quick-btn" onclick="window.rollDiceSidebar('d8', 8, 'D8')"><i class="fas fa-dice-d20"></i><span>D8</span></button>
-                    <button class="dice-quick-btn" onclick="window.rollDiceSidebar('d10', 10, 'D10')"><i class="fas fa-dice-d20"></i><span>D10</span></button>
-                    <button class="dice-quick-btn" onclick="window.rollDiceSidebar('d12', 12, 'D12')"><i class="fas fa-dice-d20"></i><span>D12</span></button>
-                    <button class="dice-quick-btn border-amber-500/30" onclick="window.rollDiceSidebar('d20', 20, 'D20')"><i class="fas fa-dice-d20 text-amber-500"></i><span class="text-amber-500">D20</span></button>
-                    <button class="dice-quick-btn border-red-500/30" onclick="window.rollDiceSidebar('d100', 100, 'D100')"><i class="fas fa-dice-d20 text-red-400"></i><span class="text-red-400">D100</span></button>
                 </div>
             </aside>
 
-            <nav id="sub-menu-bar" class="w-[60px] hover:w-[200px] bg-[#020617] border-r border-slate-800 transition-all duration-300 flex flex-col py-4 shrink-0 z-30 group overflow-x-hidden shadow-[4px_0_24px_rgba(0,0,0,0.6)]">
+            <nav id="sub-menu-bar" class="w-[64px] hover:w-[240px] bg-[#020617] border-r border-slate-800 transition-all duration-300 flex flex-col py-4 shrink-0 z-30 group overflow-x-hidden shadow-[4px_0_24px_rgba(0,0,0,0.6)]">
                 </nav>
 
-            <main id="content-container" class="flex-1 overflow-auto bg-[#0f172a] relative p-6 custom-scroll">
-                <div id="default-view" class="h-full flex flex-col items-center justify-center opacity-10 pointer-events-none select-none">
+            <main id="content-container" class="flex-1 overflow-hidden bg-[#0f172a] relative">
+                <div id="default-view" class="h-full flex flex-col items-center justify-center opacity-20 pointer-events-none select-none">
                     <i class="fas fa-shield-halved text-[12rem] mb-6"></i>
                     <h1 class="font-cinzel text-5xl font-bold tracking-widest uppercase">Imperiall</h1>
                 </div>
-                <div id="painel-fichas-content" class="tab-content hidden h-full"></div>
-                <div id="rolagem-dados-content" class="tab-content hidden"></div>
-                <div id="calculadora-combate-content" class="tab-content hidden"></div>
-                <div id="minhas-habilidades-content" class="tab-content hidden"></div>
-                <div id="mochila-content" class="tab-content hidden"></div>
-                <div id="itens-equipados-content" class="tab-content hidden h-full"></div>
-                <div id="calculadora-atributos-content" class="tab-content hidden"></div>
-                <div id="constelacao-content" class="tab-content hidden h-full"></div>
-                <div id="crafting-content" class="tab-content hidden"></div>
-                <div id="extracao-content" class="tab-content hidden"></div>
-                <div id="colecao-craft-content" class="tab-content hidden"></div>
-                <div id="arma-espiritual-content" class="tab-content hidden"></div>
-                <div id="meus-pets-content" class="tab-content hidden"></div>
-                <div id="recursos-reputacao-content" class="tab-content hidden h-full"></div>
-                <div id="comercio-content" class="tab-content hidden h-full"></div>
-                <div id="mapa-movimento-content" class="tab-content hidden h-full"><div id="map-player-container" class="w-full h-full rounded-xl border border-slate-700"></div></div>
-                <div id="arena-combate-content" class="tab-content hidden h-full"><div id="arena-content" class="w-full h-full relative z-0"></div></div>
-            </main>
+                </main>
 
         </div>
     </div>

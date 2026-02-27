@@ -19,7 +19,7 @@ import { renderPetsTab } from './tabs/pets.js';
 import { renderReputacaoTab } from './tabs/reputacao.js';
 import { renderComercioTab } from './tabs/comercio.js';
 import { renderMapaTab } from './tabs/mapa.js';
-import './tabs/arena.js'; // Apenas importa para instanciar window.arena
+import './tabs/arena.js';
 
 // --- SETUP DO DOM ---
 const dom = {};
@@ -41,73 +41,148 @@ dom.btn_login?.addEventListener('click', () => {
 
 const MASTER_ARCHITECTURE = {
     'Início': [
-        { id: 'painel-fichas', icon: 'fa-id-card', label: 'Gestão de Fichas', render: renderPainelFichas },
-        { id: 'rolagem-dados', icon: 'fa-dice-d20', label: 'Log Completo', render: renderRolagemDados }
+        { id: 'inicio-home', icon: 'fa-home', label: 'Página Inicial', render: () => renderBlankPage('Página em branco por enquanto') }
     ],
     'O Mundo': [
-        { id: 'mapa-movimento', icon: 'fa-map-marked-alt', label: 'Mapa Mundi', render: () => { if(window.renderMapTab) window.renderMapTab(); } },
-        { id: 'colecao-craft', icon: 'fa-book-atlas', label: 'Diário', render: renderCollectionTab },
-        { id: 'recursos-reputacao', icon: 'fa-crown', label: 'Império', render: renderReputacaoTab },
-        { id: 'comercio', icon: 'fa-coins', label: 'Mercado', render: renderComercioTab }
+        { id: 'mundo-conheca', icon: 'fa-globe', label: 'Conheça o mundo', render: () => renderBlankPage('Conheça o mundo') },
+        { id: 'mundo-deuses', icon: 'fa-bolt', label: 'Os Deuses', render: () => renderBlankPage('Os Deuses') },
+        { id: 'mundo-lendas', icon: 'fa-book-dead', label: 'Lendas do Mundo', render: () => renderBlankPage('Lendas do Mundo') },
+        { id: 'mundo-npcs', icon: 'fa-users', label: 'NPCs Importantes', render: () => renderBlankPage('NPCs Importantes') }
     ],
-    'Ao Jogador': [
-        { id: 'painel-fichas', icon: 'fa-user', label: 'Ficha Resumo', render: renderPainelFichas },
-        { id: 'mochila', icon: 'fa-briefcase', label: 'Inventário', render: renderMochila },
-        { id: 'itens-equipados', icon: 'fa-tshirt', label: 'Equipamentos', render: renderItensEquipados },
-        { id: 'minhas-habilidades', icon: 'fa-fire', label: 'Grimório', render: renderMinhasHabilidades },
-        { id: 'calculadora-atributos', icon: 'fa-chart-bar', label: 'Status Totais', render: renderCalculadoraAtributos },
-        { id: 'constelacao', icon: 'fa-star', label: 'Constelação', render: renderConstelacaoTab },
-        { id: 'crafting', icon: 'fa-hammer', label: 'Forja & Craft', render: renderCraftingTab },
-        { id: 'extracao', icon: 'fa-recycle', label: 'Reciclagem', render: renderExtracaoTab },
-        { id: 'arma-espiritual', icon: 'fa-ghost', label: 'Arma Ego', render: renderArmaEspiritualTab },
-        { id: 'meus-pets', icon: 'fa-dragon', label: 'Pets e Doma', render: renderPetsTab },
-        { id: 'calculadora-combate', icon: 'fa-calculator', label: 'Calc. Dano', render: renderCalculadoraCombate }
+    'Manual e Regras': [
+        { id: 'regras-manual', icon: 'fa-book', label: 'Manual', render: () => renderBlankPage('Manual') },
+        { id: 'regras-racas', icon: 'fa-dna', label: 'Raças', render: () => renderBlankPage('Raças') },
+        { id: 'regras-classes', icon: 'fa-theater-masks', label: 'Classes', render: () => renderBlankPage('Classes') },
+        { id: 'regras-subclasses', icon: 'fa-mask', label: 'Subclasses', render: () => renderBlankPage('Subclasses') },
+        { id: 'regras-habilidades', icon: 'fa-fire', label: 'Habilidades', render: () => renderBlankPage('Habilidades') },
+        { id: 'regras-profissoes', icon: 'fa-hammer', label: 'Profissões', render: () => renderBlankPage('Profissões') }
     ],
     'Ao Mestre': [
-        { id: 'arena-combate', icon: 'fa-chess-board', label: 'Arena Tática', render: () => { if(window.arena?.init) window.arena.init(); } }
+        { id: 'mestre-comandos', icon: 'fa-terminal', label: 'Comandos de jogo', render: () => renderBlankPage('Comandos de jogo') },
+        { id: 'mestre-npcs', icon: 'fa-user-plus', label: 'Cad. NPCs', render: () => renderBlankPage('Cad. NPCs') },
+        { id: 'mestre-crafts', icon: 'fa-tools', label: 'Cad. Crafts', render: () => renderBlankPage('Cad. Crafts') },
+        { id: 'mestre-monstros', icon: 'fa-dragon', label: 'Cad. Monstros/Seres', render: () => renderBlankPage('Cad. Monstros/Seres') },
+        { id: 'mestre-itens', icon: 'fa-gem', label: 'Cad. Itens', render: () => renderBlankPage('Cad. Itens') },
+        { id: 'mestre-lore', icon: 'fa-scroll', label: 'Lore personagens', render: () => renderBlankPage('Aba reservada para lorePersonagens.js') }
+    ],
+    'Ao Jogador': [
+        { id: 'jogador-simular', icon: 'fa-flask', label: 'Simular Ficha', render: () => renderBlankPage('Simular Ficha') },
+        { id: 'jogador-ficha', icon: 'fa-id-card', label: 'Ficha de Personagem', render: () => renderFichaPersonagemWrapper() },
+        { id: 'jogador-galeria', icon: 'fa-images', label: 'Galeria de Imagens', render: () => renderBlankPage('Galeria de Imagens') }
+    ],
+    'Atualizações': [
+        { id: 'att-novidades', icon: 'fa-bullhorn', label: 'Novidades', render: () => renderBlankPage('Novidades') }
     ]
 };
 
-window.setMasterContext = function(masterKey) {
+window.setMasterContext = function(menuName) {
     const sidebar = document.getElementById('sub-menu-bar');
     if(!sidebar) return;
-    
+
     sidebar.innerHTML = '';
-    
     document.querySelectorAll('.master-nav-btn').forEach(b => {
-        b.classList.toggle('active', b.textContent.trim() === masterKey);
+        b.classList.toggle('active', b.textContent.trim() === menuName);
     });
 
-    if(MASTER_ARCHITECTURE[masterKey]) {
-        MASTER_ARCHITECTURE[masterKey].forEach(subAba => {
+    if(MASTER_ARCHITECTURE[menuName]) {
+        MASTER_ARCHITECTURE[menuName].forEach(subAba => {
             const btn = document.createElement('button');
             btn.className = "flex items-center h-12 w-full hover:bg-[#1e293b] transition-all border-l-4 border-transparent hover:border-amber-500 overflow-hidden group";
             btn.innerHTML = `
-                <div class="w-[60px] flex items-center justify-center shrink-0">
-                    <i class="fas ${subAba.icon} text-lg text-slate-500 group-hover:text-amber-500 transition-colors"></i>
+                <div class="w-[64px] flex items-center justify-center shrink-0">
+                    <i class="fas ${subAba.icon} text-xl text-slate-500 group-hover:text-amber-500 transition-colors"></i>
                 </div>
-                <span class="ml-2 text-[10px] font-bold uppercase tracking-widest text-slate-300 opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity duration-300">
+                <span class="ml-1 text-[11px] font-bold uppercase tracking-widest text-slate-300 opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity duration-300">
                     ${subAba.label}
                 </span>
             `;
+
             btn.onclick = () => {
-                document.getElementById('default-view')?.classList.add('hidden');
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-                const target = document.getElementById(`${subAba.id}-content`);
-                if(target) target.classList.remove('hidden');
-                
                 document.querySelectorAll('#sub-menu-bar button').forEach(b => {
                     b.classList.remove('bg-[#1e293b]', 'border-amber-500');
                     b.querySelector('i').classList.replace('text-amber-500', 'text-slate-500');
                 });
                 btn.classList.add('bg-[#1e293b]', 'border-amber-500');
                 btn.querySelector('i').classList.replace('text-slate-500', 'text-amber-500');
-
+                
+                // Exclui a tela de default e carrega a função
                 subAba.render();
             };
             sidebar.appendChild(btn);
         });
     }
+};
+
+// 4. RENDERIZADOR DA "FICHA DE PERSONAGEM" E SUAS 16 ABAS 
+window.renderFichaPersonagemWrapper = function() {
+    const container = document.getElementById('content-container');
+    
+    // As 16 abas solicitadas rigorosamente
+    const tabsRPG = [
+        { id: 'painel-fichas', name: 'Painel de Ficha', render: renderPainelFichas },
+        { id: 'rolagem-dados', name: 'Rolagem de Dados', render: renderRolagemDados },
+        { id: 'minhas-habilidades', name: 'Minhas Habilidades', render: renderMinhasHabilidades },
+        { id: 'mochila', name: 'Mochila', render: renderMochila },
+        { id: 'itens-equipados', name: 'Itens Equipados', render: renderItensEquipados },
+        { id: 'calculadora-atributos', name: 'Calculadora de atributos', render: renderCalculadoraAtributos },
+        { id: 'constelacao', name: 'Constelação', render: renderConstelacaoTab },
+        { id: 'crafting', name: 'Oficina de Criação', render: renderCraftingTab },
+        { id: 'extracao', name: 'Extração e Reciclagem', render: renderExtracaoTab },
+        { id: 'colecao-craft', name: 'Diário de Coleção', render: renderCollectionTab },
+        { id: 'arma-espiritual', name: 'Arma Espiritual', render: renderArmaEspiritualTab },
+        { id: 'meus-pets', name: 'Meus Pets', render: renderPetsTab },
+        { id: 'recursos-reputacao', name: 'Recursos e Reputação', render: renderReputacaoTab },
+        { id: 'comercio', name: 'Comércio', render: renderComercioTab },
+        { id: 'mapa-movimento', name: 'Mapa e Movimento', render: () => { if(window.renderMapTab) window.renderMapTab(); } },
+        { id: 'arena-combate', name: 'Arena de Combate', render: () => { if(window.arena?.init) window.arena.init(); } }
+    ];
+
+    container.innerHTML = `
+        <div class="flex flex-col h-full w-full bg-[#0f172a]">
+            <div class="bg-[#1e293b] border-b border-slate-700 flex overflow-x-auto hide-scroll shrink-0 px-2 pt-2 gap-1 z-10 shadow-md">
+                ${tabsRPG.map((t, i) => `
+                    <button class="inner-tab-btn ${i===0 ? 'active border-amber-500 text-amber-500' : 'border-transparent text-slate-400'} px-4 py-3 text-[10px] font-bold uppercase tracking-wider hover:text-slate-200 border-b-[3px] transition-colors whitespace-nowrap" data-target="${t.id}-content">
+                        ${t.name}
+                    </button>
+                `).join('')}
+            </div>
+            
+            <div id="ficha-inner-container" class="flex-1 overflow-auto relative p-6 custom-scroll">
+                ${tabsRPG.map((t, i) => `
+                    <div id="${t.id}-content" class="inner-tab-content ${i===0 ? '' : 'hidden'} h-full w-full"></div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+
+    document.querySelectorAll('.inner-tab-btn').forEach((btn, index) => {
+        btn.onclick = (e) => {
+            document.querySelectorAll('.inner-tab-btn').forEach(b => {
+                b.classList.remove('active', 'border-amber-500', 'text-amber-500');
+                b.classList.add('border-transparent', 'text-slate-400');
+            });
+            btn.classList.remove('border-transparent', 'text-slate-400');
+            btn.classList.add('active', 'border-amber-500', 'text-amber-500');
+            
+            document.querySelectorAll('.inner-tab-content').forEach(c => c.classList.add('hidden'));
+            document.getElementById(btn.getAttribute('data-target')).classList.remove('hidden');
+
+            tabsRPG[index].render();
+        };
+    });
+
+    tabsRPG[0].render();
+};
+
+window.renderBlankPage = function(title) {
+    const container = document.getElementById('content-container');
+    container.innerHTML = `
+        <div class="h-full flex flex-col items-center justify-center opacity-30 select-none animate-fade-in">
+            <i class="fas fa-file-alt text-6xl mb-4 text-slate-600"></i>
+            <h2 class="font-cinzel text-3xl tracking-widest uppercase text-slate-500">${title}</h2>
+            <p class="mt-2 text-sm uppercase tracking-tighter text-slate-600">Página em branco</p>
+        </div>
+    `;
 };
 
 // --- ROLAGEM DE DADOS NA SIDEBAR LATERAL ---
@@ -140,7 +215,7 @@ window.renderSidebarDiceLog = function() {
     const logs = globalState.selectedCharacterData?.ficha?.log_rolagens || [];
     
     if (logs.length === 0) {
-        container.innerHTML = '<div class="text-slate-600 italic text-center text-[9px] py-2">Nenhuma rolagem.</div>';
+        container.innerHTML = '<div class="text-slate-600 italic text-center text-[9px] py-4">Nenhuma rolagem.</div>';
         return;
     }
     
@@ -194,7 +269,6 @@ async function loadCache() {
     } catch(e) { console.error("Erro no loadCache:", e); }
 }
 
-// Inicializa a aba ao abrir
 document.addEventListener('DOMContentLoaded', () => {
     if(globalState.currentUser) window.setMasterContext('Início');
 });
