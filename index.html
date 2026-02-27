@@ -3,159 +3,67 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mestre Leoma - VTT Panel</title>
+    <title>Imperiall VTT - Painel Unificado</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    
     <link rel="stylesheet" href="style.css" />
 </head>
-<body class="bg-[#0f172a] text-slate-200 font-sans h-screen w-screen flex flex-col overflow-hidden">
+<body class="bg-slate-900 text-slate-200 font-sans h-screen w-screen flex flex-col overflow-hidden">
 
-    <div id="auth-view" class="fixed inset-0 z-[9999] bg-[#020617] flex items-center justify-center">
-        <div class="max-w-md w-full bg-[#1e293b] p-8 rounded-xl border border-amber-500/20 shadow-2xl">
-            <h2 class="text-3xl font-bold text-center text-amber-400 mb-6 font-cinzel tracking-widest uppercase">Acesso Imperiall</h2>
+    <div id="auth-view" class="fixed inset-0 z-[9999] bg-slate-900 flex items-center justify-center">
+        <div class="max-w-md w-full bg-slate-800 p-8 rounded-xl border border-amber-500/30 shadow-2xl">
+            <h2 class="text-3xl font-bold text-center text-amber-400 mb-6 font-cinzel">Acesso Imperiall</h2>
             <div class="space-y-4">
-                <div>
-                    <label class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1 block">Email</label>
-                    <input type="email" id="auth-email" class="w-full bg-[#0f172a] border border-slate-700 rounded px-4 py-3 outline-none focus:border-amber-500 text-white">
-                </div>
-                <div>
-                    <label class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1 block">Senha</label>
-                    <input type="password" id="auth-password" class="w-full bg-[#0f172a] border border-slate-700 rounded px-4 py-3 outline-none focus:border-amber-500 text-white">
-                </div>
-                <button id="btn-login" class="w-full bg-amber-600 hover:bg-amber-500 text-black font-bold uppercase tracking-widest py-3 rounded transition-all shadow-lg active:scale-95 mt-4">Entrar no Reino</button>
+                <input type="email" id="auth-email" placeholder="Email" class="w-full bg-slate-900 border border-slate-700 rounded px-4 py-3 outline-none focus:border-amber-500 text-white">
+                <input type="password" id="auth-password" placeholder="Senha" class="w-full bg-slate-900 border border-slate-700 rounded px-4 py-3 outline-none focus:border-amber-500 text-white">
+                <button id="btn-login" class="w-full bg-amber-600 hover:bg-amber-500 text-black font-bold uppercase py-3 rounded mt-4 transition-all">Entrar</button>
             </div>
         </div>
     </div>
 
-    <div id="app-view" class="hidden flex-col h-full w-full">
-
-        <nav id="global-top-nav" class="bg-[#020617] border-b border-slate-800 flex items-center justify-between px-6 h-14 shrink-0 shadow-lg relative z-50">
-            <div class="flex items-center gap-8 h-full">
-                <div class="font-cinzel text-xl font-bold text-amber-500 tracking-tighter drop-shadow-md">IMPERIALL</div>
-                
-                <div class="hidden md:flex items-center gap-2 h-full">
-                    <button onclick="setCategory('inicio')" class="nav-context-btn active">Início</button>
-                    <button onclick="setCategory('mundo')" class="nav-context-btn">O Mundo</button>
-                    <button onclick="setCategory('personagem')" class="nav-context-btn">Personagem</button>
-                    <button onclick="setCategory('mestre')" id="nav-ao-mestre" class="nav-context-btn hidden text-red-400">Mestre</button>
-                </div>
+    <div id="app-view" class="hidden flex flex-col h-full w-full">
+        <nav id="global-top-nav" class="bg-slate-900 border-b border-slate-700 flex items-center justify-between px-6 h-16 shrink-0 z-50 shadow-lg">
+            <div class="flex items-center gap-6 h-full">
+                <div class="font-cinzel text-xl font-bold text-amber-500 tracking-wider mr-4">PAINEL UNIFICADO</div>
+                <div id="master-tabs" class="flex gap-2 h-full py-2">
+                    </div>
             </div>
-
             <div class="flex items-center gap-4">
-                <div id="header-world-widget" class="hidden lg:block text-xs font-mono text-slate-400"></div>
-                <button id="btn-logout" class="bg-slate-800 hover:bg-red-900/40 border border-slate-700 text-slate-400 hover:text-red-400 px-4 py-1 rounded text-[10px] font-bold uppercase transition-all">Sair</button>
+                <div id="header-world-widget" class="text-xs font-mono text-slate-400"></div>
+                <button id="btn-logout" class="bg-slate-800 hover:bg-red-900/40 border border-slate-600 text-slate-300 px-4 py-1.5 rounded text-xs font-bold transition">Sair</button>
             </div>
         </nav>
 
         <div class="flex flex-1 overflow-hidden">
-            
-            <aside id="sub-menu-bar" class="w-[60px] hover:w-[200px] bg-[#020617] border-r border-slate-800 transition-all duration-300 flex flex-col py-4 z-40 group overflow-hidden shadow-[4px_0_24px_rgba(0,0,0,0.5)]">
-                </aside>
-
-            <main id="content-container" class="flex-1 overflow-y-auto bg-[#0f172a] custom-scroll p-6 relative">
-                
-                <div id="default-view" class="h-full flex flex-col items-center justify-center opacity-20 pointer-events-none">
-                    <i class="fas fa-shield-halved text-9xl mb-6 text-slate-700"></i>
-                    <h1 class="font-cinzel text-5xl font-bold tracking-widest text-slate-600">IMPERIALL 2026</h1>
-                    <p class="mt-4 text-xl uppercase tracking-tighter">Aguardando seleção de módulo...</p>
+            <aside class="w-60 bg-slate-800 border-r border-slate-700 flex flex-col shrink-0 z-40 shadow-xl">
+                <div class="p-3 bg-slate-900">
+                    <select id="character-select" class="w-full bg-slate-800 border border-slate-600 rounded text-amber-400 font-bold p-1.5 text-xs focus:border-amber-500 outline-none"></select>
                 </div>
-
-                <div id="painel-fichas-content" class="tab-content hidden h-full"></div>
-                <div id="mochila-content" class="tab-content hidden h-full"></div>
-                <div id="mapa-movimento-content" class="tab-content hidden h-full"></div>
-                </main>
-
-            <aside id="right-sidebar" class="w-64 bg-[#0a0f1e] border-l border-slate-800 hidden xl:flex flex-col p-4 shadow-2xl">
-                <div class="bg-[#1e293b] p-3 rounded-lg border border-slate-700 mb-4 shadow-inner">
-                    <label class="text-[10px] text-slate-500 font-bold uppercase block mb-2">Status Rápido</label>
-                    <div id="sidebar-quick-hp" class="h-4 bg-slate-900 rounded border border-red-900/50 mb-2 overflow-hidden relative">
-                        <div class="h-full bg-red-600 w-[0%]" id="hdr-hp-base"></div>
-                    </div>
-                    <div id="sidebar-quick-mp" class="h-4 bg-slate-900 rounded border border-blue-900/50 overflow-hidden relative">
-                        <div class="h-full bg-blue-600 w-[0%]" id="hdr-mp-base"></div>
+                <div class="w-full aspect-square bg-black border-b border-slate-700 relative">
+                    <img id="sidebar-char-img" src="https://placehold.co/400x400/1e293b/f59e0b?text=Sem+Foto" class="w-full h-full object-cover opacity-80">
+                    <div id="sidebar-quick-bars" class="absolute bottom-0 left-0 w-full p-2 bg-slate-900/80 backdrop-blur-sm space-y-1">
+                        <div class="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800"><div id="hdr-hp-base" class="h-full bg-red-600 w-0 transition-all"></div></div>
+                        <div class="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800"><div id="hdr-mp-base" class="h-full bg-blue-600 w-0 transition-all"></div></div>
                     </div>
                 </div>
-                <div id="dice-container" class="grid grid-cols-3 gap-2"></div>
+                <nav id="sub-menu-bar" class="w-full flex-grow bg-slate-900/50 transition-all duration-300 flex flex-col py-4 overflow-hidden">
+                    </nav>
             </aside>
 
+            <main id="content-container" class="flex-1 overflow-auto bg-slate-900 relative custom-scroll">
+                <div id="default-view" class="h-full flex flex-col items-center justify-center opacity-20 select-none">
+                    <i class="fas fa-shield-halved text-9xl mb-4 text-slate-700"></i>
+                    <h1 class="font-cinzel text-4xl">IMPERIALL 2026</h1>
+                    <p class="uppercase tracking-widest mt-2">Aguardando seleção de módulo...</p>
+                </div>
+                </main>
         </div>
     </div>
 
     <script type="module" src="js/main.js"></script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            setInterval(() => {
-                if (!window.globalState) return;
-                
-                // 1. DADOS DO PERSONAGEM
-                const charData = window.globalState.selectedCharacterData;
-                if (charData && charData.ficha) {
-                    document.getElementById('sidebar-char-name').textContent = charData.ficha.nome || 'Sem Nome';
-                    document.getElementById('sidebar-player-name').textContent = charData.ficha.jogador || 'N/A';
-                    
-                    const clsName = charData.classe?.nome || 'Sem Classe';
-                    const subName = charData.subclasse?.nome || 'Sem Subclasse';
-                    
-                    document.getElementById('sidebar-char-class').textContent = clsName;
-                    document.getElementById('sidebar-char-subclass').textContent = subName;
-                    
-                    const imgKey = charData.ficha.imagemPrincipal;
-                    const imgUrl = (imgKey && charData.ficha.imageUrls && charData.ficha.imageUrls[imgKey]) 
-                                   ? charData.ficha.imageUrls[imgKey] 
-                                   : (charData.ficha.imagemUrl || 'https://via.placeholder.com/400x400?text=Sem+Foto');
-                    document.getElementById('sidebar-char-img').src = imgUrl;
-                } else {
-                    document.getElementById('sidebar-char-name').textContent = '---';
-                    document.getElementById('sidebar-player-name').textContent = '---';
-                    document.getElementById('sidebar-char-class').textContent = '---';
-                    document.getElementById('sidebar-char-subclass').textContent = '---';
-                    document.getElementById('sidebar-char-img').src = 'https://via.placeholder.com/400x400?text=Sem+Foto';
-                }
-
-                // 2. DADOS DO MUNDO / SESSÃO
-                const w = window.globalState.world?.data || {};
-                let timeDisplay = w.time || '--:--';
-                
-                if (window.globalState.activeSessionId && window.globalState.activeSessionId !== 'world') {
-                    const sess = window.globalState.userSessions?.find(s => s.id === window.globalState.activeSessionId);
-                    if (sess && sess.customTime) timeDisplay = sess.customTime;
-                }
-                document.getElementById('sidebar-world-time').textContent = timeDisplay;
-
-                const locId = window.globalState.world?.selectedLocId;
-                const loc = window.globalState.world?.locations?.find(l => l.id === locId);
-                document.getElementById('sidebar-location').textContent = loc ? loc.name : 'Desconhecida';
-
-                // Clima & Perigo
-                const events = window.globalState.world?.events || [];
-                let weather = 'Céu Limpo';
-                let isDanger = false;
-                
-                if (loc && loc.x !== undefined && loc.y !== undefined) {
-                    const localEvents = events.filter(ev => {
-                        const distance = Math.sqrt(Math.pow(loc.x - ev.x, 2) + Math.pow(loc.y - ev.y, 2));
-                        return distance <= (ev.radius || 0);
-                    });
-                    if (localEvents.length > 0) {
-                        weather = localEvents[0].name;
-                        isDanger = true;
-                    }
-                }
-                
-                const wEl = document.getElementById('sidebar-weather');
-                wEl.textContent = weather;
-                wEl.className = `text-[9px] font-mono truncate block mt-0.5 ${isDanger ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`;
-
-            }, 1000); 
-        });
-    </script>
 </body>
 </html>

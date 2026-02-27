@@ -987,7 +987,7 @@ select.std-height, input.std-height {
 
 /* Barra lateral rebatível (Área Vermelha) */
 #sub-menu-bar {
-    width: 60px; /* Largura padrão só com ícones */
+    width: 64px;
     height: 100vh;
     background-color: #020617; /* Um tom mais escuro que o fundo */
     border-right: 1px solid #334155;
@@ -1011,4 +1011,19 @@ select.std-height, input.std-height {
     border: 1px solid #334155;
     border-radius: 8px;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+}
+
+/* Scrollbar Custom */
+.custom-scroll::-webkit-scrollbar { width: 4px; }
+.custom-scroll::-webkit-scrollbar-thumb { background: var(--dourado-imperiall); border-radius: 10px; }
+
+/* Botões do Menu Superior */
+.nav-main-btn {
+    position: relative;
+    padding: 0.5rem 1.5rem;
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid #334155;
+    color: #94a3b8;
+    font-weight: 700;
+    transition: all 0.3s;
 }

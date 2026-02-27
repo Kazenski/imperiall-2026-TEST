@@ -39,96 +39,116 @@ dom.btn_login?.addEventListener('click', () => {
         .catch(err => alert("Erro no login: " + err.message));
 });
 
+const MASTER_ARCHITECTURE = {
+    'Início': {
+        context: 'inicio',
+        subtabs: [
+            { id: 'fichas', label: 'Personagens', icon: 'fa-users', render: renderPainelFichas },
+            { id: 'atualizacoes', label: 'Novidades', icon: 'fa-bullhorn', render: () => {} }
+        ]
+    },
+    'O Mundo': {
+        context: 'mundo',
+        subtabs: [
+            { id: 'mapa', label: 'Cartografia', icon: 'fa-map-marked-alt', render: renderMapaTab },
+            { id: 'diario', label: 'Enciclopédia', icon: 'fa-book-atlas', render: () => {} },
+            { id: 'reputacao', label: 'Império', icon: 'fa-crown', render: () => {} }
+        ]
+    },
+    'Ao Jogador': {
+        context: 'jogador',
+        subtabs: [
+            { id: 'mochila', label: 'Inventário', icon: 'fa-briefcase', render: renderMochila },
+            { id: 'habilidades', label: 'Grimório', icon: 'fa-fire', render: () => {} },
+            { id: 'constelacao', label: 'Árvore', icon: 'fa-star', render: () => {} }
+        ]
+    }
+};
+
 dom.btn_logout?.addEventListener('click', () => signOut(auth));
 
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         globalState.currentUser = user;
         globalState.isAdmin = user.email === ADMIN_EMAIL;
-        
-        if (dom.auth_view) dom.auth_view.classList.add('hidden');
-        if (dom.app_view) dom.app_view.classList.remove('hidden');
-        
-        const navAoMestre = document.getElementById('nav-ao-mestre');
-        if (navAoMestre) {
-            if (globalState.isAdmin) {
-                navAoMestre.classList.remove('hidden');
-            } else {
-                navAoMestre.classList.add('hidden');
-            }
-        }
+        document.getElementById('auth-view').classList.add('hidden');
+        document.getElementById('app-view').classList.remove('hidden');
         
         await loadCache();
-        await preencherCachesEstaticos();
-        initWorldHeader();
-        await preencherCacheTodosPersonagens();
-        await carregarPersonagensNoSeletor(user);
-        
-        // Inicializa listeners estáticos das abas que precisam
-        setupMochilaListeners();
-        setupConstelacaoListeners();
-        setupCraftingListeners();
-        setupExtracaoListeners();
-
-        renderPainelFichas();
+        renderMasterMenu();
     } else {
-        globalState.currentUser = null;
-        globalState.isAdmin = false;
-        if (dom.auth_view) dom.auth_view.classList.remove('hidden');
-        if (dom.app_view) dom.app_view.classList.add('hidden');
-        globalState.selectedCharacterId = null;
-        globalState.selectedCharacterData = null;
-        globalState.cache.personagens.clear();
-        globalState.cache.all_personagens.clear();
+        document.getElementById('auth-view').classList.remove('hidden');
+        document.getElementById('app-view').classList.add('hidden');
     }
 });
 
 // --- GERENCIAMENTO DE CACHES ---
 async function loadCache() {
     console.log("Iniciando carregamento do cache...");
-    
-    // Garante que os objetos de cache existam antes de tentar limpar
-    const keysToClear = ['players', 'mobs', 'personagens', 'all_personagens'];
-    keysToClear.forEach(key => {
-        if (!globalState.cache[key]) {
-            globalState.cache[key] = new Map();
+    // Verifica se o mapa existe antes de tentar limpar
+    const clearIfDefined = (mapName) => {
+        if (globalState.cache[mapName] instanceof Map) {
+            globalState.cache[mapName].clear();
         } else {
-            globalState.cache[key].clear();
+            globalState.cache[mapName] = new Map();
         }
-    });
+    };
+
+    ['players', 'mobs', 'personagens', 'all_personagens'].forEach(clearIfDefined);
 
     try {
-        const qP = query(collection(db, "rpg_fichas"));
-        const snapP = await getDocs(qP);
-        // ... restante da lógica de preenchimento do cache
-    } catch (error) {
-        console.error("Erro ao carregar cache:", error);
+        const q = query(collection(db, "rpg_fichas"));
+        const snap = await getDocs(q);
+        snap.forEach(d => {
+            const data = { id: d.id, ...d.data() };
+            globalState.cache.all_personagens.set(d.id, data);
+            if (globalState.isAdmin || data.jogadorUid === globalState.currentUser.uid) {
+                globalState.cache.personagens.set(d.id, data);
+            }
+        });
+        console.log("Cache carregado!");
+    } catch (e) {
+        console.error("Falha no cache:", e);
     }
 }
 
-// Lógica para alternar a barra lateral baseada no menu superior
-const SIDEBAR_CONFIG = {
-    'inicio': [
-        { id: 'painel-fichas', icon: 'fa-id-card', label: 'Gestão de Fichas', render: () => renderPainelFichas() },
-        { id: 'rolagem-dados', icon: 'fa-dice-d20', label: 'Log de Dados', render: () => renderRolagemDados() }
-    ],
-    'mundo': [
-        { id: 'mapa-movimento', icon: 'fa-map-marked-alt', label: 'Mapa Mundi', render: () => renderMapaTab() },
-        { id: 'colecao-craft', icon: 'fa-book-atlas', label: 'Enciclopédia', render: () => renderCollectionTab() },
-        { id: 'recursos-reputacao', icon: 'fa-crown', label: 'Império', render: () => renderReputacaoTab() }
-    ],
-    'personagem': [
-        { id: 'itens-equipados', icon: 'fa-tshirt', label: 'Equipamentos', render: () => renderItensEquipados() },
-        { id: 'mochila', icon: 'fa-briefcase', label: 'Mochila', render: () => renderMochila() },
-        { id: 'minhas-habilidades', icon: 'fa-fire', label: 'Habilidades', render: () => renderMinhasHabilidades() },
-        { id: 'arma-espiritual', icon: 'fa-ghost', label: 'Arma Espiritual', render: () => renderArmaEspiritualTab() },
-        { id: 'meus-pets', icon: 'fa-dragon', label: 'Mascotes', render: () => renderPetsTab() },
-        { id: 'calculadora-atributos', icon: 'fa-calculator', label: 'Status Totais', render: () => renderCalculadoraAtributos() },
-        { id: 'constelacao', icon: 'fa-star', label: 'Constelação', render: () => renderConstelacaoTab() }
-    ],
-    'mestre': [
-        { id: 'arena-combate', icon: 'fa-chess-board', label: 'Arena Tática', render: () => window.arena?.init() }
-    ]
+function renderMasterMenu() {
+    const nav = document.getElementById('master-tabs');
+    nav.innerHTML = '';
+    
+    Object.keys(MASTER_ARCHITECTURE).forEach(key => {
+        const btn = document.createElement('button');
+        btn.className = "px-6 py-2 rounded-md font-bold uppercase text-xs transition-all border border-slate-700 hover:border-amber-500 text-slate-400 hover:text-white";
+        btn.textContent = key;
+        btn.onclick = () => setContext(key);
+        nav.appendChild(btn);
+    });
+}
+
+window.setContext = function(masterKey) {
+    const sidebar = document.getElementById('sub-menu-bar');
+    sidebar.innerHTML = '';
+    
+    // Destacar botão master
+    document.querySelectorAll('#master-tabs button').forEach(b => {
+        b.classList.toggle('bg-amber-600', b.textContent === masterKey);
+        b.classList.toggle('text-black', b.textContent === masterKey);
+    });
+
+    const config = MASTER_ARCHITECTURE[masterKey];
+    config.subtabs.forEach(tab => {
+        const btn = document.createElement('button');
+        btn.className = "group flex items-center h-12 px-4 w-full hover:bg-slate-800 transition-all border-l-4 border-transparent hover:border-amber-500 overflow-hidden";
+        btn.innerHTML = `
+            <i class="fas ${tab.icon} w-8 text-center text-lg text-slate-500 group-hover:text-amber-400 shrink-0"></i>
+            <span class="ml-4 text-[10px] uppercase font-bold tracking-widest whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">${tab.label}</span>
+        `;
+        btn.onclick = () => {
+            document.getElementById('default-view').classList.add('hidden');
+            tab.render();
+        };
+        sidebar.appendChild(btn);
+    });
 };
 
 // A função que faz a mágica das sub abas acontecer
@@ -180,6 +200,15 @@ window.setCategory = function(category) {
         btn.classList.toggle('active', btn.getAttribute('onclick')?.includes(`'${category}'`));
     });
 };
+
+// Login Listeners
+document.getElementById('btn-login').onclick = () => {
+    const email = document.getElementById('auth-email').value;
+    const pass = document.getElementById('auth-password').value;
+    signInWithEmailAndPassword(auth, email, pass).catch(e => alert(e.message));
+};
+
+document.getElementById('btn-logout').onclick = () => signOut(auth);
 
 async function preencherCachesEstaticos() {
     console.log(">>> [DEBUG] Iniciando preenchimento de caches...");
