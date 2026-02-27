@@ -1,4 +1,4 @@
-import { auth, db, storage, signInWithEmailAndPassword, signOut, onAuthStateChanged, collection, getDocs, doc, getDoc, onSnapshot, query, where, orderBy, writeBatch, runTransaction, deleteField, increment } from './core/firebase.js';
+import { auth, db, storage, signInWithEmailAndPassword, signOut, onAuthStateChanged, collection, getDocs, doc, getDoc, onSnapshot, query, where, orderBy, writeBatch, runTransaction, deleteField, increment, updateDoc } from './core/firebase.js';
 import { globalState, ADMIN_EMAIL, PLACEHOLDER_IMAGE_URL, COINS } from './core/state.js';
 import { createBonusObject } from './core/calculos.js';
 
@@ -667,45 +667,48 @@ function handleCharacterSelect(id) {
     
     updateCharacterSessions(id);
 
-    // Se nenhum personagem for selecionado (vazio)
     if(!id) {
         globalState.selectedCharacterId = null;
         globalState.selectedCharacterData = null;
         localStorage.removeItem('personagemAtivoId');
-        
         renderHeaderWidget();
         window.updateSidebarUI(); // Limpa a interface
         window.updateGlobalBars();
         if(window.renderSidebarDiceLog) window.renderSidebarDiceLog();
         
-        // Se estiver na Ficha, volta para a tela em branco
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-        document.getElementById('default-view')?.classList.remove('hidden');
+        const activeTab = dom.tab_container?.querySelector('.active')?.dataset.tab || 'painel-fichas';
+        if(activeTab === 'painel-fichas') renderPainelFichas();
         return;
     }
 
     globalState.selectedCharacterId = id;
     localStorage.setItem('personagemAtivoId', id);
 
-    // Listener do personagem ativo (Escuta o Firebase em tempo real)
     unsubscribeChar = onSnapshot(doc(db, "rpg_fichas", id), async (docSnap) => {
         if(docSnap.exists()) {
             const fichaAtualizada = { id: docSnap.id, ...docSnap.data() };
             globalState.cache.all_personagens.set(id, fichaAtualizada);
             
-            // Processa todos os itens e bônus (math pesada)
             globalState.selectedCharacterData = await gatherAllCharacterData(id);
-            
-            // Atualiza a Interface Lateral com os dados do Firebase
-            window.updateSidebarUI();
+            window.updateSidebarUI(); // Puxa e exibe dados (Foto, Nome, ATK, DEF, EVA)
             window.updateGlobalBars();
+            
             if(window.renderSidebarDiceLog) window.renderSidebarDiceLog();
             
-            // Re-renderiza a aba que estiver aberta (se for da ficha)
-            const painelAberto = document.querySelector('.inner-tab-btn.active');
-            if (painelAberto) {
-                painelAberto.click(); // Força o clique para re-renderizar com os dados novos
+            const activeTab = dom.tab_container?.querySelector('.active')?.dataset.tab || 'painel-fichas';
+            if(activeTab === 'painel-fichas') renderPainelFichas(); 
+            else if(activeTab === 'constelacao') renderConstelacaoTab();
+            else if(activeTab === 'arma-espiritual') renderArmaEspiritualTab();
+            else if(activeTab === 'meus-pets') renderPetsTab();
+            else if(activeTab === 'itens-equipados') renderItensEquipados();
+            else if(activeTab === 'calculadora-atributos') renderCalculadoraAtributos();
+            else if(activeTab === 'mochila') renderMochila();
+            else if(activeTab === 'minhas-habilidades') {
+                renderMinhasHabilidades();
+                if(window.renderSkillUsageLogs) window.renderSkillUsageLogs(); 
             }
+            else if(activeTab === 'calculadora-combate') renderCalculadoraCombate();
+            else if(activeTab === 'recursos-reputacao') renderReputacaoTab();
         }
     });
 }
@@ -713,14 +716,15 @@ function handleCharacterSelect(id) {
 // NOVA FUNÇÃO: Preenche Foto, Nome, Classe e Subclasse na Lateral
 window.updateSidebarUI = function() {
     const data = globalState.selectedCharacterData;
-    const barsContainer = document.getElementById('header-bars-container');
     
     if (!data || !data.ficha) {
         document.getElementById('sidebar-char-name').textContent = '---';
         document.getElementById('sidebar-char-class').textContent = '---';
         document.getElementById('sidebar-char-subclass').textContent = '---';
         document.getElementById('sidebar-char-img').src = 'https://placehold.co/400x400/0f172a/d4af37?text=Sem+Foto';
-        if (barsContainer) barsContainer.classList.add('hidden');
+        document.getElementById('sidebar-stat-atk').textContent = '0';
+        document.getElementById('sidebar-stat-def').textContent = '0';
+        document.getElementById('sidebar-stat-eva').textContent = '0';
         return;
     }
 
@@ -729,64 +733,63 @@ window.updateSidebarUI = function() {
     document.getElementById('sidebar-char-class').textContent = data.classe?.nome || 'Sem Classe';
     document.getElementById('sidebar-char-subclass').textContent = data.subclasse?.nome || 'Sem Subc.';
 
-    // Lógica da Imagem Favorita (Puxa do array imageUrls da ficha)
     const imgKey = f.imagemPrincipal;
     const imgUrl = (imgKey && f.imageUrls && f.imageUrls[imgKey]) ? f.imageUrls[imgKey] : (f.imagemUrl || 'https://placehold.co/400x400/0f172a/d4af37?text=Sem+Foto');
     document.getElementById('sidebar-char-img').src = imgUrl;
 
-    if (barsContainer) barsContainer.classList.remove('hidden');
+    // ATK, DEF e EVA (Puxa o valor total já calculado salvo na ficha)
+    document.getElementById('sidebar-stat-atk').textContent = f.atkPersonagemBase || 0;
+    document.getElementById('sidebar-stat-def').textContent = f.defPersonagemBase || 0;
+    document.getElementById('sidebar-stat-eva').textContent = f.evaPersonagemBase || 0;
 };
 
 // --- BARRAS GLOBAIS DE STATUS (LATERAL) ---
 window.updateGlobalBars = function() {
     const charId = globalState.selectedCharacterId;
-    if (!charId || !globalState.selectedCharacterData) return;
+    const containerHdr = document.getElementById('header-bars-container');
+    
+    if (!charId || !globalState.selectedCharacterData) {
+        if(containerHdr) containerHdr.classList.add('hidden');
+        return;
+    }
+    if(containerHdr) containerHdr.classList.remove('hidden');
 
     const ficha = globalState.selectedCharacterData.ficha;
     const atributos = ficha.atributosBasePersonagem || {};
     
-    // HP Matemático
     const hpMax = Number(ficha.hpMaxPersonagemBase) || 1; 
     const hpShieldMax = Number(atributos.defesaCorporalNativaTotal) || 0; 
     const hpAtual = ficha.hpPersonagemBase !== undefined ? Number(ficha.hpPersonagemBase) : hpMax;
     const hpShieldAtual = ficha.hpShieldAtual !== undefined ? Number(ficha.hpShieldAtual) : hpShieldMax;
-    const pctHpBase = Math.min(100, Math.max(0, (hpAtual / hpMax) * 100));
-    const pctHpShield = hpShieldMax > 0 ? Math.min(100, Math.max(0, (hpShieldAtual / hpShieldMax) * 100)) : 0;
 
-    // MP Matemático
     const mpMax = Number(ficha.mpMaxPersonagemBase) || 1; 
     const mpShieldMax = Number(atributos.defesaMagicaNativaTotal) || 0; 
     const mpAtual = ficha.mpPersonagemBase !== undefined ? Number(ficha.mpPersonagemBase) : mpMax;
     const mpShieldAtual = ficha.mpShieldAtual !== undefined ? Number(ficha.mpShieldAtual) : mpShieldMax;
+
+    const pctHpBase = Math.min(100, Math.max(0, (hpAtual / hpMax) * 100));
+    const pctHpShield = hpShieldMax > 0 ? Math.min(100, Math.max(0, (hpShieldAtual / hpShieldMax) * 100)) : 0;
     const pctMpBase = Math.min(100, Math.max(0, (mpAtual / mpMax) * 100));
     const pctMpShield = mpShieldMax > 0 ? Math.min(100, Math.max(0, (mpShieldAtual / mpShieldMax) * 100)) : 0;
 
-    // Aplicação na UI (IDs do novo HTML)
     const setWidth = (id, pct) => { const el = document.getElementById(id); if(el) el.style.width = `${pct}%`; };
     setWidth('hdr-hp-base', pctHpBase);
     setWidth('hdr-hp-shield', pctHpShield);
     setWidth('hdr-mp-base', pctMpBase);
     setWidth('hdr-mp-shield', pctMpShield);
 
-    // Textos de HP e MP
-    const hpTotalAtual = Math.max(0, hpAtual + hpShieldAtual);
-    const hpTotalMax = hpMax + hpShieldMax;
     const txtHpHdr = document.getElementById('hdr-hp-text');
-    if(txtHpHdr) txtHpHdr.textContent = `${hpTotalAtual}/${hpTotalMax}`;
+    if(txtHpHdr) txtHpHdr.textContent = `${Math.max(0, hpAtual + hpShieldAtual)}/${hpMax + hpShieldMax}`;
 
-    const mpTotalAtual = Math.max(0, mpAtual + mpShieldAtual);
-    const mpTotalMax = mpMax + mpShieldMax;
     const txtMpHdr = document.getElementById('hdr-mp-text');
-    if(txtMpHdr) txtMpHdr.textContent = `${mpTotalAtual}/${mpTotalMax}`;
+    if(txtMpHdr) txtMpHdr.textContent = `${Math.max(0, mpAtual + mpShieldAtual)}/${mpMax + mpShieldMax}`;
     
-    // Lógica da Fome
     const fomeExtra = Number(atributos.pontosFomeExtraTotal) || 0;
     const fomeMax = Math.floor(100 + fomeExtra);
     let fomeAtual = ficha.fomeAtual !== undefined ? Number(ficha.fomeAtual) : fomeMax;
     if (fomeAtual > fomeMax) fomeAtual = fomeMax;
 
-    const fomePct = Math.max(0, Math.min(100, (fomeAtual / fomeMax) * 100));
-    setWidth('bar-fome-fill', fomePct);
+    setWidth('bar-fome-fill', Math.max(0, Math.min(100, (fomeAtual / fomeMax) * 100)));
     
     const fomeText = document.getElementById('hdr-fome-text');
     if (fomeText) {
@@ -921,13 +924,10 @@ function renderHeaderWidget() {
     if (!container || !globalState.world.data) return;
 
     const w = globalState.world.data;
-    const locations = globalState.world.locations;
-    const events = globalState.world.events || [];
-
-    let timeDisplay = w.time;
-    let dayDisplay = w.day;
-    let monthDisplay = w.month;
-    let yearDisplay = w.year;
+    let timeDisplay = w.time || "12:00";
+    let dayDisplay = w.day || "1";
+    let monthDisplay = w.month || "1";
+    let yearDisplay = w.year || "1000";
     let isCustomSession = false;
 
     if (globalState.activeSessionId && globalState.activeSessionId !== "world") {
@@ -955,40 +955,19 @@ function renderHeaderWidget() {
     let moon = MOON_PHASES[Math.floor((totalDays % 28) / 3.5)] || MOON_PHASES[0];
     const seasonName = globalState.world.seasons?.find(s => s.id === w.seasonId)?.name || "---";
 
-    const activeLocId = globalState.world.selectedLocId;
-    const location = locations?.find(l => l.id === activeLocId);
-    let localEvents = [];
-    let isDanger = false;
-
-    if (location && location.x !== undefined && location.y !== undefined) {
-        localEvents = events.filter(ev => {
-            const distance = Math.sqrt(Math.pow(Number(location.x) - Number(ev.x), 2) + Math.pow(Number(location.y) - Number(ev.y), 2));
-            return distance <= Number(ev.radius || 0);
-        });
-        isDanger = localEvents.length > 0;
-    }
-
-    // AQUI OCORRE A REDUÇÃO DE TAMANHOS (text-lg em vez de text-2xl, e paddings menores)
+    // Widget compacto focado no Top Nav
     container.innerHTML = `
-        <div class="flex items-center gap-4 animate-fade-in">
-            <div class="flex items-center gap-2 border-r border-slate-700 pr-4">
-                <div class="text-right">
-                    <div class="text-lg font-mono font-bold ${isCustomSession ? 'text-indigo-400' : 'text-white'} leading-none">${timeDisplay}</div>
-                    <div class="text-[9px] ${isCustomSession ? 'text-indigo-500' : 'text-amber-500'} font-bold uppercase tracking-widest mt-0.5">
-                        ${isCustomSession ? '<i class="fas fa-users"></i> SESSÃO' : 'MUNDIAL'} • ${dayDisplay}/${monthDisplay}/${yearDisplay}
-                    </div>
-                </div>
-                <div class="text-center ml-2">
-                    <div class="text-sm" title="${moon.name}"><i class="fas ${moon.icon}" style="color: ${moon.color}"></i></div>
-                    <div class="text-[8px] text-slate-400 uppercase font-bold">${seasonName}</div>
+        <div class="flex items-center gap-4 animate-fade-in mr-4">
+            <div class="text-right">
+                <div class="text-lg font-mono font-bold ${isCustomSession ? 'text-indigo-400' : 'text-white'} leading-none">${timeDisplay}</div>
+                <div class="text-[9px] ${isCustomSession ? 'text-indigo-500' : 'text-amber-500'} font-bold uppercase tracking-widest mt-0.5">
+                    ${isCustomSession ? '<i class="fas fa-users"></i> SESSÃO' : 'MUNDIAL'} • ${dayDisplay}/${monthDisplay}/${yearDisplay}
                 </div>
             </div>
-
-            <div class="flex items-center gap-2 bg-slate-900/50 border ${isDanger ? 'border-red-500' : 'border-slate-700'} rounded px-2 py-1">
-                <i class="fas fa-map-marker-alt ${isDanger ? 'text-red-500 animate-bounce' : 'text-slate-400'} text-xs"></i>
-                <select onchange="window.updateHeaderLoc(this.value)" class="bg-transparent text-white font-bold text-[11px] outline-none border-none cursor-pointer w-32 truncate">
-                    ${locations?.map(loc => `<option value="${loc.id}" ${loc.id === activeLocId ? 'selected' : ''} class="bg-slate-800">${loc.name}</option>`).join('') || '<option>Nenhum Local</option>'}
-                </select>
+            <div class="h-6 w-[1px] bg-slate-700"></div>
+            <div class="text-center w-16">
+                <div class="text-sm" title="${moon.name}"><i class="fas ${moon.icon}" style="color: ${moon.color}"></i></div>
+                <div class="text-[8px] text-slate-400 uppercase font-bold">${seasonName}</div>
             </div>
         </div>
     `;

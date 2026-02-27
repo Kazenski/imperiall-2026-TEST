@@ -740,7 +740,7 @@ select.std-height, input.std-height {
 }
 .tame-rules-overlay {
     position: absolute; inset: 0; background: rgba(0,0,0,0.9); z-index: 50;
-    display: flex; flex-col; justify-content: center; align-items: center; padding: 2rem;
+    display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 2rem;
     text-align: left; backdrop-filter: blur(4px);
 }
 .food-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 0.5rem; }
