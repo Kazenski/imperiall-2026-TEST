@@ -210,7 +210,7 @@ window.setContext = function(masterKey) {
     });
 
     const config = MASTER_ARCHITECTURE[masterKey];
-    config.subtabs.forEach(tab => {
+    config.forEach(tab => {
         const btn = document.createElement('button');
         btn.className = "group flex items-center h-12 px-4 w-full hover:bg-slate-800 transition-all border-l-4 border-transparent hover:border-amber-500 overflow-hidden";
         btn.innerHTML = `
