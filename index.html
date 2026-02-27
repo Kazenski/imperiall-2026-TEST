@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mestre Leoma - Painel Unificado (v3.0)</title>
+    <title>Mestre Leoma - VTT Panel</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,431 +14,215 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     
     <link rel="stylesheet" href="style.css" />
-</head>
-<body class="bg-slate-900 text-slate-200 p-4 sm:p-6 lg:p-8">
-
-    <div id="app-container" class="max-w-7xl mx-auto">
     
-        <div id="auth-view">
-            <div class="max-w-md w-full mx-auto my-20">
-                <div class="bg-slate-800 p-8 rounded-lg border border-amber-500/50 shadow-2xl">
-                    <h2 class="text-3xl font-bold text-center text-amber-400 mb-6 font-cinzel">Painel do Mestre</h2>
-                    <div class="space-y-4">
-                        <div>
-                            <label for="auth-email">Email</label>
-                            <input type="email" id="auth-email">
-                        </div>
-                        <div>
-                            <label for="auth-password">Senha</label>
-                            <input type="password" id="auth-password">
-                        </div>
-                        <button id="btn-login" class="btn btn-primary w-full py-3">Entrar</button>
-                    </div>
+</head>
+<body class="text-slate-200 font-sans h-screen w-screen flex flex-col">
+
+    <div id="auth-view" class="fixed inset-0 z-[9999] bg-slate-950 flex items-center justify-center">
+        <div class="max-w-md w-full bg-slate-900 p-8 rounded-xl border border-amber-500/30 shadow-2xl">
+            <h2 class="text-3xl font-bold text-center text-amber-500 mb-6 font-cinzel">Acesso ao Sistema</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1 block">Email</label>
+                    <input type="email" id="auth-email" class="w-full bg-slate-950 border border-slate-700 rounded px-4 py-3 outline-none focus:border-amber-500 text-white">
                 </div>
+                <div>
+                    <label class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1 block">Senha</label>
+                    <input type="password" id="auth-password" class="w-full bg-slate-950 border border-slate-700 rounded px-4 py-3 outline-none focus:border-amber-500 text-white">
+                </div>
+                <button id="btn-login" class="w-full bg-amber-600 hover:bg-amber-500 text-black font-bold uppercase tracking-widest py-3 rounded transition-colors mt-4">Entrar</button>
             </div>
         </div>
+    </div>
 
-        <div id="app-view" class="hidden">
+    <div id="app-view" class="hidden flex-col h-full w-full">
+
+        <nav id="global-top-nav" class="bg-slate-950 border-b border-slate-800 flex items-center justify-between px-6 h-14 shrink-0 shadow-md relative z-50">
+            <div class="flex items-center gap-6">
+                <div class="font-cinzel text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-orange-500 tracking-wider">
+                    PAINEL UNIFICADO
+                </div>
+                
+                <div class="hidden md:flex items-center gap-1 text-sm font-medium text-slate-300">
+                    <button class="px-3 py-2 hover:text-white transition-colors border-b-2 border-amber-500 text-amber-500">Início</button>
+                    <button class="px-3 py-2 hover:text-white transition-colors border-b-2 border-transparent hover:border-slate-500 flex items-center gap-1">O Mundo <i class="fas fa-caret-down text-[10px]"></i></button>
+                    <button class="px-3 py-2 hover:text-white transition-colors border-b-2 border-transparent hover:border-slate-500 flex items-center gap-1">Manual e regras <i class="fas fa-caret-down text-[10px]"></i></button>
+                    <button class="px-3 py-2 hover:text-white transition-colors border-b-2 border-transparent hover:border-slate-500 flex items-center gap-1">Ao Mestre <i class="fas fa-caret-down text-[10px]"></i></button>
+                    <button class="px-3 py-2 hover:text-white transition-colors border-b-2 border-transparent hover:border-slate-500 flex items-center gap-1">Ao Jogador <i class="fas fa-caret-down text-[10px]"></i></button>
+                    <button class="px-3 py-2 hover:text-white transition-colors border-b-2 border-transparent hover:border-slate-500 flex items-center gap-1">Atualizações <i class="fas fa-caret-down text-[10px]"></i></button>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div id="header-world-widget" class="hidden lg:flex"></div> <button id="btn-logout" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 px-4 py-1.5 rounded text-xs font-bold uppercase transition">Sair</button>
+            </div>
+        </nav>
+
+        <div class="flex flex-1 overflow-hidden">
             
-            <header id="app-header" class="bg-slate-800 border border-slate-700 p-4 rounded-lg mb-6 shadow-xl relative overflow-hidden transition-all duration-500">
-                <div id="app-header-content" class="flex justify-between items-center gap-4 flex-wrap relative z-10">
-                    <h1 class="font-cinzel text-amber-500 text-2xl font-bold">Painel Unificado</h1>
-                    
-                    <div class="flex-grow grid grid-cols-1 md:grid-cols-2 gap-4 min-w-[300px]">
-                        <div>
-                            <label for="character-select" class="block text-[10px] text-slate-500 mb-1 font-bold uppercase">Personagem Ativo</label>
-                            <select id="character-select" class="w-full bg-slate-900 border border-slate-600 rounded text-slate-200 p-2 text-sm focus:border-amber-500 outline-none">
-                                <option value="">-- Carregando... --</option>
-                            </select>
-                        </div>
-
-                        <div id="session-selector-container" class="hidden animate-fade-in">
-                            <label for="session-select" class="block text-[10px] text-indigo-400 mb-1 font-bold uppercase tracking-tighter">Sessão de Jogo (Horário Ativo)</label>
-                            <select id="session-select" class="w-full bg-slate-900 border border-indigo-900/50 rounded text-slate-200 p-2 text-sm focus:border-indigo-500 outline-none shadow-[0_0_10px_rgba(79,70,229,0.1)]">
-                                <option value="world">Horário Mundial Padrão</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <button id="btn-logout" class="btn btn-secondary py-2 px-4 text-xs h-10 mt-5">Sair</button>
-                </div>
-
-                <hr class="border-slate-700/50 my-4 relative z-10">
-
-                <div id="header-world-widget" class="relative z-10 text-slate-500"></div>
+            <aside id="main-sidebar" class="w-72 lg:w-80 bg-[#0a0f18] border-r border-slate-800 flex flex-col shrink-0 overflow-y-auto custom-scroll shadow-[4px_0_24px_rgba(0,0,0,0.5)] z-40">
                 
-                <div id="header-bars-container" class="hidden relative z-10 w-full mt-5 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 px-1">
-                    <div class="relative w-full h-6 bg-slate-950 rounded-lg border border-slate-700 overflow-hidden shadow-inner group" title="Pontos de Vida (Escudo > Extra > Base)">
-                        <div id="hdr-hp-base" class="absolute left-0 top-0 h-full bg-gradient-to-r from-red-700 to-red-500 transition-all duration-500 z-0" style="width: 0%;"></div>
-                        <div id="hdr-hp-extra" class="absolute left-0 top-0 h-full bg-gradient-to-r from-red-900 to-red-800 transition-all duration-500 border-r-2 border-white/30 z-10" style="width: 0%;"></div>
-                        <div id="hdr-hp-shield" class="absolute left-0 top-0 h-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-500 shadow-[0_0_10px_orange] border-r-2 border-white/60 z-20" style="width: 0%;"></div>
-                        <div class="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,1)] tracking-widest font-mono z-30 pointer-events-none">
-                            HP <span id="hdr-hp-text" class="ml-2">0 / 0</span>
-                        </div>
-                    </div>
-
-                    <div class="relative w-full h-6 bg-slate-950 rounded-lg border border-slate-700 overflow-hidden shadow-inner group" title="Pontos de Mana (Escudo > Extra > Base)">
-                        <div id="hdr-mp-base" class="absolute left-0 top-0 h-full bg-gradient-to-r from-blue-700 to-blue-500 transition-all duration-500 z-0" style="width: 0%;"></div>
-                        <div id="hdr-mp-extra" class="absolute left-0 top-0 h-full bg-gradient-to-r from-blue-900 to-blue-800 transition-all duration-500 border-r-2 border-white/30 z-10" style="width: 0%;"></div>
-                        <div id="hdr-mp-shield" class="absolute left-0 top-0 h-full bg-gradient-to-r from-cyan-500 to-cyan-300 transition-all duration-500 shadow-[0_0_10px_cyan] border-r-2 border-white/60 z-20" style="width: 0%;"></div>
-                        <div class="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,1)] tracking-widest font-mono z-30 pointer-events-none">
-                            MP <span id="hdr-mp-text" class="ml-2">0 / 0</span>
-                        </div>
-                    </div>
-
-                    <div id="bar-fome-track" class="relative w-full h-6 bg-slate-950 rounded-lg border border-slate-700 overflow-hidden shadow-inner group transition-colors duration-300" title="Nível de Fome">
-                        <div id="bar-fome-fill" class="absolute left-0 top-0 h-full bg-gradient-to-r from-amber-700 to-amber-500 transition-all duration-500 z-0" style="width: 100%;"></div>
-                        <div class="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,1)] tracking-widest font-mono z-30 pointer-events-none">
-                            FOME <span id="hdr-fome-text" class="ml-2">100 / 100</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="absolute inset-0 bg-gradient-to-b from-slate-800 to-slate-900 z-0"></div>
-            </header>
-
-            <nav id="tab-container">
-                <button class="tab-button active" data-tab="painel-fichas">Painel de Fichas</button>
-                <button class="tab-button" data-tab="rolagem-dados">Rolagem Dados</button>
-                <button class="tab-button" data-tab="calculadora-combate" style="display: none;">Calculadora Combate</button>
-                <button class="tab-button" data-tab="minhas-habilidades">Minhas Habilidades</button>
-                <button class="tab-button" data-tab="mochila">Mochila</button>
-                <button class="tab-button" data-tab="itens-equipados">Itens Equipados</button>
-                <button class="tab-button" data-tab="calculadora-atributos">Calculadora Atributos</button>
-                <button class="tab-button" data-tab="constelacao">Constelação</button>
-                <button class="tab-button" data-tab="crafting">Oficina de Criação</button>
-                <button class="tab-button" data-tab="extracao">Extração & Reciclagem</button>
-                <button class="tab-button" data-tab="colecao-craft">Diário de Coleção</button>
-                <button class="tab-button" data-tab="arma-espiritual">Arma Espiritual Ego</button>
-                <button class="tab-button" data-tab="meus-pets">Meus Pets</button>
-                <button class="tab-button" data-tab="recursos-reputacao">Recursos & Reputação</button>
-                <button class="tab-button" data-tab="comercio">Comércio</button>
-                <button class="tab-button" data-tab="mapa-movimento">Mapa e Movimento</button>
-                <button class="tab-button" data-tab="arena-combate">Arena de Combate⚔️</button>
-            </nav>
-
-            <main id="content-container">
-                
-                <div id="painel-fichas-content" class="tab-content active"></div>
-
-                <div id="rolagem-dados-content" class="tab-content">
-                    <h2>Rolagem de Dados</h2>
-                    <div id="dice-container" class="dice-container"></div>
-                    <div id="log-rolagens-container">
-                        <h3 class="font-cinzel text-lg mb-2 text-slate-400">Log de Rolagens (Últimas 50)</h3>
-                        <div id="log-lista" class="space-y-1">
-                            <p class="text-slate-500 text-sm italic">Nenhuma rolagem registrada.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="calculadora-combate-content" class="tab-content" style="display: none;">
-                    <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-2">
-                        <h2 class="font-cinzel text-2xl text-amber-500 m-0 border-none p-0">Calculadora de Combate</h2>
-                        <div class="tooltip-trigger relative">
-                            <button class="btn-help-circle"><i class="fas fa-question"></i></button>
-                            <div class="tooltip-body tooltip-down" style="width: 320px; right: 0; left: auto; transform: translateY(10px);">
-                                <style>.tooltip-trigger:hover .tooltip-down::after { right: 8px; left: auto; }</style>
-                                <h4 class="font-cinzel text-amber-400 border-b border-slate-700 pb-2 mb-3 text-sm">Como funciona o cálculo?</h4>
-                                <div class="space-y-3 text-xs text-slate-300 text-left font-sans normal-case">
-                                    <p>O sistema projeta o dano final somando o poder fixo da habilidade com seus atributos:</p>
-                                    <div>
-                                        <strong class="text-white block mb-1">1. Poder Base</strong>
-                                        <p class="text-slate-400">É o dano cadastrado na habilidade somado ao bônus do nível atual dela.</p>
-                                    </div>
-                                    <div>
-                                        <strong class="text-white block mb-1">2. Atributo de Influência</strong>
-                                        <p class="text-slate-400">O sistema identifica qual atributo fortalece a skill e soma todas as suas fontes.</p>
-                                    </div>
-                                    <div class="bg-black/40 p-2 rounded border border-emerald-900/50 text-center mt-2">
-                                        <span class="text-emerald-400 font-bold">Dano Final = Base + Atributo Total</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-field">
-                        <label for="calc-combate-habilidade-select">Habilidade:</label>
-                        <select id="calc-combate-habilidade-select" disabled>
-                            <option value="">Selecione um personagem</option>
+                <div class="w-full aspect-[4/3] bg-black relative border-b border-slate-800 group">
+                    <img id="sidebar-char-img" src="https://via.placeholder.com/400x300?text=Sem+Foto" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity">
+                    <div class="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-[#0a0f18] to-transparent"></div>
+                    
+                    <div class="absolute top-2 left-2 right-2">
+                        <select id="character-select" class="w-full bg-black/60 border border-slate-600/50 rounded text-slate-200 p-1.5 text-xs focus:border-amber-500 outline-none backdrop-blur-md shadow-lg">
+                            <option value="">-- Carregando... --</option>
                         </select>
                     </div>
-                    <p id="calc-combate-mensagem-status" class="">Selecione um personagem e uma habilidade para calcular o poder.</p>
-                    <div id="calc-combate-painel-calculo" class="hidden">
-                        <div class="secao-calculo">
-                            <h3>Poder Base da Habilidade</h3>
-                            <p class="valor" id="calc-combate-valor-base">0</p>
-                        </div>
-                        <div class="secao-calculo">
-                            <h3>Bônus dos Atributos de Influência</h3>
-                            <div class="detalhamento-lista" id="calc-combate-lista-atributos"></div>
-                        </div>
-                    </div>
                 </div>
 
-                <div id="minhas-habilidades-content" class="tab-content">
-                    <div class="ap-header mb-6 flex justify-between items-center bg-slate-800/50 p-4 rounded-lg border border-slate-700 relative z-20">
-                        <div>
-                            <h2 class="font-cinzel text-xl text-amber-400 m-0 border-none p-0">Gestão de Habilidades</h2>
-                            <p class="text-xs text-slate-400">Evolua seus poderes</p>
-                        </div>
-                        <div class="flex items-center gap-4">
-                            <div class="text-right">
-                                <span class="text-[10px] text-slate-500 uppercase font-bold block">Pontos (AP)</span>
-                                <span class="text-2xl font-mono font-bold text-rose-500 bg-rose-900/10 px-3 py-1 rounded border border-rose-500/20 block">
-                                    <i class="fas fa-bolt text-sm mr-2"></i><span id="skill-ap-display">0</span>
-                                </span>
-                            </div>
-                        </div>
+                <div class="p-4 flex flex-col gap-4">
+                    <div>
+                        <h2 id="sidebar-char-name" class="font-cinzel text-xl text-white font-bold leading-none mb-1 truncate">Personagem</h2>
+                        <p id="sidebar-char-class" class="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Nvl. -- • Classe</p>
                     </div>
-                    <div class="flex border-b border-slate-700 mb-4 relative z-10">
-                        <button id="btn-tab-learned" class="sub-nav-btn active" onclick="window.switchSkillTab('learned')">Aprendidas</button>
-                        <button id="btn-tab-possible" class="sub-nav-btn" onclick="window.switchSkillTab('possible')">Disponíveis (Loja)</button>
-                    </div>
-                    <div class="form-field mb-4 relative z-10">
-                        <input type="text" id="skill-filter-input" placeholder="Buscar habilidade..." onkeyup="window.filterSkills(this.value)">
-                    </div>
-                    <div id="grid-learned" class="grid-container fade-in relative z-0"></div>
-                    <div id="grid-possible" class="grid-container fade-in hidden relative z-0"></div>
-                    <div id="skill-details-panel" class="hidden mt-6 bg-slate-800 p-6 rounded-xl border border-slate-600 shadow-2xl fade-in relative z-10"></div>
-                    <div id="skill-usage-log-container" class="mt-8 bg-slate-900/50 p-4 rounded-lg border border-slate-700 shadow-inner">
-                        <h3 class="font-cinzel text-lg text-slate-400 mb-3 border-none flex items-center gap-2">
-                            <i class="fas fa-history text-sm"></i> Histórico de Uso (Últimos 50)
-                        </h3>
-                        <div id="skill-log-list" class="space-y-2 max-h-[400px] overflow-y-auto custom-scroll pr-2"></div>
-                        <div id="admin-skill-log-actions" class="mt-3 pt-2 border-t border-slate-800 hidden flex justify-end">
-                            <button onclick="window.clearSkillLogs()" class="text-[10px] text-red-500/70 hover:text-red-400 uppercase font-bold transition flex items-center gap-1">
-                                <i class="fas fa-trash-alt"></i> Limpar Histórico (Mestre)
-                            </button>
-                        </div>
-                    </div>
-                </div>
 
-                <div id="mochila-content" class="tab-content">
-                    <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-2 relative z-20">
-                        <h2 class="font-cinzel text-2xl text-amber-500 m-0 border-none p-0">Gerenciador de Mochila</h2>
+                    <div id="session-selector-container" class="hidden">
+                        <select id="session-select" class="w-full bg-indigo-950/30 border border-indigo-500/30 rounded text-indigo-300 p-1.5 text-[10px] uppercase font-bold focus:border-indigo-500 outline-none">
+                            <option value="world">Horário Mundial Padrão</option>
+                        </select>
                     </div>
-                    <div class="form-field mb-4">
-                        <label for="mochila-filtro" class="text-slate-400 text-sm font-bold mb-2 block">Filtrar por Nome</label>
-                        <input type="text" id="mochila-filtro" placeholder="Digite o nome do item..." class="std-height w-full bg-slate-900 border border-slate-600 rounded text-slate-200 px-3 focus:border-amber-500 outline-none transition-all">
-                    </div>
-                    <div id="inventory-grid" class="grid-container relative z-0"></div>
-                    <div id="item-details-panel" class="hidden mt-4"></div>
-                    <div id="action-panel-container"></div>
-                </div>
 
-                <div id="itens-equipados-content" class="tab-content">
-                    <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2 relative z-30">
-                        <div>
-                            <h2 class="font-cinzel text-2xl text-amber-500 m-0 border-none p-0">Arsenal de Combate</h2>
-                            <p class="text-xs text-slate-400">Loadout & Equipamentos</p>
-                        </div>
-                    </div>
-                    <div class="paper-doll-container relative">
-                        <div id="paper-doll-bg-layer" class="paper-doll-bg"></div>
-                        <div class="doll-grid-container doll-grid-left" id="doll-grid-left"></div>
-                        <div class="doll-grid-container doll-grid-right" id="doll-grid-right"></div>
-                        <div class="combat-stats-overlay" style="position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(2, 6, 23, 0.95); border: 1px solid #f59e0b; border-radius: 12px; padding: 0.75rem 3rem; display: flex; gap: 3rem; z-index: 20; box-shadow: 0 10px 40px rgba(0,0,0,0.9);">
-                            <div class="text-center">
-                                <div class="text-[10px] text-slate-400 uppercase tracking-widest mb-1">ATK Total</div>
-                                <div class="text-2xl font-bold text-rose-500 font-cinzel drop-shadow-md" id="doll-total-atk">0</div>
-                            </div>
-                            <div class="w-px bg-slate-700 h-10 self-center"></div>
-                            <div class="text-center">
-                                <div class="text-[10px] text-slate-400 uppercase tracking-widest mb-1">DEF Total</div>
-                                <div class="text-2xl font-bold text-emerald-500 font-cinzel drop-shadow-md" id="doll-total-def">0</div>
-                            </div>
-                            <div class="w-px bg-slate-700 h-10 self-center"></div>
-                            <div class="text-center">
-                                <div class="text-[10px] text-slate-400 uppercase tracking-widest mb-1">EVA Total</div>
-                                <div class="text-2xl font-bold text-sky-500 font-cinzel drop-shadow-md" id="doll-total-eva">0</div>
+                    <div id="header-bars-container" class="flex flex-col gap-3">
+                        <div class="relative w-full h-5 bg-slate-950 rounded border border-slate-800 overflow-hidden shadow-inner group" title="Pontos de Vida">
+                            <div id="hdr-hp-base" class="absolute left-0 top-0 h-full bg-gradient-to-r from-red-700 to-red-500 transition-all duration-500 z-0" style="width: 0%;"></div>
+                            <div id="hdr-hp-extra" class="absolute left-0 top-0 h-full bg-gradient-to-r from-red-900 to-red-800 transition-all duration-500 border-r border-white/30 z-10" style="width: 0%;"></div>
+                            <div id="hdr-hp-shield" class="absolute left-0 top-0 h-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-500 shadow-[0_0_10px_orange] border-r border-white/60 z-20" style="width: 0%;"></div>
+                            <div class="absolute inset-0 flex items-center justify-between px-2 text-[9px] font-bold text-white drop-shadow-md z-30 pointer-events-none">
+                                <span>HP</span> <span id="hdr-hp-text">0 / 0</span>
                             </div>
                         </div>
-                    </div>
-                    <div id="equipment-selector-modal" class="fixed inset-0 bg-black/90 hidden items-center justify-center z-[100] animate-fade-in backdrop-blur-sm">
-                        <div class="bg-slate-900 border border-amber-600 rounded-lg w-full max-w-2xl p-6 shadow-2xl relative flex flex-col max-h-[90vh]">
-                            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded bg-slate-800 flex items-center justify-center border border-slate-600">
-                                        <i class="fas fa-box-open text-amber-500"></i>
-                                    </div>
-                                    <div>
-                                        <h3 class="font-cinzel text-white text-xl m-0">Selecionar Equipamento</h3>
-                                        <p class="text-xs text-slate-400 uppercase tracking-widest">Slot: <span id="modal-slot-name" class="text-amber-400 font-bold">---</span></p>
-                                    </div>
-                                </div>
-                                <button onclick="document.getElementById('equipment-selector-modal').classList.add('hidden')" class="text-slate-400 hover:text-white transition-transform hover:scale-110"><i class="fas fa-times text-2xl"></i></button>
+
+                        <div class="relative w-full h-5 bg-slate-950 rounded border border-slate-800 overflow-hidden shadow-inner group" title="Pontos de Mana">
+                            <div id="hdr-mp-base" class="absolute left-0 top-0 h-full bg-gradient-to-r from-blue-700 to-blue-500 transition-all duration-500 z-0" style="width: 0%;"></div>
+                            <div id="hdr-mp-extra" class="absolute left-0 top-0 h-full bg-gradient-to-r from-blue-900 to-blue-800 transition-all duration-500 border-r border-white/30 z-10" style="width: 0%;"></div>
+                            <div id="hdr-mp-shield" class="absolute left-0 top-0 h-full bg-gradient-to-r from-cyan-500 to-cyan-300 transition-all duration-500 shadow-[0_0_10px_cyan] border-r border-white/60 z-20" style="width: 0%;"></div>
+                            <div class="absolute inset-0 flex items-center justify-between px-2 text-[9px] font-bold text-white drop-shadow-md z-30 pointer-events-none">
+                                <span>MP</span> <span id="hdr-mp-text">0 / 0</span>
                             </div>
-                            <div id="modal-item-list" class="grid grid-cols-4 gap-4 overflow-y-auto custom-scroll p-2 bg-slate-950/50 rounded border border-slate-800 flex-grow min-h-[300px]"></div>
-                            <div class="mt-4 pt-4 border-t border-slate-700 flex justify-end">
-                                <button id="btn-unequip-current" class="hidden w-full sm:w-auto px-6 py-3 bg-red-900/30 hover:bg-red-900/80 text-red-400 hover:text-white text-xs font-bold uppercase rounded border border-red-900/50 transition-all">
-                                    <i class="fas fa-times-circle mr-2"></i> Remover Item Equipado
-                                </button>
+                        </div>
+
+                        <div id="bar-fome-track" class="relative w-full h-3 bg-slate-950 rounded border border-slate-800 overflow-hidden shadow-inner group transition-colors duration-300" title="Fome">
+                            <div id="bar-fome-fill" class="absolute left-0 top-0 h-full bg-gradient-to-r from-amber-700 to-amber-500 transition-all duration-500 z-0" style="width: 100%;"></div>
+                            <div class="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-white drop-shadow-md z-30 pointer-events-none">
+                                <span id="hdr-fome-text">100/100</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div id="calculadora-atributos-content" class="tab-content">
-                    <h2>Calculadora de Atributos Detalhada</h2>
-                    <div id="calculator-content" class="hidden">
-                        <div class="calculator-grid">
-                            <div class="attribute-column"><h3>Ataque</h3><div id="atk-container"></div></div>
-                            <div class="attribute-column"><h3>Defesa</h3><div id="def-container"></div></div>
-                            <div class="attribute-column"><h3>Evasão</h3><div id="eva-container"></div></div>
+                <div class="mt-auto border-t border-slate-800 p-4 bg-slate-900/50">
+                    <h4 class="text-[10px] text-slate-500 font-bold uppercase mb-3 tracking-widest text-center">Rolagem Rápida</h4>
+                    <div id="dice-container" class="flex flex-wrap justify-center gap-2" id="sidebar-dice-area">
+                        </div>
+                </div>
+            </aside>
+
+            <div class="flex-1 flex flex-col min-w-0 bg-[#0f172a] relative">
+                
+                <nav id="tab-container" class="bg-[#1e293b] border-b border-[#334155] flex overflow-x-auto custom-scroll shrink-0 px-2 pt-2 gap-1 z-30 shadow-md">
+                    <button class="tab-button tab-button-delicate active" data-tab="painel-fichas"><i class="fas fa-id-card"></i> Ficha</button>
+                    <button class="tab-button tab-button-delicate" data-tab="rolagem-dados"><i class="fas fa-dice-d20"></i> Log Dados</button>
+                    <button class="tab-button tab-button-delicate" data-tab="calculadora-combate"><i class="fas fa-calculator"></i> Calc. Dano</button>
+                    <button class="tab-button tab-button-delicate" data-tab="minhas-habilidades"><i class="fas fa-fire"></i> Skills</button>
+                    <button class="tab-button tab-button-delicate" data-tab="mochila"><i class="fas fa-shopping-bag"></i> Mochila</button>
+                    <button class="tab-button tab-button-delicate" data-tab="itens-equipados"><i class="fas fa-tshirt"></i> Equip</button>
+                    <button class="tab-button tab-button-delicate" data-tab="calculadora-atributos"><i class="fas fa-chart-bar"></i> Status</button>
+                    <button class="tab-button tab-button-delicate" data-tab="constelacao"><i class="fas fa-star"></i> Árvore</button>
+                    <button class="tab-button tab-button-delicate" data-tab="crafting"><i class="fas fa-hammer"></i> Craft</button>
+                    <button class="tab-button tab-button-delicate" data-tab="extracao"><i class="fas fa-recycle"></i> Reciclar</button>
+                    <button class="tab-button tab-button-delicate" data-tab="colecao-craft"><i class="fas fa-book"></i> Diário</button>
+                    <button class="tab-button tab-button-delicate" data-tab="arma-espiritual"><i class="fas fa-ghost"></i> Ego</button>
+                    <button class="tab-button tab-button-delicate" data-tab="meus-pets"><i class="fas fa-dragon"></i> Pets</button>
+                    <button class="tab-button tab-button-delicate" data-tab="recursos-reputacao"><i class="fas fa-crown"></i> Império</button>
+                    <button class="tab-button tab-button-delicate" data-tab="comercio"><i class="fas fa-coins"></i> Loja</button>
+                    <button class="tab-button tab-button-delicate" data-tab="mapa-movimento"><i class="fas fa-map-marked-alt"></i> Mapa</button>
+                    <button class="tab-button tab-button-delicate border-red-500 text-red-400" data-tab="arena-combate"><i class="fas fa-chess-board"></i> Arena</button>
+                </nav>
+
+                <main id="content-container" class="flex-1 overflow-y-auto custom-scroll p-4 md:p-6 lg:p-8 relative">
+                    
+                    <div id="painel-fichas-content" class="tab-content active h-full"></div>
+                    
+                    <div id="rolagem-dados-content" class="tab-content">
+                        <div id="log-rolagens-container" class="max-w-3xl mx-auto mt-0">
+                            <h3 class="font-cinzel text-xl mb-4 text-slate-300 border-b border-slate-700 pb-2">Log de Rolagens (Últimas 50)</h3>
+                            <div id="log-lista" class="space-y-1"></div>
                         </div>
                     </div>
-                </div>
-
-                <div id="constelacao-content" class="tab-content">
-                    <aside class="constelacao-sidebar">
-                        <div class="mb-6 text-center">
-                            <div class="flex items-center justify-center gap-2 mb-2">
-                                <h3 class="font-cinzel text-amber-400 text-xl border-none m-0">Progresso</h3>
-                            </div>
-                            <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden border border-slate-700 mt-2">
-                                <div id="const-progress-bar" class="bg-gradient-to-r from-sky-500 to-amber-400 h-full w-0 transition-all duration-500"></div>
-                            </div>
-                            <p id="const-progress-text" class="text-xs text-slate-400 mt-1">0%</p>
-                        </div>
-                        <div class="mb-4">
-                            <div class="flex items-center justify-between bg-slate-800 p-2 rounded border border-slate-700 mb-2">
-                                <span class="text-xs text-slate-400 uppercase">Orbes da Ascensão</span>
-                                <span id="const-currency-display" class="font-bold text-white">0</span>
-                            </div>
-                            <button id="btn-const-reset" class="btn btn-danger w-full text-xs py-2 flex items-center justify-center gap-2">
-                                <i class="fas fa-skull"></i> Resetar (Requer Lágrima)
-                            </button>
-                        </div>
-                        <div class="border-t border-slate-700 pt-4">
-                            <h4 class="text-xs font-bold text-slate-500 uppercase mb-3"><i class="fas fa-star text-amber-500"></i> Bônus Ativos</h4>
-                            <div id="const-bonuses-list" class="space-y-1"></div>
-                        </div>
-                    </aside>
-                    <div id="canvas-wrapper">
-                        <div id="constellation-layer">
-                            <svg id="connections-svg" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; overflow:visible;"></svg>
-                            <div id="nodes-container"></div>
-                        </div>
-                        <div class="zoom-controls">
-                            <button class="control-btn" id="const-zoom-in"><i class="fas fa-plus"></i></button>
-                            <button class="control-btn" id="const-zoom-out"><i class="fas fa-minus"></i></button>
-                        </div>
-                        <div id="constellation-tooltip"></div>
-                    </div>
-                </div>
-
-                <div id="crafting-content" class="tab-content">
-                    <div class="flex justify-between items-center mb-2 border-b border-slate-700 pb-2">
-                        <div>
-                            <h2 class="font-cinzel text-2xl text-amber-500 m-0 border-none p-0">Oficina de Criação</h2>
-                            <p class="text-xs text-slate-400">Forje equipamentos e itens mágicos</p>
+                    
+                    <div id="calculadora-combate-content" class="tab-content">
+                        <div class="form-field mb-4"><select id="calc-combate-habilidade-select" class="hidden"></select></div>
+                        <p id="calc-combate-mensagem-status"></p>
+                        <div id="calc-combate-painel-calculo" class="hidden">
+                            <p id="calc-combate-valor-base"></p>
+                            <div id="calc-combate-lista-atributos"></div>
                         </div>
                     </div>
-                    <div id="craft-profession-tabs" class="flex gap-2 mb-6 border-b border-slate-800 pb-0 overflow-x-auto custom-scroll"></div>
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
-                        <aside class="lg:col-span-1 bg-slate-900/50 p-4 rounded-lg border border-slate-700 flex flex-col max-h-[800px]">
-                            <h3 class="font-cinzel text-amber-400 text-xl mb-2 border-none">Receitas Conhecidas</h3>
-                            <input type="text" id="craft-search" placeholder="Buscar receita..." class="mb-4 bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-slate-200 focus:border-amber-500 outline-none">
-                            <div id="craft-recipe-list" class="flex-grow overflow-y-auto space-y-2 pr-2 custom-scroll"></div>
-                        </aside>
-                        <main class="lg:col-span-2 flex flex-col gap-6">
-                            <div id="craft-bench" class="bg-slate-800 p-6 rounded-lg border border-slate-700 min-h-[400px] flex flex-col items-center justify-center text-center relative shadow-inner">
-                                <p class="text-slate-500 italic">Selecione uma receita para começar a trabalhar.</p>
-                            </div>
-                        </main>
-                    </div>
-                </div>
-
-                <div id="extracao-content" class="tab-content">
-                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
-                        <div class="lg:col-span-5 flex flex-col gap-4">
-                            <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-700 shadow-lg">
-                                <h3 class="font-cinzel text-amber-400 text-lg mb-2 border-none">Itens na Mochila</h3>
-                                <p class="text-xs text-slate-400 mb-4">Selecione um item não equipado para extrair essências ou desfazer.</p>
-                                <div class="form-field mb-2">
-                                    <input type="text" id="extracao-filtro" placeholder="Filtrar itens..." class="text-sm">
-                                </div>
-                                <div id="extracao-grid" class="grid-container" style="max-height: 500px; overflow-y: auto;"></div>
-                            </div>
-                        </div>
-                        <div class="lg:col-span-7">
-                            <div id="extracao-detalhes-panel" class="bg-slate-800 p-6 rounded-lg border border-slate-700 h-full hidden">
-                                <div class="flex gap-4 mb-6 border-b border-slate-600 pb-4">
-                                    <img id="ext-img" src="" class="w-24 h-24 object-contain bg-slate-900 rounded border border-slate-600">
-                                    <div>
-                                        <h2 id="ext-nome" class="text-2xl text-amber-400 font-cinzel font-bold mb-1">Nome do Item</h2>
-                                        <p id="ext-tipo" class="text-sm text-slate-400 uppercase tracking-widest">Tipo</p>
-                                        <p id="ext-qtd" class="text-sm text-white mt-2">Quantidade na Mochila: <span class="font-bold">0</span></p>
-                                    </div>
-                                </div>
-                                <div class="mb-6 bg-slate-900/50 p-4 rounded border border-slate-700">
-                                    <h4 class="text-lg font-cinzel text-purple-400 mb-2"><i class="fas fa-flask"></i> Extração de Essências</h4>
-                                    <div class="flex justify-between items-center mb-2 text-sm text-slate-300">
-                                        <span>Valor Base do Item:</span>
-                                        <span id="ext-val-base" class="font-bold">0</span>
-                                    </div>
-                                    <div class="flex justify-between items-center mb-2 text-sm text-slate-300">
-                                        <span>Bônus (Profissão + Habilidade):</span>
-                                        <span id="ext-val-bonus" class="font-bold text-green-400">0</span>
-                                    </div>
-                                    <div class="flex justify-between items-center mb-4 text-lg border-t border-slate-600 pt-2">
-                                        <span class="font-bold text-white">Total Estimado:</span>
-                                        <span id="ext-val-total" class="font-bold text-purple-400 text-xl">0</span>
-                                    </div>
-                                    <button id="btn-confirmar-extracao" class="btn w-full py-3 bg-purple-700 hover:bg-purple-600 text-white font-bold uppercase tracking-wider">
-                                        Extrair Essências (Destrói Item)
-                                    </button>
-                                    <p class="text-[10px] text-center text-red-400 mt-2">* Esta ação é irreversível.</p>
-                                </div>
-                                <div id="panel-desfazer-craft" class="bg-slate-900/50 p-4 rounded border border-slate-700 opacity-50">
-                                    <h4 class="text-lg font-cinzel text-sky-400 mb-2"><i class="fas fa-hammer"></i> Desfazer Craft (Reciclar)</h4>
-                                    <div id="recipe-warning" class="text-yellow-500 text-xs mb-2 hidden">
-                                        <i class="fas fa-exclamation-triangle"></i> Requer Profissão: <span id="req-prof-name">---</span>
-                                    </div>
-                                    <div class="text-xs text-slate-400 mb-2">Materiais Recuperados (Chance de Bônus: <span id="recycle-chance" class="text-white">0%</span>):</div>
-                                    <div id="recycle-materials-list" class="flex flex-wrap gap-2 mb-4"></div>
-                                    <button id="btn-confirmar-reciclagem" class="btn w-full py-3 bg-sky-700 hover:bg-sky-600 text-white font-bold uppercase tracking-wider" disabled>
-                                        Desfazer Craft & Recuperar Materiais
-                                    </button>
-                                </div>
-                            </div>
-                            <div id="extracao-empty-state" class="h-full flex flex-col items-center justify-center text-slate-500 border-2 border-dashed border-slate-700 rounded-lg">
-                                <i class="fas fa-hand-sparkles text-6xl mb-4 opacity-30"></i>
-                                <p>Selecione um item ao lado para interagir.</p>
-                            </div>
+                    
+                    <div id="minhas-habilidades-content" class="tab-content"></div>
+                    <div id="mochila-content" class="tab-content"></div>
+                    <div id="itens-equipados-content" class="tab-content h-full"></div>
+                    <div id="calculadora-atributos-content" class="tab-content">
+                        <div id="calculator-content" class="hidden">
+                            <div id="atk-container"></div>
+                            <div id="def-container"></div>
+                            <div id="eva-container"></div>
                         </div>
                     </div>
-                </div>
-
-                <div id="colecao-craft-content" class="tab-content p-0 overflow-hidden"></div>
-                <div id="arma-espiritual-content" class="tab-content"></div>
-                <div id="meus-pets-content" class="tab-content"></div>
-                <div id="recursos-reputacao-content" class="tab-content"></div>
-                <div id="comercio-content" class="tab-content"></div>
-
-                <div id="mapa-movimento-content" class="tab-content">
-                    <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
-                        <div>
-                            <h2 class="font-cinzel text-2xl text-amber-500 m-0">Mapa Mundi</h2>
-                            <p class="text-xs text-slate-400">Áreas descobertas pela sua sessão atual.</p>
-                        </div>
-                        <div id="map-session-info" class="text-xs font-bold text-emerald-400 uppercase bg-slate-900 px-3 py-1 rounded border border-emerald-900">
-                            Carregando Sessão...
-                        </div>
+                    <div id="constelacao-content" class="tab-content h-full p-0 overflow-hidden"></div>
+                    <div id="crafting-content" class="tab-content"></div>
+                    <div id="extracao-content" class="tab-content"></div>
+                    <div id="colecao-craft-content" class="tab-content"></div>
+                    <div id="arma-espiritual-content" class="tab-content"></div>
+                    <div id="meus-pets-content" class="tab-content"></div>
+                    <div id="recursos-reputacao-content" class="tab-content h-full flex flex-col"></div>
+                    <div id="comercio-content" class="tab-content h-full flex flex-col"></div>
+                    <div id="mapa-movimento-content" class="tab-content h-full flex flex-col">
+                        <div id="map-player-container" class="flex-grow rounded-xl border border-slate-700 overflow-hidden relative z-0"></div>
                     </div>
-                    <div id="map-player-container"></div>
-                    <div id="mapa-content" class="h-full w-full"></div>
-                </div>
+                    <div id="arena-combate-content" class="tab-content h-full flex flex-col">
+                        <div id="arena-content" class="flex-grow w-full h-full relative z-0"></div>
+                    </div>
 
-                <div id="arena-combate-content" class="tab-content">
-                    <div id="arena-content" class="h-full w-full"></div>
-                </div>
-
-            </main>
+                </main>
+            </div>
         </div>
     </div>
 
     <script type="module" src="js/main.js"></script>
 
+    <script>
+        // Uma pequena ponte para garantir que a imagem principal vá para a sidebar
+        document.addEventListener('DOMContentLoaded', () => {
+            // Monitora mudanças no DOM da div do editor de fichas para roubar a imagem e nome para a sidebar
+            const observer = new MutationObserver(() => {
+                const mainImg = document.getElementById('main-image-display');
+                const nameInput = document.getElementById('editor-nome');
+                const lvlView = document.getElementById('view-level');
+                const classView = document.getElementById('editor-classeId');
+                
+                if (mainImg && mainImg.src && !mainImg.src.includes('Sem+Foto')) {
+                    document.getElementById('sidebar-char-img').src = mainImg.src;
+                }
+                
+                if (nameInput && nameInput.value) {
+                    document.getElementById('sidebar-char-name').textContent = nameInput.value;
+                }
+                
+                if (lvlView && classView && classView.options[classView.selectedIndex]) {
+                    const clsName = classView.options[classView.selectedIndex].text;
+                    document.getElementById('sidebar-char-class').textContent = `Nvl. ${lvlView.value || 1} • ${clsName}`;
+                }
+            });
+            
+            const contentContainer = document.getElementById('content-container');
+            if (contentContainer) {
+                observer.observe(contentContainer, { childList: true, subtree: true, attributes: true, characterData: true });
+            }
+        });
+    </script>
 </body>
 </html>

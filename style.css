@@ -984,3 +984,34 @@ select.std-height, input.std-height {
 .tier-badge-S { background: linear-gradient(135deg, #ef4444, #b91c1c); color: white; border: 1px solid #f87171; }
 .tier-badge-SS { background: linear-gradient(135deg, #000000, #7f1d1d); color: #fbbf24; border: 1px solid #fbbf24; box-shadow: 0 0 8px #fbbf24; }
 .tier-badge-unknown { display: none; }
+
+/* --- Estilos do novo layout Full Screen VTT --- */
+body { margin: 0; overflow: hidden; background-color: #020617; } /* bg-slate-950 */
+
+/* Nova estilização delicada para as abas (Região 3) */
+.tab-button-delicate {
+    padding: 0.5rem 1rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #64748b; /* text-slate-500 */
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.tab-button-delicate:hover { color: #cbd5e1; background-color: rgba(255,255,255,0.02); }
+.tab-button-delicate.active {
+    color: #f59e0b; /* text-amber-500 */
+    border-bottom-color: #f59e0b;
+    background-color: rgba(245, 158, 11, 0.05);
+}
+
+/* Estilo para rolagem de dados na lateral */
+#sidebar-dice-area .die-button { width: 60px; height: 70px; }
+#sidebar-dice-area .die-icon { font-size: 1.8rem; }
+#sidebar-dice-area .die-result { font-size: 1rem; height: 20px; line-height: 20px; }
+#sidebar-dice-area .die-label { font-size: 0.6rem; }
