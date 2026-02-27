@@ -985,33 +985,30 @@ select.std-height, input.std-height {
 .tier-badge-SS { background: linear-gradient(135deg, #000000, #7f1d1d); color: #fbbf24; border: 1px solid #fbbf24; box-shadow: 0 0 8px #fbbf24; }
 .tier-badge-unknown { display: none; }
 
-/* --- Estilos do novo layout Full Screen VTT --- */
-body { margin: 0; overflow: hidden; background-color: #020617; } /* bg-slate-950 */
+/* Barra lateral rebatível (Área Vermelha) */
+#sub-menu-bar {
+    width: 60px; /* Largura padrão só com ícones */
+    height: 100vh;
+    background-color: #020617; /* Um tom mais escuro que o fundo */
+    border-right: 1px solid #334155;
+    transition: width 0.3s ease;
+    overflow: hidden;
+    z-index: 50;
+}
 
-/* Nova estilização delicada para as abas (Região 3) */
-.tab-button-delicate {
-    padding: 0.5rem 1rem;
-    font-size: 0.65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: #64748b; /* text-slate-500 */
-    border-bottom: 2px solid transparent;
-    transition: all 0.2s ease;
+#sub-menu-bar:hover {
+    width: 200px; /* Expande ao passar o mouse */
+}
+
+/* Garante que o nome da aba não quebre linha enquanto expande */
+.sidebar-label {
     white-space: nowrap;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-.tab-button-delicate:hover { color: #cbd5e1; background-color: rgba(255,255,255,0.02); }
-.tab-button-delicate.active {
-    color: #f59e0b; /* text-amber-500 */
-    border-bottom-color: #f59e0b;
-    background-color: rgba(245, 158, 11, 0.05);
 }
 
-/* Estilo para rolagem de dados na lateral */
-#sidebar-dice-area .die-button { width: 60px; height: 70px; }
-#sidebar-dice-area .die-icon { font-size: 1.8rem; }
-#sidebar-dice-area .die-result { font-size: 1rem; height: 20px; line-height: 20px; }
-#sidebar-dice-area .die-label { font-size: 0.6rem; }
+/* Estilo dos cards baseado na referência preta */
+.objective-card, .inventory-slot {
+    background-color: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+}

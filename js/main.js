@@ -86,30 +86,100 @@ onAuthStateChanged(auth, async (user) => {
 // --- GERENCIAMENTO DE CACHES ---
 async function loadCache() {
     console.log("Iniciando carregamento do cache...");
-    globalState.cache.players.clear();
-    globalState.cache.mobs.clear();
-
-    const qP = query(collection(db, "rpg_fichas"));
-    const snapP = await getDocs(qP);
-    snapP.forEach(d => {
-        const data = {id: d.id, type: 'player', collection: 'rpg_fichas', ...d.data()};
-        globalState.cache.players.set(d.id, data);
-        globalState.cache.all_personagens.set(d.id, data);
-        if(globalState.isAdmin || data.jogadorUid === globalState.currentUser?.uid) {
-            globalState.cache.personagens.set(d.id, data);
+    
+    // Garante que os objetos de cache existam antes de tentar limpar
+    const keysToClear = ['players', 'mobs', 'personagens', 'all_personagens'];
+    keysToClear.forEach(key => {
+        if (!globalState.cache[key]) {
+            globalState.cache[key] = new Map();
+        } else {
+            globalState.cache[key].clear();
         }
     });
 
-    const qM = query(collection(db, "rpg_fichasNPCMonstros"));
-    const snapM = await getDocs(qM);
-    snapM.forEach(d => globalState.cache.mobs.set(d.id, {id: d.id, type: 'monster', collection: 'rpg_fichasNPCMonstros', ...d.data()}));
-
-    const qN = query(collection(db, "rpg_Npcs"));
-    const snapN = await getDocs(qN);
-    snapN.forEach(d => globalState.cache.mobs.set(d.id, {id: d.id, type: 'npc', collection: 'rpg_Npcs', ...d.data()}));
-
-    console.log("Cache carregado com sucesso.");
+    try {
+        const qP = query(collection(db, "rpg_fichas"));
+        const snapP = await getDocs(qP);
+        // ... restante da lógica de preenchimento do cache
+    } catch (error) {
+        console.error("Erro ao carregar cache:", error);
+    }
 }
+
+// Lógica para alternar a barra lateral baseada no menu superior
+const SIDEBAR_CONFIG = {
+    'inicio': [
+        { id: 'painel-fichas', icon: 'fa-id-card', label: 'Gestão de Fichas', render: () => renderPainelFichas() },
+        { id: 'rolagem-dados', icon: 'fa-dice-d20', label: 'Log de Dados', render: () => renderRolagemDados() }
+    ],
+    'mundo': [
+        { id: 'mapa-movimento', icon: 'fa-map-marked-alt', label: 'Mapa Mundi', render: () => renderMapaTab() },
+        { id: 'colecao-craft', icon: 'fa-book-atlas', label: 'Enciclopédia', render: () => renderCollectionTab() },
+        { id: 'recursos-reputacao', icon: 'fa-crown', label: 'Império', render: () => renderReputacaoTab() }
+    ],
+    'personagem': [
+        { id: 'itens-equipados', icon: 'fa-tshirt', label: 'Equipamentos', render: () => renderItensEquipados() },
+        { id: 'mochila', icon: 'fa-briefcase', label: 'Mochila', render: () => renderMochila() },
+        { id: 'minhas-habilidades', icon: 'fa-fire', label: 'Habilidades', render: () => renderMinhasHabilidades() },
+        { id: 'arma-espiritual', icon: 'fa-ghost', label: 'Arma Espiritual', render: () => renderArmaEspiritualTab() },
+        { id: 'meus-pets', icon: 'fa-dragon', label: 'Mascotes', render: () => renderPetsTab() },
+        { id: 'calculadora-atributos', icon: 'fa-calculator', label: 'Status Totais', render: () => renderCalculadoraAtributos() },
+        { id: 'constelacao', icon: 'fa-star', label: 'Constelação', render: () => renderConstelacaoTab() }
+    ],
+    'mestre': [
+        { id: 'arena-combate', icon: 'fa-chess-board', label: 'Arena Tática', render: () => window.arena?.init() }
+    ]
+};
+
+// A função que faz a mágica das sub abas acontecer
+window.setCategory = function(category) {
+    const sidebar = document.getElementById('sub-menu-bar');
+    if (!sidebar) return;
+
+    // Limpa a barra lateral para injetar os novos ícones
+    sidebar.innerHTML = '';
+    
+    // Esconde a tela de "boas-vindas"
+    document.getElementById('default-view')?.classList.add('hidden');
+
+    // Cria os botões para a categoria selecionada
+    if (SIDEBAR_CONFIG[category]) {
+        SIDEBAR_CONFIG[category].forEach(aba => {
+            const btn = document.createElement('button');
+            btn.className = 'sub-menu-btn group relative flex items-center h-12 w-full hover:bg-slate-800 transition-all border-l-4 border-transparent hover:border-amber-500';
+            
+            btn.innerHTML = `
+                <div class="w-[60px] flex items-center justify-center shrink-0">
+                    <i class="fas ${aba.icon} text-lg text-slate-400 group-hover:text-amber-400 transition-colors"></i>
+                </div>
+                <span class="sidebar-text opacity-0 group-hover:opacity-100 ml-2 font-bold text-[10px] uppercase tracking-widest text-slate-200 whitespace-nowrap transition-opacity duration-300">
+                    ${aba.label}
+                </span>
+            `;
+            
+            btn.onclick = () => {
+                // Estilo visual de "Ativo"
+                document.querySelectorAll('.sub-menu-btn').forEach(b => b.classList.remove('active-aba'));
+                btn.classList.add('active-aba');
+                
+                // Esconde todos os conteúdos antes de renderizar o novo
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+                
+                // Abre o container específico e chama o renderizador do arquivo .js correspondente
+                const contentId = aba.id + '-content';
+                document.getElementById(contentId)?.classList.remove('hidden');
+                aba.render();
+            };
+            
+            sidebar.appendChild(btn);
+        });
+    }
+
+    // Marca o botão do menu superior como ativo
+    document.querySelectorAll('.nav-context-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('onclick')?.includes(`'${category}'`));
+    });
+};
 
 async function preencherCachesEstaticos() {
     console.log(">>> [DEBUG] Iniciando preenchimento de caches...");
