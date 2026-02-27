@@ -210,19 +210,21 @@ window.setContext = function(masterKey) {
     });
 
     const config = MASTER_ARCHITECTURE[masterKey];
-    config.forEach(tab => {
-        const btn = document.createElement('button');
-        btn.className = "group flex items-center h-12 px-4 w-full hover:bg-slate-800 transition-all border-l-4 border-transparent hover:border-amber-500 overflow-hidden";
-        btn.innerHTML = `
-            <i class="fas ${tab.icon} w-8 text-center text-lg text-slate-500 group-hover:text-amber-400 shrink-0"></i>
-            <span class="ml-4 text-[10px] uppercase font-bold tracking-widest whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">${tab.label}</span>
-        `;
-        btn.onclick = () => {
-            document.getElementById('default-view').classList.add('hidden');
-            tab.render();
-        };
-        sidebar.appendChild(btn);
-    });
+    if (config) {
+        config.forEach(tab => {
+            const btn = document.createElement('button');
+            btn.className = "group flex items-center h-12 px-4 w-full hover:bg-slate-800 transition-all border-l-4 border-transparent hover:border-amber-500 overflow-hidden";
+            btn.innerHTML = `
+                <i class="fas ${tab.icon} w-8 text-center text-lg text-slate-500 group-hover:text-amber-400 shrink-0"></i>
+                <span class="ml-4 text-[10px] uppercase font-bold tracking-widest whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">${tab.label}</span>
+            `;
+            btn.onclick = () => {
+                document.getElementById('default-view').classList.add('hidden');
+                tab.render();
+            };
+            sidebar.appendChild(btn);
+        });
+    }
 };
 
 // A função que faz a mágica das sub abas acontecer
