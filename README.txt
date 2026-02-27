@@ -61,7 +61,7 @@ Aqui está a visão geral da nossa futura arquitetura:
    ┃ ┣ 📜 cadastroItens.js     (Aba 5: Editor da Ficha, Uploads de Imagem, Objetivos, História)
    ┃ ┣ 📜 lorePersonagens.js     (Aba 6: Editor da Ficha, Uploads de Imagem, Objetivos, História)
    ┃   
-   ┣ 📂 aoJogador Simular Ficha, Ficha de Personagem, Galeria de Imagens
+   ┣ 📂 aoJogador 
    ┃
    ┃ ┣ 📜 simularFicha.js     (Aba 1: Aqui o jogador pode simular seu personagem antes de criá-lo)
    ┃ ┣ 📜 fichaPersonagem.js     (Aba 2: Aqui abre toda lógica das tabs "📂 tabs" citada acima)
