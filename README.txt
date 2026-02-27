@@ -67,3 +67,7 @@ Aqui está a visão geral da nossa futura arquitetura:
    ┃ ┣ 📜 fichaPersonagem.js     (Aba 2: Aqui abre toda lógica das tabs "📂 tabs" citada acima)
    ┃ ┣ 📜 galeriaImagens.js     (Aba 3: Compendium de imagens do sistema/mestres)
    ┃  
+   ┣ 📂 atualizacoes
+   ┃
+   ┃ ┣ 📜 atualizacoes.js     (Aba 1: Aqui teremos as atualizações do sistema)
+   ┃
