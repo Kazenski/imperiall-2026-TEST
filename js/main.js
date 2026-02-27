@@ -41,97 +41,116 @@ dom.btn_login?.addEventListener('click', () => {
 
 const MASTER_ARCHITECTURE = {
     'Início': [
-        { id: 'painel-fichas', icon: 'fa-id-card', label: 'Painel Principal', render: () => renderPainelFichas() }
+        { id: 'painel-fichas', icon: 'fa-id-card', label: 'Gestão de Fichas', render: renderPainelFichas },
+        { id: 'rolagem-dados', icon: 'fa-dice-d20', label: 'Log Completo', render: renderRolagemDados }
     ],
     'O Mundo': [
-        { id: 'mapa-movimento', icon: 'fa-map-marked-alt', label: 'Mapa Mundi', render: () => renderMapaTab() },
-        { id: 'colecao-craft', icon: 'fa-book-atlas', label: 'Diário & Descobertas', render: () => renderCollectionTab() },
-        { id: 'recursos-reputacao', icon: 'fa-crown', label: 'Império & Prédios', render: () => renderReputacaoTab() },
-        { id: 'comercio', icon: 'fa-coins', label: 'Loja & Câmbio', render: () => renderComercioTab() }
-    ],
-    'Manual e Regras': [
-        // Reservado para os arquivos da pasta /manualRegras
-        { id: 'manual', icon: 'fa-book-open', label: 'Manual Base', render: () => console.log('Aba Manual') },
-        { id: 'racas', icon: 'fa-users', label: 'Raças', render: () => console.log('Aba Raças') },
-        { id: 'classes', icon: 'fa-theater-masks', label: 'Classes', render: () => console.log('Aba Classes') }
-    ],
-    'Ao Mestre': [
-        // Reservado para a pasta /aoMestre e /backoffice
-        { id: 'arena-combate', icon: 'fa-chess-board', label: 'Arena Tática', render: () => { if(window.arena?.init) window.arena.init(); } },
-        { id: 'cadastros-admin', icon: 'fa-database', label: 'Cadastros Gerais', render: () => console.log('Aba Cadastros Admin') },
-        { id: 'comandos', icon: 'fa-terminal', label: 'Comandos', render: () => console.log('Aba Comandos') }
+        { id: 'mapa-movimento', icon: 'fa-map-marked-alt', label: 'Mapa Mundi', render: () => { if(window.renderMapTab) window.renderMapTab(); } },
+        { id: 'colecao-craft', icon: 'fa-book-atlas', label: 'Diário', render: renderCollectionTab },
+        { id: 'recursos-reputacao', icon: 'fa-crown', label: 'Império', render: renderReputacaoTab },
+        { id: 'comercio', icon: 'fa-coins', label: 'Mercado', render: renderComercioTab }
     ],
     'Ao Jogador': [
-        // Arquivos da pasta /tabs
-        { id: 'ficha', icon: 'fa-user', label: 'Ficha Resumo', render: () => renderPainelFichas() },
-        { id: 'mochila', icon: 'fa-briefcase', label: 'Mochila', render: () => renderMochila() },
-        { id: 'itens-equipados', icon: 'fa-tshirt', label: 'Equipamentos', render: () => renderItensEquipados() },
-        { id: 'minhas-habilidades', icon: 'fa-fire', label: 'Skills & Magias', render: () => renderMinhasHabilidades() },
-        { id: 'calculadora-atributos', icon: 'fa-chart-bar', label: 'Status Totais', render: () => renderCalculadoraAtributos() },
-        { id: 'constelacao', icon: 'fa-star', label: 'Árvore Constelação', render: () => renderConstelacaoTab() },
-        { id: 'crafting', icon: 'fa-hammer', label: 'Forja & Crafting', render: () => renderCraftingTab() },
-        { id: 'extracao', icon: 'fa-recycle', label: 'Reciclar', render: () => renderExtracaoTab() },
-        { id: 'arma-espiritual', icon: 'fa-ghost', label: 'Ego Espiritual', render: () => renderArmaEspiritualTab() },
-        { id: 'meus-pets', icon: 'fa-dragon', label: 'Pets e Domar', render: () => renderPetsTab() },
-        { id: 'rolagem-dados', icon: 'fa-dice-d20', label: 'Log de Dados', render: () => renderRolagemDados() },
-        { id: 'calculadora-combate', icon: 'fa-calculator', label: 'Calc. Dano', render: () => renderCalculadoraCombate() }
+        { id: 'painel-fichas', icon: 'fa-user', label: 'Ficha Resumo', render: renderPainelFichas },
+        { id: 'mochila', icon: 'fa-briefcase', label: 'Inventário', render: renderMochila },
+        { id: 'itens-equipados', icon: 'fa-tshirt', label: 'Equipamentos', render: renderItensEquipados },
+        { id: 'minhas-habilidades', icon: 'fa-fire', label: 'Grimório', render: renderMinhasHabilidades },
+        { id: 'calculadora-atributos', icon: 'fa-chart-bar', label: 'Status Totais', render: renderCalculadoraAtributos },
+        { id: 'constelacao', icon: 'fa-star', label: 'Constelação', render: renderConstelacaoTab },
+        { id: 'crafting', icon: 'fa-hammer', label: 'Forja & Craft', render: renderCraftingTab },
+        { id: 'extracao', icon: 'fa-recycle', label: 'Reciclagem', render: renderExtracaoTab },
+        { id: 'arma-espiritual', icon: 'fa-ghost', label: 'Arma Ego', render: renderArmaEspiritualTab },
+        { id: 'meus-pets', icon: 'fa-dragon', label: 'Pets e Doma', render: renderPetsTab },
+        { id: 'calculadora-combate', icon: 'fa-calculator', label: 'Calc. Dano', render: renderCalculadoraCombate }
     ],
-    'Atualizações': [
-        { id: 'atualizacoes', icon: 'fa-bullhorn', label: 'Patch Notes', render: () => console.log('Aba Atualizações') }
+    'Ao Mestre': [
+        { id: 'arena-combate', icon: 'fa-chess-board', label: 'Arena Tática', render: () => { if(window.arena?.init) window.arena.init(); } }
     ]
 };
 
-window.setMasterContext = function(menuName) {
+window.setMasterContext = function(masterKey) {
     const sidebar = document.getElementById('sub-menu-bar');
     if(!sidebar) return;
-
+    
     sidebar.innerHTML = '';
     
-    // Atualiza visual dos botões do topo
     document.querySelectorAll('.master-nav-btn').forEach(b => {
-        b.classList.toggle('active', b.textContent.trim() === menuName);
+        b.classList.toggle('active', b.textContent.trim() === masterKey);
     });
 
-    // Popula a barra lateral vermelha
-    if(MASTER_ARCHITECTURE[menuName]) {
-        MASTER_ARCHITECTURE[menuName].forEach(subAba => {
+    if(MASTER_ARCHITECTURE[masterKey]) {
+        MASTER_ARCHITECTURE[masterKey].forEach(subAba => {
             const btn = document.createElement('button');
-            // Classes Tailwind para ícone fixo e texto invisível que aparece no hover
-            btn.className = "flex items-center h-12 w-full hover:bg-slate-800 transition-all border-l-4 border-transparent hover:border-amber-500 overflow-hidden group";
-            
+            btn.className = "flex items-center h-12 w-full hover:bg-[#1e293b] transition-all border-l-4 border-transparent hover:border-amber-500 overflow-hidden group";
             btn.innerHTML = `
                 <div class="w-[60px] flex items-center justify-center shrink-0">
                     <i class="fas ${subAba.icon} text-lg text-slate-500 group-hover:text-amber-500 transition-colors"></i>
                 </div>
-                <span class="ml-2 text-[11px] font-bold uppercase tracking-widest text-slate-300 opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity duration-300">
+                <span class="ml-2 text-[10px] font-bold uppercase tracking-widest text-slate-300 opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity duration-300">
                     ${subAba.label}
                 </span>
             `;
-
             btn.onclick = () => {
-                // Esconde default
                 document.getElementById('default-view')?.classList.add('hidden');
-                // Esconde todas as abas
                 document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-                // Mostra a selecionada
                 const target = document.getElementById(`${subAba.id}-content`);
                 if(target) target.classList.remove('hidden');
                 
-                // Destaque visual na lateral
                 document.querySelectorAll('#sub-menu-bar button').forEach(b => {
-                    b.classList.remove('bg-slate-800', 'border-amber-500');
+                    b.classList.remove('bg-[#1e293b]', 'border-amber-500');
                     b.querySelector('i').classList.replace('text-amber-500', 'text-slate-500');
                 });
-                btn.classList.add('bg-slate-800', 'border-amber-500');
+                btn.classList.add('bg-[#1e293b]', 'border-amber-500');
                 btn.querySelector('i').classList.replace('text-slate-500', 'text-amber-500');
 
-                // Executa o JS da aba
                 subAba.render();
             };
-            
             sidebar.appendChild(btn);
         });
     }
+};
+
+// --- ROLAGEM DE DADOS NA SIDEBAR LATERAL ---
+window.rollDiceSidebar = async function(id, sides, label) {
+    const charId = globalState.selectedCharacterId;
+    if (!charId) return alert("Selecione um personagem primeiro!");
+
+    const result = id === 'moeda' ? (Math.random() < 0.5 ? 'Cara' : 'Coroa') : Math.floor(Math.random() * sides) + 1;
+    const novoLog = { dado: label, valor: result, timestamp: Date.now() };
+
+    const ficha = globalState.selectedCharacterData.ficha;
+    const logsAtuais = ficha.log_rolagens || [];
+    logsAtuais.unshift(novoLog);
+    if (logsAtuais.length > 50) logsAtuais.pop();
+    ficha.log_rolagens = logsAtuais;
+
+    window.renderSidebarDiceLog();
+
+    try {
+        await updateDoc(doc(db, "rpg_fichas", charId), {
+            [`rolagens.${id}`]: result,
+            log_rolagens: logsAtuais
+        });
+    } catch(e) { console.error("Erro ao rolar:", e); }
+};
+
+window.renderSidebarDiceLog = function() {
+    const container = document.getElementById('sidebar-dice-log');
+    if (!container) return;
+    const logs = globalState.selectedCharacterData?.ficha?.log_rolagens || [];
+    
+    if (logs.length === 0) {
+        container.innerHTML = '<div class="text-slate-600 italic text-center text-[9px] py-2">Nenhuma rolagem.</div>';
+        return;
+    }
+    
+    container.innerHTML = logs.slice(0, 15).map(log => `
+        <div class="flex justify-between items-center border-b border-slate-800 pb-1 mb-1">
+            <span class="text-[8px] text-slate-500">${new Date(log.timestamp).toLocaleTimeString('pt-BR')}</span>
+            <span class="text-slate-300 font-bold text-[9px]">${log.dado}</span>
+            <span class="text-amber-400 font-black text-xs">${log.valor}</span>
+        </div>
+    `).join('');
 };
 
 onAuthStateChanged(auth, async (user) => {
@@ -152,15 +171,9 @@ onAuthStateChanged(auth, async (user) => {
 // --- GERENCIAMENTO DE CACHES ---
 async function loadCache() {
     console.log("Iniciando carregamento do cache...");
-    
-    // Verifica e instancia os mapas antes de limpar para evitar o TypeError
-    const mapsToClear = ['players', 'mobs', 'personagens', 'all_personagens'];
-    mapsToClear.forEach(mapName => {
-        if (globalState.cache[mapName]) {
-            globalState.cache[mapName].clear();
-        } else {
-            globalState.cache[mapName] = new Map();
-        }
+    ['players', 'mobs', 'personagens', 'all_personagens'].forEach(key => {
+        if (!globalState.cache[key]) globalState.cache[key] = new Map();
+        else globalState.cache[key].clear();
     });
 
     try {
@@ -175,13 +188,13 @@ async function loadCache() {
             }
         });
         
-        // Mantém a continuação do seu loadCache original para mobs e npcs...
-    } catch(e) {
-        console.error("Erro no loadCache:", e);
-    }
+        const qM = query(collection(db, "rpg_fichasNPCMonstros"));
+        const snapM = await getDocs(qM);
+        snapM.forEach(d => globalState.cache.mobs.set(d.id, {id: d.id, type: 'monster', collection: 'rpg_fichasNPCMonstros', ...d.data()}));
+    } catch(e) { console.error("Erro no loadCache:", e); }
 }
 
-// Inicia no Início ao carregar
+// Inicializa a aba ao abrir
 document.addEventListener('DOMContentLoaded', () => {
     if(globalState.currentUser) window.setMasterContext('Início');
 });
@@ -514,12 +527,16 @@ function handleCharacterSelect(id) {
     
     updateCharacterSessions(id);
 
+    // Se nenhum personagem for selecionado (vazio)
     if(!id) {
         globalState.selectedCharacterId = null;
         globalState.selectedCharacterData = null;
         localStorage.removeItem('personagemAtivoId');
         renderHeaderWidget();
         window.updateGlobalBars();
+        
+        // Limpa o log de rolagem na sidebar se ficar sem personagem
+        if(window.renderSidebarDiceLog) window.renderSidebarDiceLog();
         
         const activeTab = dom.tab_container?.querySelector('.active')?.dataset.tab || 'painel-fichas';
         if(activeTab === 'painel-fichas') renderPainelFichas();
@@ -529,6 +546,7 @@ function handleCharacterSelect(id) {
     globalState.selectedCharacterId = id;
     localStorage.setItem('personagemAtivoId', id);
 
+    // Listener do personagem ativo
     unsubscribeChar = onSnapshot(doc(db, "rpg_fichas", id), async (docSnap) => {
         if(docSnap.exists()) {
             const fichaAtualizada = { id: docSnap.id, ...docSnap.data() };
@@ -537,6 +555,10 @@ function handleCharacterSelect(id) {
             globalState.selectedCharacterData = await gatherAllCharacterData(id);
             window.updateGlobalBars();
             
+            // >>> AQUI: Atualiza o log de dados na sidebar sempre que houver mudança na ficha
+            if(window.renderSidebarDiceLog) window.renderSidebarDiceLog();
+            
+            // Mantém a renderização da aba atual ativa
             const activeTab = dom.tab_container?.querySelector('.active')?.dataset.tab || 'painel-fichas';
             
             if(activeTab === 'painel-fichas') renderPainelFichas(); // FichaEditor trata internamente o ID
