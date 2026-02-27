@@ -26,41 +26,93 @@
     </div>
 
     <div id="app-view" class="hidden flex flex-col h-full w-full">
-        <nav id="global-top-nav" class="bg-slate-900 border-b border-slate-700 flex items-center justify-between px-6 h-16 shrink-0 z-50 shadow-lg">
-            <div class="flex items-center gap-6 h-full">
-                <div class="font-cinzel text-xl font-bold text-amber-500 tracking-wider mr-4">PAINEL UNIFICADO</div>
-                <div id="master-tabs" class="flex gap-2 h-full py-2">
-                    </div>
+        
+        <nav id="global-top-nav" class="bg-slate-800 border-b border-slate-700 flex items-center justify-between px-6 h-16 shrink-0 z-50 shadow-md">
+            <div class="flex items-center gap-8 h-full">
+                <div class="font-cinzel text-xl font-bold text-amber-500 tracking-wider">IMPERIALL</div>
+                
+                <div id="master-tabs" class="flex items-center gap-3 h-full py-2">
+                    <button onclick="window.setMasterContext('Início')" class="master-nav-btn active">Início</button>
+                    <button onclick="window.setMasterContext('O Mundo')" class="master-nav-btn">O Mundo</button>
+                    <button onclick="window.setMasterContext('Manual e Regras')" class="master-nav-btn">Manual e Regras</button>
+                    <button onclick="window.setMasterContext('Ao Mestre')" class="master-nav-btn border-red-900/50 text-red-400 hover:text-red-300">Ao Mestre</button>
+                    <button onclick="window.setMasterContext('Ao Jogador')" class="master-nav-btn">Ao Jogador</button>
+                    <button onclick="window.setMasterContext('Atualizações')" class="master-nav-btn">Atualizações</button>
+                </div>
             </div>
+            
             <div class="flex items-center gap-4">
                 <div id="header-world-widget" class="text-xs font-mono text-slate-400"></div>
-                <button id="btn-logout" class="bg-slate-800 hover:bg-red-900/40 border border-slate-600 text-slate-300 px-4 py-1.5 rounded text-xs font-bold transition">Sair</button>
+                <button id="btn-logout" class="bg-slate-900 hover:bg-red-900/40 border border-slate-700 text-slate-300 hover:text-red-400 px-4 py-2 rounded text-xs font-bold transition">Sair</button>
             </div>
         </nav>
 
         <div class="flex flex-1 overflow-hidden">
-            <aside class="w-60 bg-slate-800 border-r border-slate-700 flex flex-col shrink-0 z-40 shadow-xl">
-                <div class="p-3 bg-slate-900">
-                    <select id="character-select" class="w-full bg-slate-800 border border-slate-600 rounded text-amber-400 font-bold p-1.5 text-xs focus:border-amber-500 outline-none"></select>
+            
+            <aside id="main-sidebar" class="w-60 bg-slate-800 border-r border-slate-700 flex flex-col shrink-0 z-40 shadow-xl overflow-y-auto custom-scroll">
+                <div class="p-3 bg-slate-900 border-b border-slate-700">
+                    <label class="block text-[9px] text-slate-500 font-bold uppercase mb-1 tracking-widest">Personagem Ativo</label>
+                    <select id="character-select" class="w-full bg-slate-800 border border-slate-600 rounded text-amber-400 font-bold p-1.5 text-xs outline-none focus:border-amber-500"></select>
                 </div>
-                <div class="w-full aspect-square bg-black border-b border-slate-700 relative">
-                    <img id="sidebar-char-img" src="https://placehold.co/400x400/1e293b/f59e0b?text=Sem+Foto" class="w-full h-full object-cover opacity-80">
-                    <div id="sidebar-quick-bars" class="absolute bottom-0 left-0 w-full p-2 bg-slate-900/80 backdrop-blur-sm space-y-1">
-                        <div class="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800"><div id="hdr-hp-base" class="h-full bg-red-600 w-0 transition-all"></div></div>
-                        <div class="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800"><div id="hdr-mp-base" class="h-full bg-blue-600 w-0 transition-all"></div></div>
+                
+                <div class="w-full aspect-square bg-black border-b border-slate-700 relative group">
+                    <img id="sidebar-char-img" src="https://placehold.co/400x400/1e293b/d4af37?text=Sem+Foto" class="w-full h-full object-cover opacity-90">
+                </div>
+
+                <div class="p-4 space-y-4 bg-slate-900/50 flex-grow">
+                    <div id="header-bars-container" class="space-y-4 hidden">
+                        <div>
+                            <div class="flex justify-between text-[10px] font-black mb-1"><span class="text-red-500">HP</span><span id="hdr-hp-text" class="text-white">0/0</span></div>
+                            <div class="h-2 w-full bg-slate-950 rounded border border-slate-700 overflow-hidden flex">
+                                <div id="hdr-hp-base" class="bg-red-600 h-full transition-all"></div>
+                                <div id="hdr-hp-shield" class="bg-amber-500 h-full transition-all"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-[10px] font-black mb-1"><span class="text-sky-400">MP</span><span id="hdr-mp-text" class="text-white">0/0</span></div>
+                            <div class="h-2 w-full bg-slate-950 rounded border border-slate-700 overflow-hidden flex">
+                                <div id="hdr-mp-base" class="bg-blue-600 h-full transition-all"></div>
+                                <div id="hdr-mp-shield" class="bg-cyan-400 h-full transition-all"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <nav id="sub-menu-bar" class="w-full flex-grow bg-slate-900/50 transition-all duration-300 flex flex-col py-4 overflow-hidden">
-                    </nav>
             </aside>
 
-            <main id="content-container" class="flex-1 overflow-auto bg-slate-900 relative custom-scroll">
-                <div id="default-view" class="h-full flex flex-col items-center justify-center opacity-20 select-none">
-                    <i class="fas fa-shield-halved text-9xl mb-4 text-slate-700"></i>
-                    <h1 class="font-cinzel text-4xl">IMPERIALL 2026</h1>
-                    <p class="uppercase tracking-widest mt-2">Aguardando seleção de módulo...</p>
+            <nav id="sub-menu-bar" class="w-[64px] hover:w-[220px] bg-[#0b1120] border-r border-slate-800 transition-all duration-300 flex flex-col py-2 shrink-0 z-30 group overflow-x-hidden shadow-[4px_0_24px_rgba(0,0,0,0.5)]">
+                </nav>
+
+            <main id="content-container" class="flex-1 overflow-auto bg-slate-900 relative p-6 custom-scroll">
+                
+                <div id="default-view" class="h-full flex flex-col items-center justify-center opacity-20 pointer-events-none select-none">
+                    <i class="fas fa-shield-halved text-9xl mb-6 text-slate-700"></i>
+                    <h1 class="font-cinzel text-5xl font-bold tracking-widest text-slate-600">IMPERIALL 2026</h1>
+                    <p class="mt-4 text-xl uppercase tracking-tighter">Aguardando seleção de módulo...</p>
                 </div>
-                </main>
+
+                <div id="painel-fichas-content" class="tab-content hidden h-full"></div>
+                <div id="rolagem-dados-content" class="tab-content hidden"></div>
+                <div id="calculadora-combate-content" class="tab-content hidden"></div>
+                <div id="minhas-habilidades-content" class="tab-content hidden"></div>
+                <div id="mochila-content" class="tab-content hidden"></div>
+                <div id="itens-equipados-content" class="tab-content hidden h-full"></div>
+                <div id="calculadora-atributos-content" class="tab-content hidden"></div>
+                <div id="constelacao-content" class="tab-content hidden h-full"></div>
+                <div id="crafting-content" class="tab-content hidden"></div>
+                <div id="extracao-content" class="tab-content hidden"></div>
+                <div id="colecao-craft-content" class="tab-content hidden"></div>
+                <div id="arma-espiritual-content" class="tab-content hidden"></div>
+                <div id="meus-pets-content" class="tab-content hidden"></div>
+                <div id="recursos-reputacao-content" class="tab-content hidden h-full"></div>
+                <div id="comercio-content" class="tab-content hidden h-full"></div>
+                <div id="mapa-movimento-content" class="tab-content hidden h-full">
+                    <div id="map-player-container" class="flex-grow rounded-xl border border-slate-700 overflow-hidden relative z-0 h-[700px]"></div>
+                </div>
+                <div id="arena-combate-content" class="tab-content hidden h-full">
+                    <div id="arena-content" class="flex-grow w-full h-full relative z-0"></div>
+                </div>
+            </main>
+
         </div>
     </div>
 

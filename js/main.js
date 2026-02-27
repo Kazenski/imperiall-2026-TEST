@@ -40,32 +40,99 @@ dom.btn_login?.addEventListener('click', () => {
 });
 
 const MASTER_ARCHITECTURE = {
-    'Início': {
-        context: 'inicio',
-        subtabs: [
-            { id: 'fichas', label: 'Personagens', icon: 'fa-users', render: renderPainelFichas },
-            { id: 'atualizacoes', label: 'Novidades', icon: 'fa-bullhorn', render: () => {} }
-        ]
-    },
-    'O Mundo': {
-        context: 'mundo',
-        subtabs: [
-            { id: 'mapa', label: 'Cartografia', icon: 'fa-map-marked-alt', render: renderMapaTab },
-            { id: 'diario', label: 'Enciclopédia', icon: 'fa-book-atlas', render: () => {} },
-            { id: 'reputacao', label: 'Império', icon: 'fa-crown', render: () => {} }
-        ]
-    },
-    'Ao Jogador': {
-        context: 'jogador',
-        subtabs: [
-            { id: 'mochila', label: 'Inventário', icon: 'fa-briefcase', render: renderMochila },
-            { id: 'habilidades', label: 'Grimório', icon: 'fa-fire', render: () => {} },
-            { id: 'constelacao', label: 'Árvore', icon: 'fa-star', render: () => {} }
-        ]
-    }
+    'Início': [
+        { id: 'painel-fichas', icon: 'fa-id-card', label: 'Painel Principal', render: () => renderPainelFichas() }
+    ],
+    'O Mundo': [
+        { id: 'mapa-movimento', icon: 'fa-map-marked-alt', label: 'Mapa Mundi', render: () => renderMapaTab() },
+        { id: 'colecao-craft', icon: 'fa-book-atlas', label: 'Diário & Descobertas', render: () => renderCollectionTab() },
+        { id: 'recursos-reputacao', icon: 'fa-crown', label: 'Império & Prédios', render: () => renderReputacaoTab() },
+        { id: 'comercio', icon: 'fa-coins', label: 'Loja & Câmbio', render: () => renderComercioTab() }
+    ],
+    'Manual e Regras': [
+        // Reservado para os arquivos da pasta /manualRegras
+        { id: 'manual', icon: 'fa-book-open', label: 'Manual Base', render: () => console.log('Aba Manual') },
+        { id: 'racas', icon: 'fa-users', label: 'Raças', render: () => console.log('Aba Raças') },
+        { id: 'classes', icon: 'fa-theater-masks', label: 'Classes', render: () => console.log('Aba Classes') }
+    ],
+    'Ao Mestre': [
+        // Reservado para a pasta /aoMestre e /backoffice
+        { id: 'arena-combate', icon: 'fa-chess-board', label: 'Arena Tática', render: () => { if(window.arena?.init) window.arena.init(); } },
+        { id: 'cadastros-admin', icon: 'fa-database', label: 'Cadastros Gerais', render: () => console.log('Aba Cadastros Admin') },
+        { id: 'comandos', icon: 'fa-terminal', label: 'Comandos', render: () => console.log('Aba Comandos') }
+    ],
+    'Ao Jogador': [
+        // Arquivos da pasta /tabs
+        { id: 'ficha', icon: 'fa-user', label: 'Ficha Resumo', render: () => renderPainelFichas() },
+        { id: 'mochila', icon: 'fa-briefcase', label: 'Mochila', render: () => renderMochila() },
+        { id: 'itens-equipados', icon: 'fa-tshirt', label: 'Equipamentos', render: () => renderItensEquipados() },
+        { id: 'minhas-habilidades', icon: 'fa-fire', label: 'Skills & Magias', render: () => renderMinhasHabilidades() },
+        { id: 'calculadora-atributos', icon: 'fa-chart-bar', label: 'Status Totais', render: () => renderCalculadoraAtributos() },
+        { id: 'constelacao', icon: 'fa-star', label: 'Árvore Constelação', render: () => renderConstelacaoTab() },
+        { id: 'crafting', icon: 'fa-hammer', label: 'Forja & Crafting', render: () => renderCraftingTab() },
+        { id: 'extracao', icon: 'fa-recycle', label: 'Reciclar', render: () => renderExtracaoTab() },
+        { id: 'arma-espiritual', icon: 'fa-ghost', label: 'Ego Espiritual', render: () => renderArmaEspiritualTab() },
+        { id: 'meus-pets', icon: 'fa-dragon', label: 'Pets e Domar', render: () => renderPetsTab() },
+        { id: 'rolagem-dados', icon: 'fa-dice-d20', label: 'Log de Dados', render: () => renderRolagemDados() },
+        { id: 'calculadora-combate', icon: 'fa-calculator', label: 'Calc. Dano', render: () => renderCalculadoraCombate() }
+    ],
+    'Atualizações': [
+        { id: 'atualizacoes', icon: 'fa-bullhorn', label: 'Patch Notes', render: () => console.log('Aba Atualizações') }
+    ]
 };
 
-dom.btn_logout?.addEventListener('click', () => signOut(auth));
+window.setMasterContext = function(menuName) {
+    const sidebar = document.getElementById('sub-menu-bar');
+    if(!sidebar) return;
+
+    sidebar.innerHTML = '';
+    
+    // Atualiza visual dos botões do topo
+    document.querySelectorAll('.master-nav-btn').forEach(b => {
+        b.classList.toggle('active', b.textContent.trim() === menuName);
+    });
+
+    // Popula a barra lateral vermelha
+    if(MASTER_ARCHITECTURE[menuName]) {
+        MASTER_ARCHITECTURE[menuName].forEach(subAba => {
+            const btn = document.createElement('button');
+            // Classes Tailwind para ícone fixo e texto invisível que aparece no hover
+            btn.className = "flex items-center h-12 w-full hover:bg-slate-800 transition-all border-l-4 border-transparent hover:border-amber-500 overflow-hidden group";
+            
+            btn.innerHTML = `
+                <div class="w-[60px] flex items-center justify-center shrink-0">
+                    <i class="fas ${subAba.icon} text-lg text-slate-500 group-hover:text-amber-500 transition-colors"></i>
+                </div>
+                <span class="ml-2 text-[11px] font-bold uppercase tracking-widest text-slate-300 opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity duration-300">
+                    ${subAba.label}
+                </span>
+            `;
+
+            btn.onclick = () => {
+                // Esconde default
+                document.getElementById('default-view')?.classList.add('hidden');
+                // Esconde todas as abas
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+                // Mostra a selecionada
+                const target = document.getElementById(`${subAba.id}-content`);
+                if(target) target.classList.remove('hidden');
+                
+                // Destaque visual na lateral
+                document.querySelectorAll('#sub-menu-bar button').forEach(b => {
+                    b.classList.remove('bg-slate-800', 'border-amber-500');
+                    b.querySelector('i').classList.replace('text-amber-500', 'text-slate-500');
+                });
+                btn.classList.add('bg-slate-800', 'border-amber-500');
+                btn.querySelector('i').classList.replace('text-slate-500', 'text-amber-500');
+
+                // Executa o JS da aba
+                subAba.render();
+            };
+            
+            sidebar.appendChild(btn);
+        });
+    }
+};
 
 onAuthStateChanged(auth, async (user) => {
     if (user) {
@@ -85,32 +152,39 @@ onAuthStateChanged(auth, async (user) => {
 // --- GERENCIAMENTO DE CACHES ---
 async function loadCache() {
     console.log("Iniciando carregamento do cache...");
-    // Verifica se o mapa existe antes de tentar limpar
-    const clearIfDefined = (mapName) => {
-        if (globalState.cache[mapName] instanceof Map) {
+    
+    // Verifica e instancia os mapas antes de limpar para evitar o TypeError
+    const mapsToClear = ['players', 'mobs', 'personagens', 'all_personagens'];
+    mapsToClear.forEach(mapName => {
+        if (globalState.cache[mapName]) {
             globalState.cache[mapName].clear();
         } else {
             globalState.cache[mapName] = new Map();
         }
-    };
-
-    ['players', 'mobs', 'personagens', 'all_personagens'].forEach(clearIfDefined);
+    });
 
     try {
-        const q = query(collection(db, "rpg_fichas"));
-        const snap = await getDocs(q);
-        snap.forEach(d => {
-            const data = { id: d.id, ...d.data() };
+        const qP = query(collection(db, "rpg_fichas"));
+        const snapP = await getDocs(qP);
+        snapP.forEach(d => {
+            const data = {id: d.id, type: 'player', collection: 'rpg_fichas', ...d.data()};
+            globalState.cache.players.set(d.id, data);
             globalState.cache.all_personagens.set(d.id, data);
-            if (globalState.isAdmin || data.jogadorUid === globalState.currentUser.uid) {
+            if(globalState.isAdmin || data.jogadorUid === globalState.currentUser?.uid) {
                 globalState.cache.personagens.set(d.id, data);
             }
         });
-        console.log("Cache carregado!");
-    } catch (e) {
-        console.error("Falha no cache:", e);
+        
+        // Mantém a continuação do seu loadCache original para mobs e npcs...
+    } catch(e) {
+        console.error("Erro no loadCache:", e);
     }
 }
+
+// Inicia no Início ao carregar
+document.addEventListener('DOMContentLoaded', () => {
+    if(globalState.currentUser) window.setMasterContext('Início');
+});
 
 function renderMasterMenu() {
     const nav = document.getElementById('master-tabs');
