@@ -2,7 +2,6 @@ import { auth, db, storage, signInWithEmailAndPassword, signOut, onAuthStateChan
 import { globalState, ADMIN_EMAIL, PLACEHOLDER_IMAGE_URL, COINS } from './core/state.js';
 import { createBonusObject } from './core/calculos.js';
 
-// --- IMPORTAÇÃO DE TODAS AS ABAS ---
 import { renderPainelFichas } from './tabs/painelFichas.js';
 import { renderRolagemDados } from './tabs/rolagemDados.js';
 import { renderCalculadoraCombate } from './tabs/calcCombate.js';
@@ -21,11 +20,8 @@ import { renderComercioTab } from './tabs/comercio.js';
 import { renderMapaTab } from './tabs/mapa.js';
 import './tabs/arena.js';
 
-// --- SETUP DO DOM ---
 const dom = {};
 document.querySelectorAll('[id]').forEach(el => dom[el.id.replace(/-/g, '_')] = el);
-
-// --- EXPORTAÇÕES GLOBAIS PARA AS ABAS ---
 window.gatherAllCharacterData = gatherAllCharacterData;
 window.preencherCacheTodosPersonagens = preencherCacheTodosPersonagens;
 window.carregarPersonagensNoSeletor = carregarPersonagensNoSeletor;
@@ -41,77 +37,128 @@ dom.btn_login?.addEventListener('click', () => {
 
 const MASTER_ARCHITECTURE = {
     'Início': [
-        { id: 'inicio-home', icon: 'fa-home', label: 'Página Inicial', render: () => renderBlankPage('Página em branco por enquanto') }
+        { id: 'blank', icon: 'fa-home', label: 'Página Inicial', render: () => window.renderBlankPage('Página Inicial') }
     ],
     'O Mundo': [
-        { id: 'mundo-conheca', icon: 'fa-globe', label: 'Conheça o mundo', render: () => renderBlankPage('Conheça o mundo') },
-        { id: 'mundo-deuses', icon: 'fa-bolt', label: 'Os Deuses', render: () => renderBlankPage('Os Deuses') },
-        { id: 'mundo-lendas', icon: 'fa-book-dead', label: 'Lendas do Mundo', render: () => renderBlankPage('Lendas do Mundo') },
-        { id: 'mundo-npcs', icon: 'fa-users', label: 'NPCs Importantes', render: () => renderBlankPage('NPCs Importantes') }
+        { id: 'blank', icon: 'fa-globe', label: 'Conheça o mundo', render: () => window.renderBlankPage('Conheça o mundo') },
+        { id: 'blank', icon: 'fa-bolt', label: 'Os Deuses', render: () => window.renderBlankPage('Os Deuses') },
+        { id: 'blank', icon: 'fa-book-dead', label: 'Lendas do Mundo', render: () => window.renderBlankPage('Lendas do Mundo') },
+        { id: 'blank', icon: 'fa-users', label: 'NPCs Importantes', render: () => window.renderBlankPage('NPCs Importantes') }
     ],
     'Manual e Regras': [
-        { id: 'regras-manual', icon: 'fa-book', label: 'Manual', render: () => renderBlankPage('Manual') },
-        { id: 'regras-racas', icon: 'fa-dna', label: 'Raças', render: () => renderBlankPage('Raças') },
-        { id: 'regras-classes', icon: 'fa-theater-masks', label: 'Classes', render: () => renderBlankPage('Classes') },
-        { id: 'regras-subclasses', icon: 'fa-mask', label: 'Subclasses', render: () => renderBlankPage('Subclasses') },
-        { id: 'regras-habilidades', icon: 'fa-fire', label: 'Habilidades', render: () => renderBlankPage('Habilidades') },
-        { id: 'regras-profissoes', icon: 'fa-hammer', label: 'Profissões', render: () => renderBlankPage('Profissões') }
+        { id: 'blank', icon: 'fa-book', label: 'Manual', render: () => window.renderBlankPage('Manual') },
+        { id: 'blank', icon: 'fa-dna', label: 'Raças', render: () => window.renderBlankPage('Raças') },
+        { id: 'blank', icon: 'fa-theater-masks', label: 'Classes', render: () => window.renderBlankPage('Classes') },
+        { id: 'blank', icon: 'fa-mask', label: 'Subclasses', render: () => window.renderBlankPage('Subclasses') },
+        { id: 'blank', icon: 'fa-fire', label: 'Habilidades', render: () => window.renderBlankPage('Habilidades') },
+        { id: 'blank', icon: 'fa-hammer', label: 'Profissões', render: () => window.renderBlankPage('Profissões') }
     ],
     'Ao Mestre': [
-        { id: 'mestre-comandos', icon: 'fa-terminal', label: 'Comandos de jogo', render: () => renderBlankPage('Comandos de jogo') },
-        { id: 'mestre-npcs', icon: 'fa-user-plus', label: 'Cad. NPCs', render: () => renderBlankPage('Cad. NPCs') },
-        { id: 'mestre-crafts', icon: 'fa-tools', label: 'Cad. Crafts', render: () => renderBlankPage('Cad. Crafts') },
-        { id: 'mestre-monstros', icon: 'fa-dragon', label: 'Cad. Monstros/Seres', render: () => renderBlankPage('Cad. Monstros/Seres') },
-        { id: 'mestre-itens', icon: 'fa-gem', label: 'Cad. Itens', render: () => renderBlankPage('Cad. Itens') },
-        { id: 'mestre-lore', icon: 'fa-scroll', label: 'Lore personagens', render: () => renderBlankPage('Aba reservada para lorePersonagens.js') }
+        { id: 'blank', icon: 'fa-terminal', label: 'Comandos de jogo', render: () => window.renderBlankPage('Comandos de jogo') },
+        { id: 'blank', icon: 'fa-user-plus', label: 'Cad. NPCs', render: () => window.renderBlankPage('Cad. NPCs') },
+        { id: 'blank', icon: 'fa-tools', label: 'Cad. Crafts', render: () => window.renderBlankPage('Cad. Crafts') },
+        { id: 'blank', icon: 'fa-dragon', label: 'Cad. Monstros/Seres', render: () => window.renderBlankPage('Cad. Monstros/Seres') },
+        { id: 'blank', icon: 'fa-gem', label: 'Cad. Itens', render: () => window.renderBlankPage('Cad. Itens') },
+        { id: 'blank', icon: 'fa-scroll', label: 'Lore personagens', render: () => window.renderBlankPage('Lore personagens (Tem conteúdo)') }
     ],
     'Ao Jogador': [
-        { id: 'jogador-simular', icon: 'fa-flask', label: 'Simular Ficha', render: () => renderBlankPage('Simular Ficha') },
-        { id: 'jogador-ficha', icon: 'fa-id-card', label: 'Ficha de Personagem', render: () => renderFichaPersonagemWrapper() },
-        { id: 'jogador-galeria', icon: 'fa-images', label: 'Galeria de Imagens', render: () => renderBlankPage('Galeria de Imagens') }
+        { id: 'blank', icon: 'fa-flask', label: 'Simular Ficha', render: () => window.renderBlankPage('Simular Ficha') },
+        { id: 'ficha-menu', icon: 'fa-id-card', label: 'Ficha de Personagem', render: () => window.openFichaPersonagemMenu() },
+        { id: 'blank', icon: 'fa-images', label: 'Galeria de Imagens', render: () => window.renderBlankPage('Galeria de Imagens') }
     ],
     'Atualizações': [
-        { id: 'att-novidades', icon: 'fa-bullhorn', label: 'Novidades', render: () => renderBlankPage('Novidades') }
+        { id: 'blank', icon: 'fa-bullhorn', label: 'Novidades', render: () => window.renderBlankPage('Novidades') }
     ]
 };
 
 window.setMasterContext = function(menuName) {
-    const sidebar = document.getElementById('sub-menu-bar');
-    if(!sidebar) return;
-
-    sidebar.innerHTML = '';
     document.querySelectorAll('.master-nav-btn').forEach(b => {
         b.classList.toggle('active', b.textContent.trim() === menuName);
     });
 
-    if(MASTER_ARCHITECTURE[menuName]) {
-        MASTER_ARCHITECTURE[menuName].forEach(subAba => {
-            const btn = document.createElement('button');
-            btn.className = "flex items-center h-12 w-full hover:bg-[#1e293b] transition-all border-l-4 border-transparent hover:border-amber-500 overflow-hidden group";
-            btn.innerHTML = `
-                <div class="w-[64px] flex items-center justify-center shrink-0">
-                    <i class="fas ${subAba.icon} text-xl text-slate-500 group-hover:text-amber-500 transition-colors"></i>
-                </div>
-                <span class="ml-1 text-[11px] font-bold uppercase tracking-widest text-slate-300 opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity duration-300">
-                    ${subAba.label}
-                </span>
-            `;
-
-            btn.onclick = () => {
-                document.querySelectorAll('#sub-menu-bar button').forEach(b => {
-                    b.classList.remove('bg-[#1e293b]', 'border-amber-500');
-                    b.querySelector('i').classList.replace('text-amber-500', 'text-slate-500');
-                });
-                btn.classList.add('bg-[#1e293b]', 'border-amber-500');
-                btn.querySelector('i').classList.replace('text-slate-500', 'text-amber-500');
-                
-                // Exclui a tela de default e carrega a função
-                subAba.render();
-            };
-            sidebar.appendChild(btn);
-        });
+    if (MASTER_ARCHITECTURE[menuName]) {
+        populateSidebar(MASTER_ARCHITECTURE[menuName], false);
+        const firstBtn = document.querySelector('#sub-menu-bar button');
+        if (firstBtn) firstBtn.click();
     }
 };
+
+window.openFichaPersonagemMenu = function() {
+    populateSidebar(FICHA_TABS, true);
+    // Clica no "Painel de Ficha" (o segundo botão, pois o primeiro é o Voltar)
+    const secondBtn = document.querySelectorAll('#sub-menu-bar button')[1]; 
+    if(secondBtn) secondBtn.click();
+};
+
+const FICHA_TABS = [
+    { id: 'painel-fichas', icon: 'fa-user', label: 'Painel de Ficha', render: renderPainelFichas },
+    { id: 'rolagem-dados', icon: 'fa-dice-d20', label: 'Rolagem de Dados', render: renderRolagemDados },
+    { id: 'minhas-habilidades', icon: 'fa-fire', label: 'Minhas Habilidades', render: renderMinhasHabilidades },
+    { id: 'mochila', icon: 'fa-briefcase', label: 'Mochila', render: renderMochila },
+    { id: 'itens-equipados', icon: 'fa-tshirt', label: 'Itens Equipados', render: renderItensEquipados },
+    { id: 'calculadora-atributos', icon: 'fa-chart-bar', label: 'Calculadora de atributos', render: renderCalculadoraAtributos },
+    { id: 'constelacao', icon: 'fa-star', label: 'Constelação', render: renderConstelacaoTab },
+    { id: 'crafting', icon: 'fa-hammer', label: 'Oficina de Criação', render: renderCraftingTab },
+    { id: 'extracao', icon: 'fa-recycle', label: 'Extração e Reciclagem', render: renderExtracaoTab },
+    { id: 'colecao-craft', icon: 'fa-book-atlas', label: 'Diário de Coleção', render: renderCollectionTab },
+    { id: 'arma-espiritual', icon: 'fa-ghost', label: 'Arma Espiritual', render: renderArmaEspiritualTab },
+    { id: 'meus-pets', icon: 'fa-dragon', label: 'Meus Pets', render: renderPetsTab },
+    { id: 'recursos-reputacao', icon: 'fa-crown', label: 'Recursos e Reputação', render: renderReputacaoTab },
+    { id: 'comercio', icon: 'fa-coins', label: 'Comércio', render: renderComercioTab },
+    { id: 'mapa-movimento', icon: 'fa-map-marked-alt', label: 'Mapa e Movimento', render: () => { if(window.renderMapTab) window.renderMapTab(); } },
+    { id: 'arena-combate', icon: 'fa-chess-board', label: 'Arena de Combate', render: () => { if(window.arena?.init) window.arena.init(); } }
+];
+
+// 3. FUNÇÃO QUE DESENHA OS BOTÕES NA ÁREA VERMELHA LATERAL
+function populateSidebar(subAbaArray, isFichaMenu = false) {
+    const sidebar = document.getElementById('sub-menu-bar');
+    sidebar.innerHTML = '';
+
+    if (isFichaMenu) {
+        const backBtn = document.createElement('button');
+        backBtn.className = "flex items-center h-12 w-full hover:bg-slate-800 transition-all border-l-4 border-transparent hover:border-red-500 overflow-hidden group bg-[#0f172a] mb-2";
+        backBtn.innerHTML = `
+            <div class="w-[64px] flex items-center justify-center shrink-0"><i class="fas fa-arrow-left text-xl text-red-500 group-hover:text-red-400 transition-colors"></i></div>
+            <span class="ml-1 text-[11px] font-bold uppercase tracking-widest text-red-400 opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity duration-300">Voltar</span>
+        `;
+        backBtn.onclick = () => window.setMasterContext('Ao Jogador');
+        sidebar.appendChild(backBtn);
+    }
+
+    subAbaArray.forEach(subAba => {
+        const btn = document.createElement('button');
+        btn.className = "flex items-center h-12 w-full hover:bg-[#1e293b] transition-all border-l-4 border-transparent hover:border-amber-500 overflow-hidden group";
+        btn.innerHTML = `
+            <div class="w-[64px] flex items-center justify-center shrink-0">
+                <i class="fas ${subAba.icon} text-xl text-slate-500 group-hover:text-amber-500 transition-colors"></i>
+            </div>
+            <span class="ml-1 text-[11px] font-bold uppercase tracking-widest text-slate-300 opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity duration-300 text-left">
+                ${subAba.label}
+            </span>
+        `;
+
+        btn.onclick = () => {
+            document.querySelectorAll('#sub-menu-bar button').forEach(b => {
+                b.classList.remove('bg-[#1e293b]', 'border-amber-500');
+                const i = b.querySelector('i');
+                if (i && !i.classList.contains('fa-arrow-left')) i.classList.replace('text-amber-500', 'text-slate-500');
+            });
+            btn.classList.add('bg-[#1e293b]', 'border-amber-500');
+            btn.querySelector('i').classList.replace('text-slate-500', 'text-amber-500');
+            
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+            document.getElementById('default-view')?.classList.add('hidden');
+            
+            if (subAba.id !== 'blank' && subAba.id !== 'ficha-menu') {
+                const targetDiv = document.getElementById(`${subAba.id}-content`);
+                if (targetDiv) targetDiv.classList.remove('hidden');
+            }
+
+            subAba.render();
+        };
+        sidebar.appendChild(btn);
+    });
+}
 
 // 4. RENDERIZADOR DA "FICHA DE PERSONAGEM" E SUAS 16 ABAS 
 window.renderFichaPersonagemWrapper = function() {
@@ -175,13 +222,12 @@ window.renderFichaPersonagemWrapper = function() {
 };
 
 window.renderBlankPage = function(title) {
-    const container = document.getElementById('content-container');
-    container.innerHTML = `
-        <div class="h-full flex flex-col items-center justify-center opacity-30 select-none animate-fade-in">
-            <i class="fas fa-file-alt text-6xl mb-4 text-slate-600"></i>
-            <h2 class="font-cinzel text-3xl tracking-widest uppercase text-slate-500">${title}</h2>
-            <p class="mt-2 text-sm uppercase tracking-tighter text-slate-600">Página em branco</p>
-        </div>
+    const target = document.getElementById('default-view');
+    target.classList.remove('hidden');
+    target.innerHTML = `
+        <i class="fas fa-file-alt text-[8rem] mb-6 text-slate-700"></i>
+        <h2 class="font-cinzel text-4xl tracking-widest uppercase text-slate-500">${title}</h2>
+        <p class="mt-4 text-xl uppercase tracking-tighter text-slate-600">Página em construção</p>
     `;
 };
 
@@ -232,14 +278,34 @@ onAuthStateChanged(auth, async (user) => {
     if (user) {
         globalState.currentUser = user;
         globalState.isAdmin = user.email === ADMIN_EMAIL;
-        document.getElementById('auth-view').classList.add('hidden');
-        document.getElementById('app-view').classList.remove('hidden');
+        
+        if (dom.auth_view) dom.auth_view.classList.add('hidden');
+        if (dom.app_view) dom.app_view.classList.remove('hidden');
         
         await loadCache();
-        renderMasterMenu();
+        await preencherCachesEstaticos();
+        initWorldHeader();
+        await preencherCacheTodosPersonagens();
+        await carregarPersonagensNoSeletor(user);
+        
+        setupMochilaListeners();
+        setupConstelacaoListeners();
+        setupCraftingListeners();
+        setupExtracaoListeners();
+
+        // Inicializa na aba "Ao Jogador" e abre a "Ficha de Personagem"
+        window.setMasterContext('Ao Jogador');
+        setTimeout(() => window.openFichaPersonagemMenu(), 200);
+
     } else {
-        document.getElementById('auth-view').classList.remove('hidden');
-        document.getElementById('app-view').classList.add('hidden');
+        globalState.currentUser = null;
+        globalState.isAdmin = false;
+        if (dom.auth_view) dom.auth_view.classList.remove('hidden');
+        if (dom.app_view) dom.app_view.classList.add('hidden');
+        globalState.selectedCharacterId = null;
+        globalState.selectedCharacterData = null;
+        globalState.cache.personagens.clear();
+        globalState.cache.all_personagens.clear();
     }
 });
 
