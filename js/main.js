@@ -672,138 +672,131 @@ function handleCharacterSelect(id) {
         globalState.selectedCharacterId = null;
         globalState.selectedCharacterData = null;
         localStorage.removeItem('personagemAtivoId');
-        renderHeaderWidget();
-        window.updateGlobalBars();
         
-        // Limpa o log de rolagem na sidebar se ficar sem personagem
+        renderHeaderWidget();
+        window.updateSidebarUI(); // Limpa a interface
+        window.updateGlobalBars();
         if(window.renderSidebarDiceLog) window.renderSidebarDiceLog();
         
-        const activeTab = dom.tab_container?.querySelector('.active')?.dataset.tab || 'painel-fichas';
-        if(activeTab === 'painel-fichas') renderPainelFichas();
+        // Se estiver na Ficha, volta para a tela em branco
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        document.getElementById('default-view')?.classList.remove('hidden');
         return;
     }
 
     globalState.selectedCharacterId = id;
     localStorage.setItem('personagemAtivoId', id);
 
-    // Listener do personagem ativo
+    // Listener do personagem ativo (Escuta o Firebase em tempo real)
     unsubscribeChar = onSnapshot(doc(db, "rpg_fichas", id), async (docSnap) => {
         if(docSnap.exists()) {
             const fichaAtualizada = { id: docSnap.id, ...docSnap.data() };
             globalState.cache.all_personagens.set(id, fichaAtualizada);
             
+            // Processa todos os itens e bônus (math pesada)
             globalState.selectedCharacterData = await gatherAllCharacterData(id);
-            window.updateGlobalBars();
             
-            // >>> AQUI: Atualiza o log de dados na sidebar sempre que houver mudança na ficha
+            // Atualiza a Interface Lateral com os dados do Firebase
+            window.updateSidebarUI();
+            window.updateGlobalBars();
             if(window.renderSidebarDiceLog) window.renderSidebarDiceLog();
             
-            // Mantém a renderização da aba atual ativa
-            const activeTab = dom.tab_container?.querySelector('.active')?.dataset.tab || 'painel-fichas';
-            
-            if(activeTab === 'painel-fichas') renderPainelFichas(); // FichaEditor trata internamente o ID
-            else if(activeTab === 'constelacao') renderConstelacaoTab();
-            else if(activeTab === 'arma-espiritual') renderArmaEspiritualTab();
-            else if(activeTab === 'meus-pets') renderPetsTab();
-            else if(activeTab === 'itens-equipados') renderItensEquipados();
-            else if(activeTab === 'calculadora-atributos') renderCalculadoraAtributos();
-            else if(activeTab === 'mochila') renderMochila();
-            else if(activeTab === 'minhas-habilidades') {
-                renderMinhasHabilidades();
-                if(window.renderSkillUsageLogs) window.renderSkillUsageLogs(); 
+            // Re-renderiza a aba que estiver aberta (se for da ficha)
+            const painelAberto = document.querySelector('.inner-tab-btn.active');
+            if (painelAberto) {
+                painelAberto.click(); // Força o clique para re-renderizar com os dados novos
             }
-            else if(activeTab === 'calculadora-combate') renderCalculadoraCombate();
-            else if(activeTab === 'recursos-reputacao') renderReputacaoTab();
         }
     });
 }
 
-// --- BARRAS GLOBAIS DE STATUS (HEADER) ---
-window.updateGlobalBars = function() {
-    const charId = globalState.selectedCharacterId;
-    const containerHdr = document.getElementById('header-bars-container');
+// NOVA FUNÇÃO: Preenche Foto, Nome, Classe e Subclasse na Lateral
+window.updateSidebarUI = function() {
+    const data = globalState.selectedCharacterData;
+    const barsContainer = document.getElementById('header-bars-container');
     
-    if (!charId || !globalState.selectedCharacterData) {
-        if(containerHdr) containerHdr.classList.add('hidden');
+    if (!data || !data.ficha) {
+        document.getElementById('sidebar-char-name').textContent = '---';
+        document.getElementById('sidebar-char-class').textContent = '---';
+        document.getElementById('sidebar-char-subclass').textContent = '---';
+        document.getElementById('sidebar-char-img').src = 'https://placehold.co/400x400/0f172a/d4af37?text=Sem+Foto';
+        if (barsContainer) barsContainer.classList.add('hidden');
         return;
     }
-    if(containerHdr) containerHdr.classList.remove('hidden');
+
+    const f = data.ficha;
+    document.getElementById('sidebar-char-name').textContent = f.nome || 'Sem Nome';
+    document.getElementById('sidebar-char-class').textContent = data.classe?.nome || 'Sem Classe';
+    document.getElementById('sidebar-char-subclass').textContent = data.subclasse?.nome || 'Sem Subc.';
+
+    // Lógica da Imagem Favorita (Puxa do array imageUrls da ficha)
+    const imgKey = f.imagemPrincipal;
+    const imgUrl = (imgKey && f.imageUrls && f.imageUrls[imgKey]) ? f.imageUrls[imgKey] : (f.imagemUrl || 'https://placehold.co/400x400/0f172a/d4af37?text=Sem+Foto');
+    document.getElementById('sidebar-char-img').src = imgUrl;
+
+    if (barsContainer) barsContainer.classList.remove('hidden');
+};
+
+// --- BARRAS GLOBAIS DE STATUS (LATERAL) ---
+window.updateGlobalBars = function() {
+    const charId = globalState.selectedCharacterId;
+    if (!charId || !globalState.selectedCharacterData) return;
 
     const ficha = globalState.selectedCharacterData.ficha;
     const atributos = ficha.atributosBasePersonagem || {};
     
+    // HP Matemático
     const hpMax = Number(ficha.hpMaxPersonagemBase) || 1; 
     const hpShieldMax = Number(atributos.defesaCorporalNativaTotal) || 0; 
-    const hpExtraMax = Number(atributos.pontosHPExtraTotal) || 0; 
-    
-    const mpMax = Number(ficha.mpMaxPersonagemBase) || 1; 
-    const mpShieldMax = Number(atributos.defesaMagicaNativaTotal) || 0; 
-    const mpExtraMax = Number(atributos.pontosMPExtraTotal) || 0; 
-
     const hpAtual = ficha.hpPersonagemBase !== undefined ? Number(ficha.hpPersonagemBase) : hpMax;
     const hpShieldAtual = ficha.hpShieldAtual !== undefined ? Number(ficha.hpShieldAtual) : hpShieldMax;
-    const hpExtraAtual = ficha.hpExtraAtual !== undefined ? Number(ficha.hpExtraAtual) : hpExtraMax;
-
-    const mpAtual = ficha.mpPersonagemBase !== undefined ? Number(ficha.mpPersonagemBase) : mpMax;
-    const mpShieldAtual = ficha.mpShieldAtual !== undefined ? Number(ficha.mpShieldAtual) : mpShieldMax;
-    const mpExtraAtual = ficha.mpExtraAtual !== undefined ? Number(ficha.mpExtraAtual) : mpExtraMax;
-
     const pctHpBase = Math.min(100, Math.max(0, (hpAtual / hpMax) * 100));
     const pctHpShield = hpShieldMax > 0 ? Math.min(100, Math.max(0, (hpShieldAtual / hpShieldMax) * 100)) : 0;
-    const pctHpExtra = hpExtraMax > 0 ? Math.min(100, Math.max(0, (hpExtraAtual / hpExtraMax) * 100)) : 0;
 
+    // MP Matemático
+    const mpMax = Number(ficha.mpMaxPersonagemBase) || 1; 
+    const mpShieldMax = Number(atributos.defesaMagicaNativaTotal) || 0; 
+    const mpAtual = ficha.mpPersonagemBase !== undefined ? Number(ficha.mpPersonagemBase) : mpMax;
+    const mpShieldAtual = ficha.mpShieldAtual !== undefined ? Number(ficha.mpShieldAtual) : mpShieldMax;
     const pctMpBase = Math.min(100, Math.max(0, (mpAtual / mpMax) * 100));
     const pctMpShield = mpShieldMax > 0 ? Math.min(100, Math.max(0, (mpShieldAtual / mpShieldMax) * 100)) : 0;
-    const pctMpExtra = mpExtraMax > 0 ? Math.min(100, Math.max(0, (mpExtraAtual / mpExtraMax) * 100)) : 0;
 
+    // Aplicação na UI (IDs do novo HTML)
     const setWidth = (id, pct) => { const el = document.getElementById(id); if(el) el.style.width = `${pct}%`; };
     setWidth('hdr-hp-base', pctHpBase);
     setWidth('hdr-hp-shield', pctHpShield);
-    setWidth('hdr-hp-extra', pctHpExtra);
     setWidth('hdr-mp-base', pctMpBase);
     setWidth('hdr-mp-shield', pctMpShield);
-    setWidth('hdr-mp-extra', pctMpExtra);
 
-    const hpTotalAtual = Math.max(0, hpAtual + hpShieldAtual + hpExtraAtual);
-    const hpTotalMax = hpMax + hpShieldMax + hpExtraMax;
+    // Textos de HP e MP
+    const hpTotalAtual = Math.max(0, hpAtual + hpShieldAtual);
+    const hpTotalMax = hpMax + hpShieldMax;
     const txtHpHdr = document.getElementById('hdr-hp-text');
-    if(txtHpHdr) txtHpHdr.textContent = `${hpTotalAtual} / ${hpTotalMax}`;
+    if(txtHpHdr) txtHpHdr.textContent = `${hpTotalAtual}/${hpTotalMax}`;
 
-    const mpTotalAtual = Math.max(0, mpAtual + mpShieldAtual + mpExtraAtual);
-    const mpTotalMax = mpMax + mpShieldMax + mpExtraMax;
+    const mpTotalAtual = Math.max(0, mpAtual + mpShieldAtual);
+    const mpTotalMax = mpMax + mpShieldMax;
     const txtMpHdr = document.getElementById('hdr-mp-text');
-    if(txtMpHdr) txtMpHdr.textContent = `${mpTotalAtual} / ${mpTotalMax}`;
+    if(txtMpHdr) txtMpHdr.textContent = `${mpTotalAtual}/${mpTotalMax}`;
     
+    // Lógica da Fome
     const fomeExtra = Number(atributos.pontosFomeExtraTotal) || 0;
     const fomeMax = Math.floor(100 + fomeExtra);
     let fomeAtual = ficha.fomeAtual !== undefined ? Number(ficha.fomeAtual) : fomeMax;
     if (fomeAtual > fomeMax) fomeAtual = fomeMax;
 
     const fomePct = Math.max(0, Math.min(100, (fomeAtual / fomeMax) * 100));
-    const fomeBar = document.getElementById('bar-fome-fill');
-    const fomeText = document.getElementById('hdr-fome-text');
-    const fomeTrack = document.getElementById('bar-fome-track');
-
-    if (fomeBar) fomeBar.style.width = `${fomePct}%`;
+    setWidth('bar-fome-fill', fomePct);
     
+    const fomeText = document.getElementById('hdr-fome-text');
     if (fomeText) {
-        fomeText.textContent = `${Math.floor(fomeAtual)} / ${fomeMax}`;
+        fomeText.textContent = `${Math.floor(fomeAtual)}/${fomeMax}`;
         if (fomeAtual < 50) {
-            fomeText.classList.remove('text-white');
-            fomeText.classList.add('text-red-400', 'animate-pulse');
+            fomeText.classList.replace('text-white', 'text-red-400');
+            fomeText.classList.add('animate-pulse');
         } else {
-            fomeText.classList.remove('text-red-400', 'animate-pulse');
-            fomeText.classList.add('text-white');
-        }
-    }
-
-    if (fomeTrack) {
-        if (fomeAtual < 50) {
-            fomeTrack.classList.remove('bg-slate-950', 'border-slate-700');
-            fomeTrack.classList.add('bg-black', 'border-red-900'); 
-        } else {
-            fomeTrack.classList.remove('bg-black', 'border-red-900');
-            fomeTrack.classList.add('bg-slate-950', 'border-slate-700');
+            fomeText.classList.replace('text-red-400', 'text-white');
+            fomeText.classList.remove('animate-pulse');
         }
     }
 };
@@ -960,72 +953,42 @@ function renderHeaderWidget() {
     ];
     const totalDays = (Number(yearDisplay) * 360) + (Number(monthDisplay) * 30) + Number(dayDisplay);
     let moon = MOON_PHASES[Math.floor((totalDays % 28) / 3.5)] || MOON_PHASES[0];
-    const seasonName = globalState.world.seasons.find(s => s.id === w.seasonId)?.name || "---";
+    const seasonName = globalState.world.seasons?.find(s => s.id === w.seasonId)?.name || "---";
 
     const activeLocId = globalState.world.selectedLocId;
-    const location = locations.find(l => l.id === activeLocId);
+    const location = locations?.find(l => l.id === activeLocId);
     let localEvents = [];
     let isDanger = false;
 
     if (location && location.x !== undefined && location.y !== undefined) {
         localEvents = events.filter(ev => {
-            const locX = Number(location.x);
-            const locY = Number(location.y);
-            const evX = Number(ev.x);
-            const evY = Number(ev.y);
-            const radius = Number(ev.radius || 0);
-            const distance = Math.sqrt(Math.pow(locX - evX, 2) + Math.pow(locY - evY, 2));
-            return distance <= radius;
+            const distance = Math.sqrt(Math.pow(Number(location.x) - Number(ev.x), 2) + Math.pow(Number(location.y) - Number(ev.y), 2));
+            return distance <= Number(ev.radius || 0);
         });
         isDanger = localEvents.length > 0;
     }
 
+    // AQUI OCORRE A REDUÇÃO DE TAMANHOS (text-lg em vez de text-2xl, e paddings menores)
     container.innerHTML = `
-        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 w-full items-stretch animate-fade-in">
-            <div class="md:col-span-3 flex items-center justify-center md:justify-start gap-3 py-1">
+        <div class="flex items-center gap-4 animate-fade-in">
+            <div class="flex items-center gap-2 border-r border-slate-700 pr-4">
                 <div class="text-right">
-                    <div class="text-2xl font-mono font-bold ${isCustomSession ? 'text-indigo-400 drop-shadow-[0_0_8px_rgba(129,140,248,0.5)]' : 'text-white'} leading-none">${timeDisplay}</div>
-                    <div class="text-[10px] ${isCustomSession ? 'text-indigo-500' : 'text-amber-500'} font-bold uppercase tracking-widest">
-                        ${isCustomSession ? '<i class="fas fa-users mr-1"></i> SESSÃO' : 'MUNDIAL'} • Dia ${dayDisplay}/${monthDisplay}/${yearDisplay}
+                    <div class="text-lg font-mono font-bold ${isCustomSession ? 'text-indigo-400' : 'text-white'} leading-none">${timeDisplay}</div>
+                    <div class="text-[9px] ${isCustomSession ? 'text-indigo-500' : 'text-amber-500'} font-bold uppercase tracking-widest mt-0.5">
+                        ${isCustomSession ? '<i class="fas fa-users"></i> SESSÃO' : 'MUNDIAL'} • ${dayDisplay}/${monthDisplay}/${yearDisplay}
                     </div>
                 </div>
-                <div class="h-8 w-[1px] bg-slate-700 mx-2"></div>
-                <div class="text-center">
-                    <div class="text-lg" title="${moon.name}"><i class="fas ${moon.icon}" style="color: ${moon.color}"></i></div>
-                    <div class="text-[9px] text-slate-400 uppercase font-bold">${seasonName}</div>
-                </div>
-            </div>
-
-            <div class="md:col-span-4">
-                <div class="flex items-center bg-slate-900/50 border ${isDanger ? 'world-danger-border border-red-500' : 'border-slate-600'} rounded-lg px-3 py-1 h-full">
-                    <i class="fas fa-map-marker-alt ${isDanger ? 'text-red-500 animate-bounce' : 'text-slate-400'} mr-3 text-lg"></i>
-                    <div class="flex-grow">
-                        <select onchange="window.updateHeaderLoc(this.value)" class="w-full bg-transparent text-white font-bold text-sm outline-none border-none cursor-pointer p-0">
-                            ${locations.map(loc => `<option value="${loc.id}" ${loc.id === activeLocId ? 'selected' : ''} class="bg-slate-800 text-white">${loc.name}</option>`).join('')}
-                        </select>
-                        <div class="text-[10px] text-slate-500 flex justify-between mt-0.5 font-mono">
-                            <span>X:${Math.round(location?.x || 0)} Y:${Math.round(location?.y || 0)}</span>
-                            <span>Pop: ${(location?.pop || 0).toLocaleString()}</span>
-                        </div>
-                    </div>
+                <div class="text-center ml-2">
+                    <div class="text-sm" title="${moon.name}"><i class="fas ${moon.icon}" style="color: ${moon.color}"></i></div>
+                    <div class="text-[8px] text-slate-400 uppercase font-bold">${seasonName}</div>
                 </div>
             </div>
 
-            <div class="md:col-span-5">
-                ${localEvents.length === 0 ? `
-                    <div class="world-stat-box justify-center bg-emerald-900/20 border-emerald-500/30 h-full">
-                        <i class="fas fa-sun text-emerald-400 text-lg"></i>
-                        <span class="text-emerald-200 text-xs font-bold ml-2">Céu Limpo.</span>
-                    </div>
-                ` : localEvents.map(ev => `
-                    <div class="world-stat-box bg-red-900/40 border-l-4 border-red-500 mb-1 last:mb-0">
-                        <i class="fas ${ev.icon === 'Droplets' ? 'fa-cloud-showers-heavy' : 'fa-exclamation-triangle'} text-red-400 text-lg"></i>
-                        <div class="flex-grow overflow-hidden ml-2 text-left">
-                            <div class="text-red-200 text-xs font-bold truncate">${ev.name}</div>
-                            <div class="text-red-400/80 text-[9px] truncate">Efeito Ativo no local.</div>
-                        </div>
-                    </div>
-                `).join('')}
+            <div class="flex items-center gap-2 bg-slate-900/50 border ${isDanger ? 'border-red-500' : 'border-slate-700'} rounded px-2 py-1">
+                <i class="fas fa-map-marker-alt ${isDanger ? 'text-red-500 animate-bounce' : 'text-slate-400'} text-xs"></i>
+                <select onchange="window.updateHeaderLoc(this.value)" class="bg-transparent text-white font-bold text-[11px] outline-none border-none cursor-pointer w-32 truncate">
+                    ${locations?.map(loc => `<option value="${loc.id}" ${loc.id === activeLocId ? 'selected' : ''} class="bg-slate-800">${loc.name}</option>`).join('') || '<option>Nenhum Local</option>'}
+                </select>
             </div>
         </div>
     `;
