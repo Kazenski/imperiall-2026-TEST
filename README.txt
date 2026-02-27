@@ -32,5 +32,4 @@ Aqui está a visão geral da nossa futura arquitetura:
    ┃ ┣ 📜 mapa.js             (Aba 16: Leaflet, Fog of War, Marcador do Grupo)
    ┃ ┗ 📜 arena.js            (Aba 17: Motor do Grid Hexagonal, Turnos, Magias em Área)
    ┃
-   ┗ 📜 main.js               (O Cérebro Central: Escuta o Login, Inicia os Caches, 
-                               Controla o Menu Superior, Relógio do Mundo e Troca as Abas)
+   ┗ 📜 main.js               (O Cérebro Central: Escuta o Login, Inicia os Caches, controla o Menu Superior, Relógio do Mundo e Troca as Abas)
