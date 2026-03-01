@@ -63,17 +63,17 @@ window.showTab = function(tabId) {
     const target = document.getElementById(`${tabId}-content`);
     if (target) target.classList.remove('hidden');
 
-    // Atualiza a cor visual na barra lateral
+    // Atualiza a cor visual na barra de ícones (Coluna 2)
     document.querySelectorAll('#sub-menu-bar button').forEach(btn => {
         if (btn.dataset.tabId) {
             if (btn.dataset.tabId === tabId) {
-                btn.classList.add('bg-slate-900', 'border-amber-500');
+                btn.classList.add('bg-slate-800', 'border-amber-500');
                 btn.classList.remove('border-transparent');
-                btn.querySelector('i')?.classList.replace('text-slate-500', 'text-amber-500');
+                btn.querySelector('i')?.classList.replace('text-slate-400', 'text-amber-500');
             } else {
-                btn.classList.remove('bg-slate-900', 'border-amber-500');
+                btn.classList.remove('bg-slate-800', 'border-amber-500');
                 btn.classList.add('border-transparent');
-                btn.querySelector('i')?.classList.replace('text-amber-500', 'text-slate-500');
+                btn.querySelector('i')?.classList.replace('text-amber-500', 'text-slate-400');
             }
         }
     });
@@ -143,14 +143,7 @@ const MASTER_ARCHITECTURE = {
     ],
     'Ao Jogador': [
         { id: 'blank', icon: 'fa-flask', label: 'Simular Ficha', render: () => window.renderBlankPage('Simular Ficha') },
-        { id: 'ficha-menu', icon: 'fa-id-card', label: 'Ficha de Personagem', render: () => {
-            populateSidebar(FICHA_TABS, true);
-            // Aguarda e clica na primeira aba (índice 1, pois o índice 0 é o Voltar)
-            setTimeout(() => {
-                const botoesSidebar = document.querySelectorAll('#sub-menu-bar button');
-                if(botoesSidebar[1]) botoesSidebar[1].click();
-            }, 10);
-        }},
+        { id: 'ficha-menu', icon: 'fa-id-card', label: 'Ficha de Personagem', render: () => window.openFichaPersonagemMenu() },
         { id: 'blank', icon: 'fa-images', label: 'Galeria de Imagens', render: () => window.renderBlankPage('Galeria de Imagens') }
     ],
     'Atualizações': [
@@ -178,18 +171,30 @@ const FICHA_TABS = [
     { id: 'arena-combate', icon: 'fa-chess-board', label: 'Arena de Combate', render: () => window.showTab('arena-combate') }
 ];
 
+window.openFichaPersonagemMenu = function() {
+    populateSidebar(FICHA_TABS, true);
+    setTimeout(() => {
+        const botoesSidebar = document.querySelectorAll('#sub-menu-bar button');
+        if(botoesSidebar[1]) botoesSidebar[1].click();
+    }, 10);
+};
+
 window.setMasterContext = function(menuName) {
-    document.querySelectorAll('#global-top-nav button').forEach(b => {
+    document.querySelectorAll('#global-top-nav button.master-nav-btn').forEach(b => {
         b.classList.toggle('border-amber-500', b.textContent.trim().startsWith(menuName));
         b.classList.toggle('text-amber-500', b.textContent.trim().startsWith(menuName));
-        b.classList.toggle('border-transparent', !b.textContent.trim().startsWith(menuName));
+        b.classList.toggle('bg-slate-800', !b.textContent.trim().startsWith(menuName));
+        b.classList.toggle('bg-amber-600', b.textContent.trim().startsWith(menuName));
+        b.classList.toggle('text-black', b.textContent.trim().startsWith(menuName));
         b.classList.toggle('text-slate-300', !b.textContent.trim().startsWith(menuName));
     });
 
     if (MASTER_ARCHITECTURE[menuName]) {
         populateSidebar(MASTER_ARCHITECTURE[menuName], false);
-        const firstBtn = document.querySelector('#sub-menu-bar button');
-        if (firstBtn) firstBtn.click();
+        setTimeout(() => {
+            const firstBtn = document.querySelector('#sub-menu-bar button');
+            if (firstBtn) firstBtn.click();
+        }, 10);
     }
 };
 
@@ -198,49 +203,45 @@ function populateSidebar(subAbaArray, isFichaMenu = false) {
     if(!sidebar) return;
     sidebar.innerHTML = '';
 
-    // Botão de Voltar (Sempre no topo da coluna fina)
     if (isFichaMenu) {
         const backBtn = document.createElement('button');
-        backBtn.className = "w-12 h-12 rounded-xl flex items-center justify-center bg-red-900/20 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-md group relative shrink-0";
+        backBtn.className = "w-11 h-11 rounded-lg flex items-center justify-center bg-red-900/20 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-md group relative shrink-0 border border-red-900/50 mb-2";
         backBtn.innerHTML = `
             <i class="fas fa-arrow-left text-lg"></i>
-            <div class="absolute left-16 bg-black border border-slate-700 text-white text-[10px] font-bold px-3 py-1.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 shadow-xl transition-opacity">Voltar ao Menu</div>
+            <div class="absolute left-[calc(100%+12px)] bg-slate-800 border border-red-500 text-red-400 text-[10px] font-bold px-3 py-1.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-[100] shadow-xl transition-all">Voltar ao Menu</div>
         `;
         backBtn.onclick = () => window.setMasterContext('Ao Jogador');
         sidebar.appendChild(backBtn);
         
-        // Linha divisória
         const div = document.createElement('div');
         div.className = "w-8 h-px bg-slate-700 my-1 shrink-0";
         sidebar.appendChild(div);
     }
 
-    // Botões das 16 Abas (Quadradinhos)
     subAbaArray.forEach(subAba => {
         const btn = document.createElement('button');
         btn.dataset.tabId = subAba.id; 
-        btn.className = "w-12 h-12 rounded-xl flex items-center justify-center text-slate-400 hover:text-amber-400 hover:bg-slate-800 transition-all border border-transparent group relative shrink-0";
+        btn.className = "w-11 h-11 rounded-lg flex items-center justify-center text-slate-400 hover:text-amber-400 hover:bg-slate-800 transition-all border border-transparent group relative shrink-0";
         btn.innerHTML = `
-            <i class="fas ${subAba.icon} text-lg transition-colors"></i>
-            <div class="absolute left-16 bg-amber-500 text-black font-bold uppercase tracking-widest text-[10px] px-3 py-1.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 shadow-xl transition-opacity">${subAba.label}</div>
+            <i class="fas ${subAba.icon} text-[1.1rem] transition-colors"></i>
+            <div class="absolute left-[calc(100%+12px)] bg-slate-800 border border-amber-500 text-amber-400 font-bold uppercase tracking-widest text-[10px] px-3 py-1.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-[100] shadow-xl transition-all">${subAba.label}</div>
         `;
 
         btn.onclick = () => {
-            // Limpa tela de vazio se tiver
             const defaultView = document.getElementById('default-view');
             if (defaultView) defaultView.classList.add('hidden');
 
-            // Remove classe ativa de todos (exceto o botão de voltar)
             document.querySelectorAll('#sub-menu-bar button').forEach(b => {
                 if(!b.classList.contains('text-red-500')) {
-                    b.classList.remove('bg-slate-800', 'border-amber-500', 'text-amber-500');
+                    b.classList.remove('bg-slate-800', 'border-amber-500', 'text-amber-500', 'shadow-md');
                     b.classList.add('text-slate-400', 'border-transparent');
+                    b.querySelector('i')?.classList.replace('text-amber-500', 'text-slate-400');
                 }
             });
             
-            // Adiciona classe ativa no clicado
-            btn.classList.add('bg-slate-800', 'border-amber-500', 'text-amber-500');
+            btn.classList.add('bg-slate-800', 'border-amber-500', 'text-amber-500', 'shadow-md');
             btn.classList.remove('text-slate-400', 'border-transparent');
+            btn.querySelector('i')?.classList.replace('text-slate-400', 'text-amber-500');
             
             subAba.render();
         };
@@ -248,22 +249,20 @@ function populateSidebar(subAbaArray, isFichaMenu = false) {
     });
 }
 
-// Vincula os cliques do menu superior do HTML à função de contexto
+// Vincula cliques no Menu Superior
 document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('#global-top-nav button').forEach(btn => {
-        if(btn.id !== 'btn-logout') {
-            btn.addEventListener('click', (e) => {
-                const text = e.target.textContent.trim();
-                let targetContext = 'Início';
-                if(text.includes('O Mundo')) targetContext = 'O Mundo';
-                if(text.includes('Manual')) targetContext = 'Manual e Regras';
-                if(text.includes('Ao Mestre')) targetContext = 'Ao Mestre';
-                if(text.includes('Ao Jogador')) targetContext = 'Ao Jogador';
-                if(text.includes('Atualizações')) targetContext = 'Atualizações';
-                
-                window.setMasterContext(targetContext);
-            });
-        }
+    document.querySelectorAll('.master-nav-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const text = e.target.textContent.trim();
+            let targetContext = 'Início';
+            if(text.includes('O Mundo')) targetContext = 'O Mundo';
+            if(text.includes('Manual')) targetContext = 'Manual e Regras';
+            if(text.includes('Mestre')) targetContext = 'Ao Mestre';
+            if(text.includes('Jogador')) targetContext = 'Ao Jogador';
+            if(text.includes('Atualizações')) targetContext = 'Atualizações';
+            
+            window.setMasterContext(targetContext);
+        });
     });
 });
 
@@ -283,12 +282,13 @@ onAuthStateChanged(auth, async (user) => {
         await preencherCacheTodosPersonagens();
         await carregarPersonagensNoSeletor(user);
         
+        window.renderSidebarDice(); // Renderiza os dados físicos na lateral
+
         if (typeof setupMochilaListeners === 'function') setupMochilaListeners();
         if (typeof setupConstelacaoListeners === 'function') setupConstelacaoListeners();
         if (typeof setupCraftingListeners === 'function') setupCraftingListeners();
         if (typeof setupExtracaoListeners === 'function') setupExtracaoListeners();
 
-        // Inicia na aba Ao Jogador
         window.setMasterContext('Ao Jogador');
         setTimeout(() => window.openFichaPersonagemMenu(), 200);
     } else {
@@ -305,9 +305,25 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 // --- ROLAGEM DE DADOS NA SIDEBAR LATERAL ---
+window.renderSidebarDice = function() {
+    const c = document.getElementById('sidebar-dice-area');
+    if(!c) return;
+    const dice = [
+        { id: 'd4', sides: 4, label: 'D4' },
+        { id: 'd6', sides: 6, label: 'D6' },
+        { id: 'd8', sides: 8, label: 'D8' },
+        { id: 'd10', sides: 10, label: 'D10' },
+        { id: 'd12', sides: 12, label: 'D12' },
+        { id: 'd20', sides: 20, label: 'D20' },
+        { id: 'd100', sides: 100, label: 'D100' },
+        { id: 'moeda', sides: 2, label: 'Moeda' }
+    ];
+    c.innerHTML = dice.map(d => `<button onclick="window.rollDiceSidebar('${d.id}', ${d.sides}, '${d.label}')" class="bg-slate-800 hover:bg-amber-600 border border-slate-700 hover:border-amber-500 text-slate-300 hover:text-black font-bold text-[9px] h-8 rounded transition-colors shadow flex items-center justify-center cursor-pointer">${d.label}</button>`).join('');
+};
+
 window.rollDiceSidebar = async function(id, sides, label) {
     const charId = globalState.selectedCharacterId;
-    if (!charId) return alert("Selecione um personagem primeiro!");
+    if (!charId) return alert("Selecione um personagem primeiro para rolar dados!");
 
     const result = id === 'moeda' ? (Math.random() < 0.5 ? 'Cara' : 'Coroa') : Math.floor(Math.random() * sides) + 1;
     const novoLog = { dado: label, valor: result, timestamp: Date.now() };
@@ -334,12 +350,12 @@ window.renderSidebarDiceLog = function() {
     const logs = globalState.selectedCharacterData?.ficha?.log_rolagens || [];
     
     if (logs.length === 0) {
-        container.innerHTML = '<div class="text-slate-600 italic text-center text-[9px] py-4">Nenhuma rolagem.</div>';
+        container.innerHTML = '<div class="text-slate-600 italic text-center text-[9px] py-6">Nenhuma rolagem feita ainda.</div>';
         return;
     }
     
     container.innerHTML = logs.slice(0, 15).map(log => `
-        <div class="flex justify-between items-center border-b border-slate-800 pb-1 mb-1">
+        <div class="flex justify-between items-center border-b border-slate-800/50 pb-1 mb-1">
             <span class="text-[8px] text-slate-500">${new Date(log.timestamp).toLocaleTimeString('pt-BR')}</span>
             <span class="text-slate-300 font-bold text-[9px]">${log.dado}</span>
             <span class="text-amber-400 font-black text-xs">${log.valor}</span>
@@ -347,9 +363,8 @@ window.renderSidebarDiceLog = function() {
     `).join('');
 };
 
-// --- GERENCIAMENTO DE CACHES ---
+// --- GERENCIAMENTO DE CACHES E ATUALIZAÇÃO LATERAL ---
 async function loadCache() {
-    console.log("Iniciando carregamento do cache...");
     ['players', 'mobs', 'personagens', 'all_personagens'].forEach(key => {
         if (!globalState.cache[key]) globalState.cache[key] = new Map();
         else globalState.cache[key].clear();
@@ -374,8 +389,6 @@ async function loadCache() {
 }
 
 async function preencherCachesEstaticos() {
-    console.log(">>> [DEBUG] Iniciando preenchimento de caches...");
-    
     const mapasNecessarios = [
         'profissoes', 'receitas', 'armasEspirituais', 'habilidadesEspirito',
         'pets', 'habilidadesPet', 'mobs', 'lojas', 'buildings', 'allies', 'allItems',
@@ -416,9 +429,7 @@ async function preencherCachesEstaticos() {
             const q = query(collection(db, item.nome));
             const snap = await getDocs(q);
             snap.forEach(d => item.mapa.set(d.id, {id: d.id, ...d.data()}));
-        } catch (e) {
-            console.error(`!!! ERRO ao carregar ${item.nome}:`, e);
-        }
+        } catch (e) { }
     }));
 
     if(globalState.cache.itens.size === 0) {
@@ -434,21 +445,14 @@ async function preencherCachesEstaticos() {
     }
     
     if (!globalState.cache.tabelaXpEspirito) {
-        try {
-            const d = await getDoc(doc(db, "rpg_tabelaXpEspirito", "padrao"));
-            if(d.exists()) globalState.cache.tabelaXpEspirito = d.data();
-        } catch(e) { }
+        try { const d = await getDoc(doc(db, "rpg_tabelaXpEspirito", "padrao")); if(d.exists()) globalState.cache.tabelaXpEspirito = d.data(); } catch(e) { }
     }
 
     if (!globalState.cache.tabelaXpPet) {
-        try {
-            const d = await getDoc(doc(db, "rpg_tabelaXpPet", "padrao"));
-            if(d.exists()) globalState.cache.tabelaXpPet = d.data();
-        } catch(e) { }
+        try { const d = await getDoc(doc(db, "rpg_tabelaXpPet", "padrao")); if(d.exists()) globalState.cache.tabelaXpPet = d.data(); } catch(e) { }
     }
     
     if (typeof renderSlotsEquipamento === 'function') renderSlotsEquipamento();
-    console.log(">>> [DEBUG] Caches preenchidos.");
 }
 
 async function preencherCacheTodosPersonagens() {
@@ -467,16 +471,12 @@ async function gatherAllCharacterData(charId) {
     if(!charFullData) throw new Error("Ficha não encontrada");
     
     data.ficha = charFullData;
-
     if(charFullData.racaId) data.raca = globalState.cache.racas.get(charFullData.racaId) || {};
     if(charFullData.classeId) data.classe = globalState.cache.classes.get(charFullData.classeId) || {};
     if(charFullData.subclasseId) data.subclasse = globalState.cache.subclasses.get(charFullData.subclasseId) || {};
 
     if(charFullData.classeId) {
-        try {
-            const snap = await getDoc(doc(db, "rpg_constelacoes_templates", charFullData.classeId));
-            if(snap.exists()) data.constellationTemplate = snap.data();
-        } catch(e) { }
+        try { const snap = await getDoc(doc(db, "rpg_constelacoes_templates", charFullData.classeId)); if(snap.exists()) data.constellationTemplate = snap.data(); } catch(e) { }
     }
 
     const equipMap = (charFullData.ficha && charFullData.ficha.equipamentos) ? charFullData.ficha.equipamentos : (charFullData.equipamentos || {});
@@ -485,7 +485,6 @@ async function gatherAllCharacterData(charId) {
         const item = globalState.cache.itens.get(id);
         if(item) {
             data.itensEquipados.push(item);
-            
             data.bonusItens.atk += Number(item.atk_base || 0);
             data.bonusItens.def += Number(item.def_base || 0);
             data.bonusItens.eva += Number(item.eva_base || 0);
@@ -566,7 +565,6 @@ function handleCharacterSelect(id) {
         document.querySelectorAll('.tab-content').forEach(c => {
             if (!c.classList.contains('hidden')) activeTab = c.id.replace('-content', '');
         });
-        
         if(activeTab === 'painel-fichas') renderPainelFichas();
         return;
     }
@@ -614,13 +612,7 @@ function handleCharacterSelect(id) {
 // --- BARRAS GLOBAIS DE STATUS (LATERAL) ---
 window.updateGlobalBars = function() {
     const charId = globalState.selectedCharacterId;
-    const containerHdr = document.getElementById('header-bars-container');
-    
-    if (!charId || !globalState.selectedCharacterData) {
-        if(containerHdr) containerHdr.classList.add('hidden');
-        return;
-    }
-    if(containerHdr) containerHdr.classList.remove('hidden');
+    if (!charId || !globalState.selectedCharacterData) return;
 
     const ficha = globalState.selectedCharacterData.ficha;
     const atributos = ficha.atributosBasePersonagem || {};
@@ -658,18 +650,6 @@ window.updateGlobalBars = function() {
     if (fomeAtual > fomeMax) fomeAtual = fomeMax;
 
     setWidth('bar-fome-fill', Math.max(0, Math.min(100, (fomeAtual / fomeMax) * 100)));
-    
-    const fomeText = document.getElementById('hdr-fome-text');
-    if (fomeText) {
-        fomeText.textContent = `${Math.floor(fomeAtual)}/${fomeMax}`;
-        if (fomeAtual < 50) {
-            fomeText.classList.replace('text-white', 'text-red-400');
-            fomeText.classList.add('animate-pulse');
-        } else {
-            fomeText.classList.replace('text-red-400', 'text-white');
-            fomeText.classList.remove('animate-pulse');
-        }
-    }
 };
 
 // --- GESTÃO DE SESSÕES ---
@@ -697,13 +677,9 @@ async function updateCharacterSessions(charId) {
 
         if (globalState.userSessions.length > 0) {
             if(container) container.classList.remove('hidden');
-            
             if(sessionSelect) {
                 sessionSelect.innerHTML = '<option value="world">🌍 Horário Mundial</option>';
-                globalState.userSessions.forEach(sess => {
-                    sessionSelect.add(new Option(`👥 ${sess.name}`, sess.id));
-                });
-
+                globalState.userSessions.forEach(sess => { sessionSelect.add(new Option(`👥 ${sess.name}`, sess.id)); });
                 sessionSelect.value = globalState.activeSessionId;
 
                 if (globalState.activeSessionId !== "world" && !globalState.userSessions.find(s => s.id === globalState.activeSessionId)) {
@@ -716,71 +692,49 @@ async function updateCharacterSessions(charId) {
             if(container) container.classList.add('hidden');
             globalState.activeSessionId = "world";
         }
-        
         renderHeaderWidget();
     });
 }
 
 document.addEventListener('change', (e) => {
     if(e.target && e.target.id === 'session-select') {
-        const charId = globalState.selectedCharacterId;
-        const selectedValue = e.target.value;
-        
-        globalState.activeSessionId = selectedValue;
-        if(charId) localStorage.setItem(`sessaoAtiva_${charId}`, selectedValue);
-        
+        globalState.activeSessionId = e.target.value;
+        if(globalState.selectedCharacterId) localStorage.setItem(`sessaoAtiva_${globalState.selectedCharacterId}`, e.target.value);
         renderHeaderWidget();
-        
         const arenaTab = document.getElementById('arena-combate-content');
-        if (arenaTab && !arenaTab.classList.contains('hidden') && arenaTab.style.display !== 'none') {
-            if (window.arena && window.arena.init) window.arena.init();
-        }
+        if (arenaTab && !arenaTab.classList.contains('hidden') && window.arena?.init) window.arena.init();
     }
 });
 
 // --- HEADER DO MUNDO ---
 window.getSessionTimeAndPeriod = function() {
     let w = globalState.world.data || { time: "12:00" };
-    
     if (globalState.activeSessionId && globalState.activeSessionId !== 'world') {
         const sess = globalState.userSessions.find(s => s.id === globalState.activeSessionId);
-        if (sess && sess.customTime) {
-            w = { time: sess.customTime };
-        }
+        if (sess && sess.customTime) w = { time: sess.customTime };
     }
-
     const time = w.time || "12:00";
     const h = parseInt(time.split(':')[0]);
-    
     let period = "Madrugada";
     if (h >= 6 && h < 12) period = "Manhã";
     else if (h >= 12 && h < 18) period = "Tarde";
     else if (h >= 18) period = "Noite";
-
     return { time, period };
 }
 
 function initWorldHeader() {
     onSnapshot(doc(db, 'rpg_world_state', 'main'), (snap) => {
-        if (snap.exists()) {
-            globalState.world.data = snap.data();
-            renderHeaderWidget();
-        }
+        if (snap.exists()) { globalState.world.data = snap.data(); renderHeaderWidget(); }
     });
-
     onSnapshot(query(collection(db, 'rpg_locations'), orderBy('name')), (snap) => {
         globalState.world.locations = snap.docs.map(d => ({id: d.id, ...d.data()}));
-        if (!globalState.world.selectedLocId && globalState.world.locations.length > 0) {
-            globalState.world.selectedLocId = globalState.world.locations[0].id;
-        }
+        if (!globalState.world.selectedLocId && globalState.world.locations.length > 0) globalState.world.selectedLocId = globalState.world.locations[0].id;
         renderHeaderWidget();
     });
-
     onSnapshot(collection(db, 'rpg_events'), (snap) => {
         globalState.world.events = snap.docs.map(d => ({id: d.id, ...d.data()}));
         renderHeaderWidget();
     });
-
     onSnapshot(collection(db, 'rpg_seasons'), (snap) => {
         globalState.world.seasons = snap.docs.map(d => ({id: d.id, ...d.data()}));
         renderHeaderWidget();
@@ -788,19 +742,22 @@ function initWorldHeader() {
 }
 
 function renderHeaderWidget() {
-    const w = globalState.world.data;
-    if (!w) return;
+    const container = document.getElementById('header-world-widget');
+    if (!container || !globalState.world.data) return;
 
+    const w = globalState.world.data;
     let timeDisplay = w.time || "12:00";
     let dayDisplay = w.day || "1";
     let monthDisplay = w.month || "1";
     let yearDisplay = w.year || "1000";
+    let isCustomSession = false;
 
     if (globalState.activeSessionId && globalState.activeSessionId !== "world") {
-        const session = globalState.userSessions.find(s => s.id === globalState.activeSessionId);
+        const session = globalState.userSessions?.find(s => s.id === globalState.activeSessionId);
         if (session) {
             timeDisplay = session.customTime || timeDisplay;
             dayDisplay = session.customDay || dayDisplay;
+            isCustomSession = true;
         }
     }
 
@@ -818,32 +775,22 @@ function renderHeaderWidget() {
     ];
     const totalDays = (Number(yearDisplay) * 360) + (Number(monthDisplay) * 30) + Number(dayDisplay);
     let moon = MOON_PHASES[Math.floor((totalDays % 28) / 3.5)] || MOON_PHASES[0];
+    const seasonName = globalState.world.seasons?.find(s => s.id === w.seasonId)?.name || "---";
 
-    const activeLocId = globalState.world.selectedLocId;
-    const location = globalState.world.locations?.find(l => l.id === activeLocId);
-    let weather = 'Céu Limpo';
-    let isDanger = false;
-
-    if (location && location.x !== undefined && location.y !== undefined) {
-        const localEvents = (globalState.world.events || []).filter(ev => {
-            const distance = Math.sqrt(Math.pow(Number(location.x) - Number(ev.x), 2) + Math.pow(Number(location.y) - Number(ev.y), 2));
-            return distance <= (ev.radius || 0);
-        });
-        if (localEvents.length > 0) {
-            weather = localEvents[0].name;
-            isDanger = true;
-        }
-    }
-
-    const tEl = document.getElementById('sidebar-world-time');
-    if(tEl) tEl.textContent = timeDisplay;
-    
-    const lEl = document.getElementById('sidebar-location');
-    if(lEl) lEl.textContent = location ? location.name : "Desconhecido";
-    
-    const wEl = document.getElementById('sidebar-weather');
-    if(wEl) {
-        wEl.textContent = weather;
-        wEl.className = `text-[9px] font-mono truncate block mt-0.5 ${isDanger ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`;
-    }
+    container.innerHTML = `
+        <div class="flex items-center gap-4 animate-fade-in">
+            <div class="text-right">
+                <div class="text-xl font-mono font-bold ${isCustomSession ? 'text-indigo-400' : 'text-white'} leading-none">${timeDisplay}</div>
+                <div class="text-[9px] ${isCustomSession ? 'text-indigo-500' : 'text-amber-500'} font-bold uppercase tracking-widest mt-1">
+                    ${isCustomSession ? '<i class="fas fa-users"></i> SESSÃO' : 'MUNDIAL'} • ${dayDisplay}/${monthDisplay}/${yearDisplay}
+                </div>
+            </div>
+            <div class="h-8 w-[1px] bg-slate-700"></div>
+            <div class="text-center w-16">
+                <div class="text-lg" title="${moon.name}"><i class="fas ${moon.icon}" style="color: ${moon.color}"></i></div>
+                <div class="text-[8px] text-slate-400 uppercase font-bold mt-1">${seasonName}</div>
+            </div>
+        </div>
+    `;
+    container.classList.remove('hidden');
 }
