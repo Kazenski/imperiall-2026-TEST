@@ -2,91 +2,100 @@ import { db, doc, runTransaction } from '../core/firebase.js';
 import { globalState, CURRENCY_ID, RESET_ID } from '../core/state.js';
 
 export function renderConstelacaoTab() {
-    const container = document.getElementById('constelacao-content');
-    if (!container) return;
+    try {
+        const container = document.getElementById('constelacao-content');
+        if (!container) return;
 
-    const data = globalState.selectedCharacterData;
-    if (!data || !data.ficha) {
-        container.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500 italic">Selecione um personagem primeiro.</div>';
-        return;
-    }
+        const data = globalState.selectedCharacterData;
+        if (!data || !data.ficha) {
+            container.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500 italic">Selecione um personagem primeiro.</div>';
+            return;
+        }
 
-    // Inicializa o estado de controle da câmera se não existir
-    if (!globalState.constelacao) {
-        globalState.constelacao = { transform: { x: 0, y: 0, scale: 1 }, isDragging: false, startPos: { x: 0, y: 0 } };
-    }
+        // Inicializa o estado de controle da câmera se não existir
+        if (!globalState.constelacao) {
+            globalState.constelacao = { transform: { x: 0, y: 0, scale: 1 }, isDragging: false, startPos: { x: 0, y: 0 } };
+        }
 
-    // 1. INJEÇÃO DO ESQUELETO DE 2 COLUNAS
-    if (!document.getElementById('constelacao-layout-wrapper')) {
-        container.innerHTML = `
-            <div id="constelacao-layout-wrapper" class="flex w-full h-full gap-6 animate-fade-in pb-4">
-                
-                <div class="flex-1 flex flex-col min-w-0 h-full relative">
+        // 1. INJEÇÃO DO ESQUELETO DE 2 COLUNAS
+        if (!document.getElementById('constelacao-layout-wrapper')) {
+            container.innerHTML = `
+                <div id="constelacao-layout-wrapper" class="flex w-full h-full gap-6 animate-fade-in pb-4">
                     
-                    <div class="flex justify-between items-center mb-4 shrink-0 z-10 relative">
-                        <h2 class="font-cinzel text-3xl text-amber-500 m-0"><i class="fas fa-star mr-3 text-slate-600"></i> Constelação</h2>
-                        <div class="flex gap-2">
-                            <button id="const-zoom-out" class="bg-slate-800 hover:bg-slate-700 text-slate-300 w-8 h-8 rounded border border-slate-600 shadow transition-colors"><i class="fas fa-search-minus"></i></button>
-                            <button id="const-zoom-in" class="bg-slate-800 hover:bg-slate-700 text-slate-300 w-8 h-8 rounded border border-slate-600 shadow transition-colors"><i class="fas fa-search-plus"></i></button>
+                    <div class="flex-1 flex flex-col min-w-0 h-full relative">
+                        
+                        <div class="flex justify-between items-center mb-4 shrink-0 z-10 relative">
+                            <h2 class="font-cinzel text-3xl text-amber-500 m-0"><i class="fas fa-star mr-3 text-slate-600"></i> Constelação</h2>
+                            <div class="flex gap-2">
+                                <button id="const-zoom-out" class="bg-slate-800 hover:bg-slate-700 text-slate-300 w-8 h-8 rounded border border-slate-600 shadow transition-colors flex items-center justify-center"><i class="fas fa-search-minus"></i></button>
+                                <button id="const-zoom-in" class="bg-slate-800 hover:bg-slate-700 text-slate-300 w-8 h-8 rounded border border-slate-600 shadow transition-colors flex items-center justify-center"><i class="fas fa-search-plus"></i></button>
+                            </div>
+                        </div>
+                        
+                        <div id="canvas-wrapper" class="flex-1 bg-[#020617] border border-slate-700 rounded-xl overflow-hidden relative shadow-inner cursor-grab select-none" style="background-image: radial-gradient(circle at center, #0f172a 0%, #020617 100%);">
+                            <div id="constellation-layer" class="absolute top-1/2 left-1/2 w-[800px] h-[800px] transform-gpu origin-center transition-transform duration-75" style="transform: translate(-50%, -50%) scale(1);">
+                                <svg id="connections-svg" class="w-full h-full absolute inset-0 pointer-events-none z-0"></svg>
+                                <div id="nodes-container" class="w-full h-full absolute inset-0 z-10"></div>
+                            </div>
+                            <div id="constellation-tooltip" class="absolute hidden bg-slate-900/95 backdrop-blur border border-amber-500/50 rounded-lg p-3 shadow-2xl z-50 pointer-events-none min-w-[200px] transition-opacity"></div>
                         </div>
                     </div>
-                    
-                    <div id="canvas-wrapper" class="flex-1 bg-[#020617] border border-slate-700 rounded-xl overflow-hidden relative shadow-inner cursor-grab select-none" style="background-image: radial-gradient(circle at center, #0f172a 0%, #020617 100%);">
-                        <div id="constellation-layer" class="absolute top-1/2 left-1/2 w-[800px] h-[800px] transform-gpu origin-center transition-transform duration-75" style="transform: translate(-50%, -50%) scale(1);">
-                            <svg id="connections-svg" class="w-full h-full absolute inset-0 pointer-events-none z-0"></svg>
-                            <div id="nodes-container" class="w-full h-full absolute inset-0 z-10"></div>
+
+                    <div class="w-80 shrink-0 flex flex-col h-full pt-12 gap-4">
+                        
+                        <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-2xl text-center flex flex-col items-center justify-center shrink-0 relative overflow-hidden">
+                            <div class="absolute -right-4 -bottom-4 text-7xl text-sky-500 opacity-5"><i class="fas fa-gem"></i></div>
+                            <div class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-1 relative z-10">Orbes de Poder</div>
+                            <div class="text-4xl font-bold font-cinzel text-sky-400 flex items-center justify-center gap-3 relative z-10">
+                                <i class="fas fa-gem text-sky-500/50 text-2xl"></i>
+                                <span id="const-currency-display" class="drop-shadow-md">0</span>
+                            </div>
                         </div>
-                        <div id="constellation-tooltip" class="absolute hidden bg-slate-900/95 backdrop-blur border border-amber-500/50 rounded-lg p-3 shadow-2xl z-50 pointer-events-none min-w-[200px] transition-opacity"></div>
+
+                        <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-2xl shrink-0">
+                            <div class="flex justify-between items-center mb-2">
+                                <h4 class="text-[10px] text-slate-400 uppercase tracking-widest font-bold"><i class="fas fa-chart-line mr-1 text-amber-500"></i> Despertar</h4>
+                                <span id="const-progress-text" class="text-amber-400 font-bold text-xs font-mono">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-700 shadow-inner">
+                                <div id="const-progress-bar" class="bg-gradient-to-r from-amber-600 to-amber-400 h-full transition-all duration-500 shadow-[0_0_10px_orange]" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col flex-1 min-h-0">
+                            <div class="p-3 border-b border-slate-700 shrink-0 bg-slate-900/30">
+                                <h4 class="text-[10px] text-slate-400 uppercase tracking-widest font-bold"><i class="fas fa-bolt mr-1 text-sky-400"></i> Efeitos Adquiridos</h4>
+                            </div>
+                            <div id="const-bonuses-list" class="flex-1 overflow-y-auto custom-scroll p-3 space-y-1.5 bg-slate-900/10"></div>
+                        </div>
+
+                        <button id="btn-const-reset" class="bg-red-900/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/50 py-3 rounded-xl text-[10px] uppercase font-bold tracking-widest transition-all shadow-md shrink-0">
+                            <i class="fas fa-undo-alt mr-1"></i> Resetar Constelação
+                        </button>
                     </div>
+
                 </div>
+            `;
+            
+            // Ativa as funções de mouse assim que criar o HTML
+            setupConstelacaoListeners();
+        }
 
-                <div class="w-80 shrink-0 flex flex-col h-full pt-12 gap-4">
-                    
-                    <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-2xl text-center flex flex-col items-center justify-center shrink-0 relative overflow-hidden">
-                        <div class="absolute -right-4 -bottom-4 text-7xl text-sky-500 opacity-5"><i class="fas fa-gem"></i></div>
-                        <div class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-1 relative z-10">Orbes de Poder</div>
-                        <div class="text-4xl font-bold font-cinzel text-sky-400 flex items-center justify-center gap-3 relative z-10">
-                            <i class="fas fa-gem text-sky-500/50 text-2xl"></i>
-                            <span id="const-currency-display" class="drop-shadow-md">0</span>
-                        </div>
-                    </div>
+        // 2. Atualizar Dados
+        const orbes = data.ficha.mochila?.[CURRENCY_ID] || 0;
+        const currencyDisplay = document.getElementById('const-currency-display');
+        if(currencyDisplay) currencyDisplay.textContent = orbes;
 
-                    <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-2xl shrink-0">
-                        <div class="flex justify-between items-center mb-2">
-                            <h4 class="text-[10px] text-slate-400 uppercase tracking-widest font-bold"><i class="fas fa-chart-line mr-1 text-amber-500"></i> Despertar</h4>
-                            <span id="const-progress-text" class="text-amber-400 font-bold text-xs font-mono">0%</span>
-                        </div>
-                        <div class="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-700 shadow-inner">
-                            <div id="const-progress-bar" class="bg-gradient-to-r from-amber-600 to-amber-400 h-full transition-all duration-500 shadow-[0_0_10px_orange]" style="width: 0%"></div>
-                        </div>
-                    </div>
+        renderConstellationBonuses(data);
+        renderConstellationCanvas(data);
 
-                    <div class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col flex-1 min-h-0">
-                        <div class="p-3 border-b border-slate-700 shrink-0 bg-slate-900/30">
-                            <h4 class="text-[10px] text-slate-400 uppercase tracking-widest font-bold"><i class="fas fa-bolt mr-1 text-sky-400"></i> Efeitos Adquiridos</h4>
-                        </div>
-                        <div id="const-bonuses-list" class="flex-1 overflow-y-auto custom-scroll p-3 space-y-1.5 bg-slate-900/10"></div>
-                    </div>
-
-                    <button id="btn-const-reset" class="bg-red-900/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/50 py-3 rounded-xl text-[10px] uppercase font-bold tracking-widest transition-all shadow-md shrink-0">
-                        <i class="fas fa-undo-alt mr-1"></i> Resetar Constelação
-                    </button>
-                </div>
-
-            </div>
-        `;
-        
-        // Ativa as funções de mouse assim que criar o HTML
-        setupConstelacaoListeners();
+    } catch (error) {
+        console.error("Erro na constelação:", error);
+        const container = document.getElementById('constelacao-content');
+        if (container) {
+            container.innerHTML = `<div class="flex h-full items-center justify-center text-red-500 italic p-6 text-center border border-red-900/50 bg-red-900/10 rounded-xl m-6">Erro ao renderizar constelação.<br><br>Detalhes: ${error.message}</div>`;
+        }
     }
-
-    // 2. Atualizar Dados
-    const orbes = data.ficha.mochila?.[CURRENCY_ID] || 0;
-    const currencyDisplay = document.getElementById('const-currency-display');
-    if(currencyDisplay) currencyDisplay.textContent = orbes;
-
-    renderConstellationBonuses(data);
-    renderConstellationCanvas(data);
 }
 
 function renderConstellationBonuses(data) {
@@ -96,7 +105,7 @@ function renderConstellationBonuses(data) {
 
     if (template && template.nodes) {
         template.nodes.forEach(n => {
-            if (unlocked.has(n.id) && n.data.bonuses) {
+            if (unlocked.has(n.id) && n.data && n.data.bonuses) {
                 for (let [k, v] of Object.entries(n.data.bonuses)) {
                     if (bonuses[k] !== undefined) bonuses[k] += v;
                     else bonuses[k] = v;
@@ -151,11 +160,12 @@ function renderConstellationCanvas(data) {
     }
 
     const unlockedIds = new Set(data.ficha.constelacao_unlocked || []);
-    const nodes = template.nodes;
+    const nodes = template.nodes || [];
     const drawn = new Set();
 
     // Desenhar Linhas (SVG)
     nodes.forEach(node => {
+        if (!node.connections) return;
         node.connections.forEach(targetId => {
             const key = [node.id, targetId].sort().join('-');
             if (drawn.has(key)) return;
@@ -168,7 +178,6 @@ function renderConstellationCanvas(data) {
                 line.setAttribute("x2", `${target.x}%`); 
                 line.setAttribute("y2", `${target.y}%`);
                 
-                // Estilo da Linha Tailwind inline
                 if (active) {
                     line.setAttribute("stroke", "#fbbf24");
                     line.setAttribute("stroke-width", "3");
@@ -189,14 +198,12 @@ function renderConstellationCanvas(data) {
     nodes.forEach(node => {
         const el = document.createElement('div');
         const isUnlocked = unlockedIds.has(node.id);
-        const isNeighbor = node.connections.some(id => unlockedIds.has(id));
+        const isNeighbor = node.connections && node.connections.some(id => unlockedIds.has(id));
         const isStart = (node.id === 0);
         const isAccessible = !isUnlocked && (isStart || isNeighbor);
         
-        // Resgata cor base ou usa o default azulzinho
-        let customColor = node.data.color || "#0ea5e9"; 
+        let customColor = (node.data && node.data.color) ? node.data.color : "#0ea5e9"; 
 
-        // Estilos baseados no estado (Substituindo o antigo CSS c-node puro por classes Tailwind complexas)
         let baseClasses = "absolute w-8 h-8 rounded-full flex items-center justify-center -translate-x-1/2 -translate-y-1/2 transition-all duration-300 z-10 border-2 font-bold text-[10px] select-none ";
 
         if (isUnlocked) {
@@ -207,17 +214,15 @@ function renderConstellationCanvas(data) {
             el.style.borderColor = customColor;
             el.style.color = customColor;
             el.style.boxShadow = `0 0 10px ${customColor}40`;
-            el.innerHTML = `<span>${node.data.cost}</span>`;
+            el.innerHTML = `<span>${node.data?.cost || 0}</span>`;
         } else {
             el.className = baseClasses + "bg-slate-950 border-slate-800 text-slate-700 opacity-60";
             el.innerHTML = '<i class="fas fa-lock text-[8px]"></i>';
         }
 
-        // Posicionamento percentual
         el.style.left = `${node.x}%`; 
         el.style.top = `${node.y}%`;
         
-        // Interações
         el.onmouseenter = (e) => showConstellationTooltip(e, node, isAccessible, isUnlocked);
         el.onmouseleave = () => {
             const tooltip = document.getElementById('constellation-tooltip');
@@ -248,7 +253,6 @@ function showConstellationTooltip(e, node, accessible, unlocked) {
 
     t.style.display = 'block';
     
-    // Calcula posição baseada no canvas wrapper para não vazar a tela
     const rect = wrapper.getBoundingClientRect();
     let x = e.clientX - rect.left + 20;
     let y = e.clientY - rect.top + 20;
@@ -257,7 +261,7 @@ function showConstellationTooltip(e, node, accessible, unlocked) {
     t.style.top = y + 'px';
 
     let bonusHtml = '';
-    if (node.data.bonuses) {
+    if (node.data && node.data.bonuses) {
         for (let [k, v] of Object.entries(node.data.bonuses)) {
             if (v !== 0) bonusHtml += `<div class="text-sky-400 text-[10px] font-bold font-mono">+${v} ${k.toUpperCase()}</div>`;
         }
@@ -265,10 +269,10 @@ function showConstellationTooltip(e, node, accessible, unlocked) {
     const status = unlocked ? '<span class="text-emerald-400">DESBLOQUEADO</span>' : (accessible ? '<span class="text-amber-400 animate-pulse">DISPONÍVEL</span>' : '<span class="text-slate-500">BLOQUEADO</span>');
     
     t.innerHTML = `
-        <h4 class="text-amber-400 font-cinzel text-xs font-bold border-b border-slate-700 pb-1.5 mb-2">${node.data.title}</h4>
+        <h4 class="text-amber-400 font-cinzel text-xs font-bold border-b border-slate-700 pb-1.5 mb-2">${node.data?.title || 'Nó Desconhecido'}</h4>
         <div class="mb-3 space-y-0.5">${bonusHtml || '<span class="text-slate-500 text-[9px] italic">Nenhum bônus de status</span>'}</div>
         <div class="flex justify-between items-center text-[10px] border-t border-slate-700 pt-2 gap-4">
-            <span class="text-slate-400 font-bold">Custo: <span class="text-sky-400">${node.data.cost} Orbes</span></span>
+            <span class="text-slate-400 font-bold">Custo: <span class="text-sky-400">${node.data?.cost || 0} Orbes</span></span>
             <span class="font-bold tracking-wider">${status}</span>
         </div>
     `;
@@ -277,11 +281,11 @@ function showConstellationTooltip(e, node, accessible, unlocked) {
 async function buyConstellationNode(node) {
     const charId = globalState.selectedCharacterId;
     const data = globalState.selectedCharacterData.ficha;
-    const cost = node.data.cost || 0;
+    const cost = (node.data && node.data.cost) ? node.data.cost : 0;
     const current = data.mochila?.[CURRENCY_ID] || 0;
 
     if (current < cost) return alert(`Orbes insuficientes.\n\nCusto: ${cost} Orbes\nVocê possui: ${current} Orbes`);
-    if (!confirm(`Despertar "${node.data.title}" requer ${cost} Orbes de Poder. Continuar?`)) return;
+    if (!confirm(`Despertar "${node.data?.title || 'este nó'}" requer ${cost} Orbes de Poder. Continuar?`)) return;
 
     try {
         await runTransaction(db, async (t) => {
@@ -305,6 +309,9 @@ async function buyConstellationNode(node) {
                 constelacao_unlocked: unlocked 
             });
         });
+        
+        renderConstelacaoTab(); // Atualiza a tela após comprar
+        
     } catch (e) {
         console.error(e);
         alert("Erro ao despertar estrela: " + (e.message || e));
@@ -315,13 +322,12 @@ export function setupConstelacaoListeners() {
     const canvasWrapper = document.getElementById('canvas-wrapper');
     if (!canvasWrapper) return;
     
-    // Previne múltiplos bounds
     canvasWrapper.onmousedown = null;
     window.onmousemove = null;
     window.onmouseup = null;
 
     canvasWrapper.onmousedown = (e) => {
-        if (e.target.closest('div.absolute.rounded-full')) return; // Não arrasta se clicou no nó
+        if (e.target.closest('div.absolute.rounded-full')) return;
         globalState.constelacao.isDragging = true;
         globalState.constelacao.startPos = { 
             x: e.clientX - globalState.constelacao.transform.x, 
@@ -344,20 +350,24 @@ export function setupConstelacaoListeners() {
     };
 
     document.getElementById('const-zoom-in')?.addEventListener('click', () => {
-        globalState.constelacao.transform.scale = Math.min(globalState.constelacao.transform.scale * 1.2, 3);
-        updateConstellationTransform();
+        if(globalState.constelacao) {
+            globalState.constelacao.transform.scale = Math.min(globalState.constelacao.transform.scale * 1.2, 3);
+            updateConstellationTransform();
+        }
     });
 
     document.getElementById('const-zoom-out')?.addEventListener('click', () => {
-        globalState.constelacao.transform.scale = Math.max(globalState.constelacao.transform.scale * 0.8, 0.4);
-        updateConstellationTransform();
+        if(globalState.constelacao) {
+            globalState.constelacao.transform.scale = Math.max(globalState.constelacao.transform.scale * 0.8, 0.4);
+            updateConstellationTransform();
+        }
     });
 
     document.getElementById('btn-const-reset')?.addEventListener('click', async () => {
         const charId = globalState.selectedCharacterId;
         const qtd = globalState.selectedCharacterData?.ficha?.mochila?.[RESET_ID] || 0;
         
-        if (qtd < 1) return alert("Você precisa do item Lágrima do Destino na mochila para resetar sua constelação.");
+        if (qtd < 1) return alert("Você precisa do item 'Lágrima do Destino' na mochila para resetar sua constelação.");
         if (!confirm("ATENÇÃO: Sua constelação será zerada! Os Orbes gastos NÃO serão devolvidos. Você usará 1 Lágrima do Destino. Continuar?")) return;
 
         try {
@@ -373,11 +383,12 @@ export function setupConstelacaoListeners() {
                 t.update(ref, { constelacao_unlocked: [], mochila: newMochila });
             });
             
-            // Centraliza a câmera e reset zoom
             globalState.constelacao.transform = { x: 0, y: 0, scale: 1 };
             updateConstellationTransform();
             
             alert("Constelação resetada com sucesso.");
+            renderConstelacaoTab();
+            
         } catch (e) {
             console.error(e);
             alert("Falha ao resetar constelação.");
