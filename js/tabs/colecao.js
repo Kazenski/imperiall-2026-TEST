@@ -4,9 +4,9 @@ import { escapeHTML } from '../core/utils.js';
 
 // 1. Controle das Sub-Abas do Diário
 window.switchCollectionTab = function(tabId) {
-    if (!globalState.collectionUI) globalState.collectionUI = { activeTab: 'crafts', selectedItem: null };
+    if (!globalState.collectionUI) globalState.collectionUI = { activeTab: 'crafts' };
+    
     globalState.collectionUI.activeTab = tabId;
-    globalState.collectionUI.selectedItem = null; 
     window.renderCollectionTab(); 
 };
 
@@ -17,86 +17,76 @@ export function renderCollectionTab() {
     
     const charData = globalState.selectedCharacterData;
     if (!charData) {
-        container.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500 italic">Selecione um personagem primeiro.</div>';
+        container.innerHTML = '<p class="text-center text-slate-500 mt-10">Selecione um personagem.</p>';
         return;
     }
 
-    if (!globalState.collectionUI) globalState.collectionUI = { activeTab: 'crafts', selectedItem: null };
+    if (!globalState.collectionUI) globalState.collectionUI = { activeTab: 'crafts' };
     const active = globalState.collectionUI.activeTab;
 
-    // 1. INJEÇÃO DO ESQUELETO DE 2 COLUNAS
-    if (!document.getElementById('collection-layout-wrapper')) {
-        container.innerHTML = `
-            <div id="collection-layout-wrapper" class="flex w-full h-full gap-6 animate-fade-in pb-4">
-                
-                <div class="flex-1 flex flex-col min-w-0 h-full">
-                    
-                    <div class="flex justify-between items-center mb-4 shrink-0">
-                        <div>
-                            <h2 class="font-cinzel text-3xl text-amber-500 m-0"><i class="fas fa-book-atlas mr-3 text-slate-600"></i> Enciclopédia & Coleções</h2>
-                            <p class="text-xs text-slate-400 mt-1">Seu diário pessoal de conquistas, mapas e bestiário.</p>
-                        </div>
-                    </div>
-
-                    <div class="flex gap-2 overflow-x-auto hide-scroll pb-2 mb-2 border-b border-slate-700 shrink-0" id="collection-nav-tabs">
-                        </div>
-
-                    <div class="flex-1 overflow-y-auto custom-scroll bg-slate-900/50 border border-slate-700 rounded-xl p-4 shadow-inner relative">
-                        <div id="collection-grid-container" class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 content-start"></div>
-                    </div>
-                </div>
-
-                <div class="w-80 md:w-96 shrink-0 flex flex-col h-full pt-16 gap-4">
-                    
-                    <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-xl shrink-0" id="collection-progress-panel">
-                        </div>
-
-                    <div class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col flex-1 min-h-0 relative overflow-hidden" id="collection-inspect-panel">
-                        </div>
-                </div>
-
+    let html = `
+        <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-2 relative z-20">
+            <div>
+                <h2 class="font-cinzel text-2xl text-amber-500 m-0 border-none p-0">Enciclopédia & Coleções</h2>
+                <p class="text-xs text-slate-400">Seu diário pessoal de conquistas, mapas e bestiário.</p>
             </div>
-        `;
-    }
+        </div>
 
-    // 2. Renderizar os Botões de Abas
-    const navTabs = document.getElementById('collection-nav-tabs');
-    if (navTabs) {
-        const getTabClass = (id) => active === id 
-            ? 'bg-sky-600 text-white font-bold border-sky-500 shadow-[0_0_10px_rgba(2,132,199,0.5)]' 
-            : 'bg-slate-900 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200';
+        <div class="sub-nav-container mb-6 overflow-x-auto pb-0">
+            <button class="sub-tab-btn ${active === 'crafts' ? 'active' : ''}" onclick="window.switchCollectionTab('crafts')"><i class="fas fa-hammer mr-2"></i>Crafts Feitos</button>
+            <button class="sub-tab-btn ${active === 'players' ? 'active' : ''}" onclick="window.switchCollectionTab('players')"><i class="fas fa-users mr-2"></i>Aventureiros</button>
+            <button class="sub-tab-btn ${active === 'npcs' ? 'active' : ''}" onclick="window.switchCollectionTab('npcs')"><i class="fas fa-user-tie mr-2"></i>Personagens (NPCs)</button>
+            <button class="sub-tab-btn ${active === 'monsters' ? 'active' : ''}" onclick="window.switchCollectionTab('monsters')"><i class="fas fa-dragon mr-2"></i>Bestiário</button>
+            <button class="sub-tab-btn ${active === 'cities' ? 'active' : ''}" onclick="window.switchCollectionTab('cities')"><i class="fas fa-city mr-2"></i>Locais Descobertos</button>
+        </div>
 
-        navTabs.innerHTML = `
-            <button onclick="window.switchCollectionTab('crafts')" class="px-4 py-2 rounded-lg border text-[10px] uppercase tracking-wider transition-all whitespace-nowrap ${getTabClass('crafts')}"><i class="fas fa-hammer mr-1"></i> Crafts Feitos</button>
-            <button onclick="window.switchCollectionTab('players')" class="px-4 py-2 rounded-lg border text-[10px] uppercase tracking-wider transition-all whitespace-nowrap ${getTabClass('players')}"><i class="fas fa-users mr-1"></i> Aventureiros</button>
-            <button onclick="window.switchCollectionTab('npcs')" class="px-4 py-2 rounded-lg border text-[10px] uppercase tracking-wider transition-all whitespace-nowrap ${getTabClass('npcs')}"><i class="fas fa-user-tie mr-1"></i> NPCs</button>
-            <button onclick="window.switchCollectionTab('monsters')" class="px-4 py-2 rounded-lg border text-[10px] uppercase tracking-wider transition-all whitespace-nowrap ${getTabClass('monsters')}"><i class="fas fa-dragon mr-1"></i> Bestiário</button>
-            <button onclick="window.switchCollectionTab('cities')" class="px-4 py-2 rounded-lg border text-[10px] uppercase tracking-wider transition-all whitespace-nowrap ${getTabClass('cities')}"><i class="fas fa-city mr-1"></i> Locais</button>
-        `;
-    }
+        <div id="collection-dynamic-content" class="min-h-[500px]">
+        </div>
+    `;
 
-    // 3. Renderizar o Conteúdo da Aba Ativa
-    const gridContainer = document.getElementById('collection-grid-container');
-    if (active === 'crafts') renderCollectionCrafts(gridContainer, charData);
-    else if (active === 'players') renderCollectionEntities(gridContainer, charData, 'colecao_jogadores', 'Aventureiros');
-    else if (active === 'npcs') renderCollectionEntities(gridContainer, charData, 'colecao_npcs', 'NPCs');
-    else if (active === 'monsters') renderCollectionEntities(gridContainer, charData, 'colecao_monstros', 'Bestiário');
-    else if (active === 'cities') renderCollectionCities(gridContainer, charData);
+    container.innerHTML = html;
+    const dynContainer = document.getElementById('collection-dynamic-content');
 
-    // Atualiza Painel Direito
-    renderCollectionRightPanel(charData);
+    // Distribuidor de Telas
+    if (active === 'crafts') renderCollectionCrafts(dynContainer, charData);
+    else if (active === 'players') renderCollectionEntities(dynContainer, charData, 'colecao_jogadores', 'Aventureiros Conhecidos');
+    else if (active === 'npcs') renderCollectionEntities(dynContainer, charData, 'colecao_npcs', 'Habitantes do Mundo');
+    else if (active === 'monsters') renderCollectionEntities(dynContainer, charData, 'colecao_monstros', 'Bestiário de Combate');
+    else if (active === 'cities') renderCollectionCities(dynContainer, charData);
 }
 window.renderCollectionTab = renderCollectionTab;
 
-// ----------------------------------------------------
-// GERADORES DE GRID POR CATEGORIA
-// ----------------------------------------------------
+// 3. Tela de Crafts (Expandível/Sanfona Mantido)
+function renderCollectionCrafts(container, charData) {
+    container.innerHTML = `
+        <div class="bg-slate-900/50 p-6 rounded-lg border border-slate-700">
+            <div class="text-center mb-8">
+                <p class="text-slate-400 text-sm">Registre seus feitos artesanais. Itens criados pela primeira vez concedem recompensas.</p>
+            </div>
+            <div id="collection-grid-container" class="space-y-8"></div>
+            <div class="mt-10 p-4 bg-slate-800 rounded-lg border border-slate-600 flex flex-col md:flex-row justify-between items-center gap-4 shadow-lg">
+                <div class="text-left space-y-1">
+                    <h4 class="text-amber-400 font-bold uppercase text-xs tracking-widest"><i class="fas fa-gift mr-2"></i>Recompensas de Maestria</h4>
+                    <p class="text-slate-300 text-xs">a. Crafte um item inédito para liberar o resgate.</p>
+                    <p class="text-emerald-400 text-xs font-bold">b. Cada resgate concede +200 XP imediato.</p>
+                    <p class="text-sky-400 text-xs font-bold">c. A cada 5 resgates, ganhe +20 AP (Permanente).</p>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs text-slate-500 uppercase font-bold mb-1">Total Resgatado</div>
+                    <div id="collection-total-count" class="text-4xl font-cinzel text-white font-bold">0</div>
+                </div>
+            </div>
+        </div>
+    `;
 
-function renderCollectionCrafts(gridContainer, charData) {
-    gridContainer.innerHTML = '';
-    const progresso = charData.ficha.livro_receitas || {};
-    const recipesByProf = {};
+    const gridContainer = document.getElementById('collection-grid-container');
+    const totalDisplay = document.getElementById('collection-total-count');
     
+    const progresso = charData.ficha.livro_receitas || {};
+    const totalResgatados = Object.values(progresso).filter(p => p.resgatado).length;
+    totalDisplay.textContent = totalResgatados;
+
+    const recipesByProf = {};
     globalState.cache.receitas.forEach(rec => {
         const profId = rec.profissaoId || 'geral'; 
         if (!recipesByProf[profId]) recipesByProf[profId] = [];
@@ -108,60 +98,119 @@ function renderCollectionCrafts(gridContainer, charData) {
         const profInfo = globalState.cache.profissoes.get(profId);
         const profName = profInfo ? profInfo.nome : (profId === 'geral' ? 'Geral' : profId);
         
-        const header = document.createElement('div');
-        header.className = "col-span-full text-amber-500 font-cinzel font-bold text-lg border-b border-slate-700 pb-1 mt-4 mb-2 flex items-center";
-        header.innerHTML = `<i class="fas fa-book text-slate-500 mr-2 text-sm"></i> ${profName}`;
-        gridContainer.appendChild(header);
+        const totalProf = recipes.length;
+        const unlockedProf = recipes.filter(r => progresso[r.id]?.resgatado).length;
+        const pct = Math.floor((unlockedProf / totalProf) * 100);
+        
+        const pctColor = pct === 100 ? 'text-emerald-400' : 'text-amber-400';
+
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'collection-group';
+
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'collection-header-accordion';
+        headerDiv.innerHTML = `
+            <div class="flex items-center gap-3">
+                <i class="fas fa-book text-slate-500"></i>
+                <span class="text-slate-200 font-bold uppercase text-sm tracking-wide">${profName}</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="text-xs font-mono font-bold ${pctColor}">${pct}% Completo</span>
+                <i class="fas fa-chevron-down collection-arrow"></i>
+            </div>
+        `;
+
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'collection-content-accordion collection-grid';
+        contentDiv.style.gridTemplateColumns = "repeat(auto-fill, minmax(70px, 1fr))";
+        contentDiv.style.gap = "0.75rem";
 
         recipes.forEach(rec => {
             const itemInfo = globalState.cache.itens.get(rec.itemId);
             const status = progresso[rec.id] || { craftado: false, resgatado: false };
             
-            const isKnown = status.craftado;
-            const isClaimed = status.resgatado;
-            const canClaim = isKnown && !isClaimed;
+            const slot = document.createElement('div');
+            let classes = 'collection-slot';
+            let tooltip = 'Não descoberto';
 
-            const slot = buildSlotElement(
-                rec.id, 
-                itemInfo?.imagemUrl || PLACEHOLDER_IMAGE_URL, 
-                rec.nome, 
-                isKnown, isClaimed, canClaim, 
-                () => window.selectCollectionItem('crafts', rec, itemInfo, isKnown, isClaimed, canClaim)
-            );
-            gridContainer.appendChild(slot);
+            if (status.resgatado) {
+                classes += ' collected';
+                tooltip = 'Resgatado';
+            } else if (status.craftado) {
+                classes += ' claimable';
+                tooltip = 'CLIQUE PARA RESGATAR!';
+                slot.onclick = (e) => {
+                    e.stopPropagation(); 
+                    window.claimReward(rec.id, rec.nome);
+                };
+            }
+
+            slot.className = classes;
+            slot.title = `${rec.nome}\n(${tooltip})`;
+            slot.innerHTML = `<img src="${itemInfo?.imagemUrl || PLACEHOLDER_IMAGE_URL}">`;
+            contentDiv.appendChild(slot);
         });
+
+        headerDiv.addEventListener('click', () => {
+            const isClosed = !contentDiv.classList.contains('show');
+            if (isClosed) {
+                contentDiv.classList.add('show');
+                headerDiv.classList.add('active');
+            } else {
+                contentDiv.classList.remove('show');
+                headerDiv.classList.remove('active');
+            }
+        });
+
+        groupDiv.appendChild(headerDiv);
+        groupDiv.appendChild(contentDiv);
+        gridContainer.appendChild(groupDiv);
     });
 }
 
-function renderCollectionEntities(gridContainer, charData, collectionKey, title) {
-    gridContainer.innerHTML = '';
+// 4. Tela de Entidades (Filtragem Melhorada para NPCs vs Monstros)
+function renderCollectionEntities(container, charData, collectionKey, title) {
     const colecao = charData.ficha[collectionKey] || {};
     const knownIds = Object.keys(colecao);
     
     let allEntities = [];
-    
     if (collectionKey === 'colecao_jogadores') {
         const cacheToUse = globalState.cache.players || new Map();
         knownIds.forEach(id => { const p = cacheToUse.get(id); if(p) allEntities.push(p); });
     } 
     else if (collectionKey === 'colecao_npcs') {
-        // Busca apenas no cache de NPCs
         const cacheNpcs = globalState.cache.npcs || new Map();
         cacheNpcs.forEach(n => allEntities.push(n));
         
-        // Fallback: se algum ficou preso no cache de mobs com a collection certa
         const cacheMobs = globalState.cache.mobs || new Map();
         cacheMobs.forEach(m => {
-            if (m.collection === 'rpg_Npcs' && !allEntities.some(e => e.id === m.id)) {
+            const mTipo = String(m.tipo || '').toLowerCase().trim();
+            const mCat = String(m.categoria || '').toLowerCase().trim();
+            const mType = String(m.type || '').toLowerCase().trim();
+
+            const isNpc = mType === 'npc' || 
+                          m.collection === 'rpg_Npcs' || 
+                          mTipo === 'npc' || mTipo === 'personagem' || 
+                          mCat === 'npc' || mCat === 'personagem';
+
+            if (isNpc && !allEntities.some(e => e.id === m.id)) {
                 allEntities.push(m);
             }
         });
     } 
     else if (collectionKey === 'colecao_monstros') {
-        // Busca apenas no cache de Monstros
         const cacheMobs = globalState.cache.mobs || new Map();
         cacheMobs.forEach(m => {
-            if (m.collection !== 'rpg_Npcs') {
+            const mTipo = String(m.tipo || '').toLowerCase().trim();
+            const mCat = String(m.categoria || '').toLowerCase().trim();
+            const mType = String(m.type || '').toLowerCase().trim();
+
+            const isNpc = mType === 'npc' || 
+                          m.collection === 'rpg_Npcs' || 
+                          mTipo === 'npc' || mTipo === 'personagem' || 
+                          mCat === 'npc' || mCat === 'personagem';
+
+            if (!isNpc) {
                 allEntities.push(m);
             }
         });
@@ -170,9 +219,33 @@ function renderCollectionEntities(gridContainer, charData, collectionKey, title)
     allEntities.sort((a,b) => (a.nome || '').localeCompare(b.nome || ''));
 
     if (allEntities.length === 0) {
-        gridContainer.innerHTML = `<div class="col-span-full text-slate-500 text-center py-10 italic">Nenhum registro encontrado no banco de dados para esta categoria.</div>`;
+        container.innerHTML = `<p class="text-slate-500 text-center py-10 italic">Nenhum registro encontrado nesta categoria.</p>`;
         return;
     }
+
+    const total = allEntities.length;
+    const discovered = collectionKey === 'colecao_jogadores' ? total : allEntities.filter(e => knownIds.includes(e.id)).length;
+    const totalClaimed = allEntities.filter(e => typeof colecao[e.id] === 'object' && colecao[e.id].resgatado).length;
+    const pct = total > 0 ? Math.floor((discovered / total) * 100) : 0;
+
+    let rewardText = "";
+    if (collectionKey === 'colecao_jogadores') rewardText = "<p class='text-emerald-400 text-xs font-bold'>b. +20 EXP e +2 Reputação por aventureiro.</p>";
+    else if (collectionKey === 'colecao_npcs') rewardText = "<p class='text-amber-400 text-xs font-bold'>b. +5 de Reputação por NPC.</p>";
+    else if (collectionKey === 'colecao_monstros') rewardText = "<p class='text-rose-400 text-xs font-bold'>b. +25 EXP e +1 AP por monstro.</p>";
+
+    let html = `
+        <div class="bg-slate-900/50 p-6 rounded-lg border border-slate-700">
+            <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
+                <div>
+                    <h3 class="text-xl font-cinzel text-amber-400">${title}</h3>
+                    <p class="text-xs text-slate-400">Progresso de Descoberta: <span class="text-white font-bold">${discovered} / ${total}</span></p>
+                </div>
+                <div class="w-1/3 h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                    <div class="h-full bg-amber-500 transition-all duration-1000" style="width: ${pct}%"></div>
+                </div>
+            </div>
+            <div class="collection-grid" style="grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 1rem;">
+    `;
 
     allEntities.forEach(ent => {
         const status = colecao[ent.id];
@@ -183,27 +256,81 @@ function renderCollectionEntities(gridContainer, charData, collectionKey, title)
         const img = ent.imageUrls?.imagem1 || ent.imagemUrl || PLACEHOLDER_IMAGE_URL;
         const name = ent.nome || 'Desconhecido';
 
-        const slot = buildSlotElement(
-            ent.id, img, name, 
-            isKnown, isClaimed, canClaim,
-            () => window.selectCollectionItem(collectionKey, ent, ent, isKnown, isClaimed, canClaim)
-        );
-        gridContainer.appendChild(slot);
+        let classes = 'collection-slot relative group';
+        let tooltip = isKnown ? (isClaimed ? 'Resgatado' : 'CLIQUE PARA RESGATAR!') : 'Não Encontrado';
+        let clickAttr = '';
+
+        if (isClaimed) {
+            classes += ' collected';
+        } else if (canClaim) {
+            classes += ' claimable';
+            clickAttr = `onclick="window.claimCollectionReward('${collectionKey}', '${ent.id}', '${escapeHTML(name)}')"`;
+        }
+
+        html += `
+            <div>
+                <div class="${classes}" title="${name}\n(${tooltip})" ${clickAttr}>
+                    <img src="${img}">
+                    ${!isKnown ? '<i class="fas fa-question text-3xl text-slate-700 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 drop-shadow-md"></i>' : ''}
+                </div>
+                <div class="mt-2 text-center">
+                    <div class="text-[10px] font-bold ${isKnown ? 'text-slate-200' : 'text-slate-600'} truncate" title="${name}">${isKnown ? name : '???'}</div>
+                </div>
+            </div>
+        `;
     });
+
+    html += `
+            </div>
+            
+            <div class="mt-10 p-4 bg-slate-800 rounded-lg border border-slate-600 flex flex-col md:flex-row justify-between items-center gap-4 shadow-lg">
+                <div class="text-left space-y-1">
+                    <h4 class="text-amber-400 font-bold uppercase text-xs tracking-widest"><i class="fas fa-gift mr-2"></i>Recompensas de Exploração</h4>
+                    <p class="text-slate-300 text-xs">a. Encontre pelo mundo (Arena) para liberar o resgate.</p>
+                    ${rewardText}
+                </div>
+                <div class="text-right">
+                    <div class="text-xs text-slate-500 uppercase font-bold mb-1">Total Resgatado</div>
+                    <div class="text-4xl font-cinzel text-white font-bold">${totalClaimed}</div>
+                </div>
+            </div>
+        </div>
+    `;
+    container.innerHTML = html;
 }
 
-function renderCollectionCities(gridContainer, charData) {
-    gridContainer.innerHTML = '';
+// 5. Tela de Cidades (Exploração)
+function renderCollectionCities(container, charData) {
     const collectionKey = 'colecao_cidades';
     const colecao = charData.ficha[collectionKey] || {};
+    const knownIds = Object.keys(colecao);
     const allLocations = globalState.world.locations || [];
     
     allLocations.sort((a,b) => (a.name || '').localeCompare(b.name || ''));
 
     if (allLocations.length === 0) {
-        gridContainer.innerHTML = `<div class="col-span-full text-slate-500 text-center py-10 italic">Nenhum local cadastrado no mundo.</div>`;
+        container.innerHTML = `<p class="text-slate-500 text-center py-10 italic">Nenhum local cadastrado no mundo.</p>`;
         return;
     }
+
+    const total = allLocations.length;
+    const discovered = allLocations.filter(e => knownIds.includes(e.id)).length;
+    const totalClaimed = allLocations.filter(e => typeof colecao[e.id] === 'object' && colecao[e.id].resgatado).length;
+    const pct = total > 0 ? Math.floor((discovered / total) * 100) : 0;
+
+    let html = `
+        <div class="bg-slate-900/50 p-6 rounded-lg border border-slate-700">
+            <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
+                <div>
+                    <h3 class="text-xl font-cinzel text-sky-400">Cartografia & Locais</h3>
+                    <p class="text-xs text-slate-400">Progresso de Exploração: <span class="text-white font-bold">${discovered} / ${total}</span></p>
+                </div>
+                <div class="w-1/3 h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                    <div class="h-full bg-sky-500 transition-all duration-1000" style="width: ${pct}%"></div>
+                </div>
+            </div>
+            <div class="collection-grid" style="grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 1rem;">
+    `;
 
     allLocations.forEach(loc => {
         const status = colecao[loc.id];
@@ -214,222 +341,50 @@ function renderCollectionCities(gridContainer, charData) {
         const name = loc.name || 'Local Desconhecido';
         const img = loc.imagemUrl || PLACEHOLDER_IMAGE_URL;
 
-        const slot = buildSlotElement(
-            loc.id, img, name, 
-            isKnown, isClaimed, canClaim,
-            () => window.selectCollectionItem(collectionKey, loc, loc, isKnown, isClaimed, canClaim)
-        );
-        gridContainer.appendChild(slot);
-    });
-}
+        let classes = 'collection-slot relative group';
+        let tooltip = isKnown ? (isClaimed ? 'Resgatado' : 'CLIQUE PARA RESGATAR!') : 'Não Encontrado';
+        let clickAttr = '';
 
-function buildSlotElement(id, imgUrl, name, isKnown, isClaimed, canClaim, onClickCallback) {
-    const el = document.createElement('div');
-    
-    let borderClass = 'border-slate-800 opacity-40 grayscale hover:opacity-70 hover:grayscale-0'; 
-    let iconHtml = '<i class="fas fa-question absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-2xl text-slate-700 drop-shadow-md z-10"></i>';
-    let badgeHtml = '';
-
-    if (isClaimed) {
-        borderClass = 'border-slate-600 opacity-100';
-        iconHtml = '';
-        badgeHtml = '<div class="absolute top-1 right-1 bg-black/80 text-emerald-500 rounded-full w-5 h-5 flex items-center justify-center border border-slate-700 z-10 shadow"><i class="fas fa-check text-[10px]"></i></div>';
-    } else if (canClaim) {
-        borderClass = 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.5)] ring-1 ring-amber-500/50 opacity-100 animate-pulse';
-        iconHtml = '';
-        badgeHtml = '<div class="absolute top-1 right-1 bg-amber-500 text-black rounded-full w-5 h-5 flex items-center justify-center z-10 shadow border border-amber-300"><i class="fas fa-exclamation text-[10px] font-bold"></i></div>';
-    }
-
-    const isSelected = globalState.collectionUI?.selectedItem?.id === id;
-    if (isSelected) {
-        borderClass = borderClass.replace('border-slate-800', 'border-sky-400 ring-2 ring-sky-400 shadow-[0_0_20px_rgba(56,189,248,0.5)]');
-        borderClass = borderClass.replace('border-slate-600', 'border-sky-400 ring-2 ring-sky-400 shadow-[0_0_20px_rgba(56,189,248,0.5)]');
-    }
-
-    el.className = `flex flex-col items-center cursor-pointer group hover:-translate-y-1 transition-transform`;
-    el.onclick = onClickCallback;
-
-    el.innerHTML = `
-        <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-black border-2 ${borderClass} overflow-hidden relative transition-all">
-            <img src="${imgUrl}" class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity">
-            ${iconHtml}
-            ${badgeHtml}
-        </div>
-        <div class="text-[9px] sm:text-[10px] mt-2 font-bold text-center w-full truncate ${isKnown ? 'text-slate-300 group-hover:text-sky-400' : 'text-slate-600'}">
-            ${isKnown ? name : '???'}
-        </div>
-    `;
-    return el;
-}
-
-// ----------------------------------------------------
-// PAINEL FIXO DA DIREITA (INSPEÇÃO E PROGRESSO)
-// ----------------------------------------------------
-
-window.selectCollectionItem = function(category, mainObj, infoObj, isKnown, isClaimed, canClaim) {
-    globalState.collectionUI.selectedItem = {
-        id: mainObj.id,
-        category: category,
-        mainObj: mainObj,
-        infoObj: infoObj,
-        isKnown: isKnown,
-        isClaimed: isClaimed,
-        canClaim: canClaim
-    };
-    renderCollectionTab(); // Re-renderiza para atualizar seleções
-};
-
-function renderCollectionRightPanel(charData) {
-    const progPanel = document.getElementById('collection-progress-panel');
-    const inspectPanel = document.getElementById('collection-inspect-panel');
-    const active = globalState.collectionUI.activeTab;
-    const selected = globalState.collectionUI.selectedItem;
-
-    if (!progPanel || !inspectPanel) return;
-
-    let total = 0, discovered = 0, claimed = 0;
-    let rewardHint = "";
-
-    if (active === 'crafts') {
-        const progresso = charData.ficha.livro_receitas || {};
-        total = globalState.cache.receitas.size;
-        discovered = Object.values(progresso).filter(p => p.craftado).length;
-        claimed = Object.values(progresso).filter(p => p.resgatado).length;
-        rewardHint = "Recompensa: +200 XP por item. A cada 5 itens resgatados ganhe +20 AP.";
-    } 
-    else if (active === 'players') {
-        const colecao = charData.ficha.colecao_jogadores || {};
-        total = globalState.cache.players.size;
-        discovered = Object.keys(colecao).length;
-        claimed = Object.values(colecao).filter(s => typeof s === 'object' && s.resgatado).length;
-        rewardHint = "Recompensa: +20 EXP e +2 Reputação por aventureiro.";
-    }
-    else if (active === 'npcs') {
-        const colecao = charData.ficha.colecao_npcs || {};
-        
-        let allNpcs = [];
-        const cacheNpcs = globalState.cache.npcs || new Map();
-        const cacheMobs = globalState.cache.mobs || new Map();
-        
-        cacheNpcs.forEach(n => allNpcs.push(n));
-        cacheMobs.forEach(m => {
-            if (m.collection === 'rpg_Npcs' && !allNpcs.some(e => e.id === m.id)) allNpcs.push(m);
-        });
-
-        total = allNpcs.length;
-        discovered = Object.keys(colecao).length;
-        claimed = Object.values(colecao).filter(s => typeof s === 'object' && s.resgatado).length;
-        rewardHint = "Recompensa: +5 de Reputação por NPC.";
-    }
-    else if (active === 'monsters') {
-        const colecao = charData.ficha.colecao_monstros || {};
-        
-        const cacheMobs = globalState.cache.mobs || new Map();
-        let allMonsters = [];
-        cacheMobs.forEach(m => {
-            if (m.collection !== 'rpg_Npcs') allMonsters.push(m);
-        });
-        
-        total = allMonsters.length;
-        discovered = Object.keys(colecao).length;
-        claimed = Object.values(colecao).filter(s => typeof s === 'object' && s.resgatado).length;
-        rewardHint = "Recompensa: +25 EXP e +1 AP por monstro.";
-    }
-    else if (active === 'cities') {
-        const colecao = charData.ficha.colecao_cidades || {};
-        total = globalState.world.locations?.length || 0;
-        discovered = Object.keys(colecao).length;
-        claimed = Object.values(colecao).filter(s => typeof s === 'object' && s.resgatado).length;
-        rewardHint = "Recompensa: +10 de Reputação por local mapeado.";
-    }
-
-    const pctDesc = total > 0 ? Math.floor((discovered / total) * 100) : 0;
-
-    progPanel.innerHTML = `
-        <div class="flex justify-between items-end mb-2">
-            <div>
-                <div class="text-[9px] text-slate-500 uppercase font-bold tracking-widest">Progresso de Descoberta</div>
-                <div class="text-sm font-bold text-slate-300 mt-1">${discovered} <span class="text-[10px] text-slate-500">/ ${total}</span></div>
-            </div>
-            <div class="text-right">
-                <div class="text-[9px] text-slate-500 uppercase font-bold tracking-widest">Total Resgatado</div>
-                <div class="text-2xl font-cinzel text-amber-500 font-bold leading-none mt-1">${claimed}</div>
-            </div>
-        </div>
-        <div class="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden border border-slate-700 mb-2">
-            <div class="h-full bg-sky-500 transition-all duration-1000" style="width: ${pctDesc}%"></div>
-        </div>
-        <p class="text-[8.5px] text-slate-400 italic text-center leading-tight opacity-80">${rewardHint}</p>
-    `;
-
-    // 2. PAINEL DE INSPEÇÃO DO ITEM SELECIONADO
-    if (!selected) {
-        inspectPanel.innerHTML = `
-            <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 opacity-50 z-10 bg-slate-800">
-                <i class="fas fa-search text-5xl mb-4"></i>
-                <p class="text-sm text-center px-6">Selecione um ícone na lista ao lado para inspecionar e resgatar recompensas.</p>
-            </div>
-        `;
-        return;
-    }
-
-    const { category, mainObj, infoObj, isKnown, isClaimed, canClaim } = selected;
-    
-    let nome = mainObj.nome || mainObj.name || 'Desconhecido';
-    let img = infoObj?.imagemUrl || infoObj?.imageUrls?.imagem1 || PLACEHOLDER_IMAGE_URL;
-    let descricao = infoObj?.descricao || infoObj?.historia || infoObj?.description || infoObj?.lore || 'Nenhum registro adicional nos arquivos.';
-    
-    if (!isKnown) {
-        nome = "Registro Bloqueado";
-        img = PLACEHOLDER_IMAGE_URL;
-        descricao = "Você ainda não descobriu esta entrada. Continue explorando o mundo para revelar seus segredos.";
-    }
-
-    let statusBadge = '';
-    if (isClaimed) statusBadge = '<span class="bg-emerald-900/50 text-emerald-400 border border-emerald-500/50 px-3 py-1 rounded text-[9px] font-bold uppercase tracking-widest"><i class="fas fa-check mr-1"></i> Resgatado</span>';
-    else if (canClaim) statusBadge = '<span class="bg-amber-900/50 text-amber-400 border border-amber-500/50 px-3 py-1 rounded text-[9px] font-bold uppercase tracking-widest animate-pulse"><i class="fas fa-gift mr-1"></i> Aguardando Resgate</span>';
-    else statusBadge = '<span class="bg-slate-900 text-slate-500 border border-slate-700 px-3 py-1 rounded text-[9px] font-bold uppercase tracking-widest"><i class="fas fa-lock mr-1"></i> Desconhecido</span>';
-
-    let actionButtonHtml = '';
-    if (canClaim) {
-        let fnCall = `window.claimCollectionReward('${category}', '${mainObj.id}', '${escapeHTML(nome)}')`;
-        if (category === 'crafts') {
-            fnCall = `window.claimReward('${mainObj.id}', '${escapeHTML(nome)}')`;
+        if (isClaimed) {
+            classes += ' collected';
+        } else if (canClaim) {
+            classes += ' claimable';
+            clickAttr = `onclick="window.claimCollectionReward('${collectionKey}', '${loc.id}', '${escapeHTML(name)}')"`
         }
-        actionButtonHtml = `
-            <div class="p-4 bg-slate-900 border-t border-slate-700 shrink-0 z-10 shadow-[0_-10px_20px_rgba(0,0,0,0.3)]">
-                <button onclick="${fnCall}" class="w-full bg-amber-600 hover:bg-amber-500 text-black font-black uppercase tracking-widest text-[11px] py-3.5 rounded shadow-lg transition-transform hover:scale-[1.02]">
-                    <i class="fas fa-box-open mr-2 text-sm"></i> Resgatar Recompensa
-                </button>
+
+        html += `
+            <div>
+                <div class="${classes}" title="${name}\n(${tooltip})" ${clickAttr}>
+                    <img src="${img}">
+                    ${!isKnown ? '<i class="fas fa-question text-3xl text-slate-700 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 drop-shadow-md"></i>' : ''}
+                </div>
+                <div class="mt-2 text-center">
+                    <div class="text-[10px] font-bold ${isKnown ? 'text-sky-400' : 'text-slate-600'} truncate" title="${name}">${isKnown ? name : '???'}</div>
+                </div>
             </div>
         `;
-    }
+    });
 
-    inspectPanel.innerHTML = `
-        <div class="flex flex-col h-full animate-fade-in">
+    html += `
+            </div>
             
-            <div class="p-6 border-b border-slate-700 bg-slate-900/50 flex flex-col items-center shrink-0">
-                <div class="w-28 h-28 rounded-xl bg-black border-2 ${isKnown ? 'border-sky-500 shadow-[0_0_15px_rgba(56,189,248,0.3)]' : 'border-slate-700 opacity-50'} overflow-hidden mb-4 relative">
-                    <img src="${img}" class="w-full h-full object-cover ${!isKnown ? 'grayscale' : ''}">
+            <div class="mt-10 p-4 bg-slate-800 rounded-lg border border-slate-600 flex flex-col md:flex-row justify-between items-center gap-4 shadow-lg">
+                <div class="text-left space-y-1">
+                    <h4 class="text-amber-400 font-bold uppercase text-xs tracking-widest"><i class="fas fa-gift mr-2"></i>Recompensas de Cartografia</h4>
+                    <p class="text-slate-300 text-xs">a. Dissipe a névoa no mapa para descobrir novas cidades.</p>
+                    <p class="text-sky-400 text-xs font-bold">b. Cada cidade mapeada concede +10 de Reputação.</p>
                 </div>
-                <h3 class="font-cinzel text-xl ${isKnown ? 'text-sky-400' : 'text-slate-500'} text-center leading-tight mb-3 drop-shadow-md px-2">${nome}</h3>
-                ${statusBadge}
+                <div class="text-right">
+                    <div class="text-xs text-slate-500 uppercase font-bold mb-1">Total Resgatado</div>
+                    <div class="text-4xl font-cinzel text-white font-bold">${totalClaimed}</div>
+                </div>
             </div>
-
-            <div class="flex-1 overflow-y-auto custom-scroll p-5 bg-slate-900/20">
-                <h4 class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-2 border-b border-slate-700 pb-1"><i class="fas fa-scroll mr-1"></i> Arquivos do Diário</h4>
-                <p class="text-[11px] text-slate-300 leading-relaxed italic ${!isKnown ? 'opacity-50' : ''}">${descricao.replace(/\n/g, '<br>')}</p>
-            </div>
-
-            ${actionButtonHtml}
         </div>
     `;
+    container.innerHTML = html;
 }
 
-// ----------------------------------------------------
-// FUNÇÕES DE RESGATE E LÓGICA DE BANCO DE DADOS
-// ----------------------------------------------------
-
+// 6. Resgate de Recompensas de Coleção
 window.claimCollectionReward = async function(collectionKey, entityId, entityName) {
     if (!confirm(`Resgatar recompensa por descobrir "${entityName}"?`)) return;
 
@@ -478,7 +433,6 @@ window.claimCollectionReward = async function(collectionKey, entityId, entityNam
             
         }).then(msg => {
             alert(`Recompensa resgatada com sucesso!\n${msg}`);
-            globalState.collectionUI.selectedItem = null; 
             window.renderCollectionTab();
         });
         
@@ -488,6 +442,7 @@ window.claimCollectionReward = async function(collectionKey, entityId, entityNam
     }
 };
 
+// 7. Resgate de Craft
 window.claimReward = async function(recipeId, recipeName) {
     const charId = globalState.selectedCharacterId;
     if (!confirm(`Resgatar recompensa de "${recipeName}"?\n(+200 XP)`)) return;
@@ -522,7 +477,6 @@ window.claimReward = async function(recipeId, recipeName) {
             return msgExtra;
         }).then(msg => {
             alert("Recompensa resgatada com sucesso! (+200 XP)" + msg);
-            globalState.collectionUI.selectedItem = null;
             window.renderCollectionTab();
         });
     } catch (e) {
@@ -531,6 +485,7 @@ window.claimReward = async function(recipeId, recipeName) {
     }
 };
 
+// 8. Radar de Cidades (Chamado pelo Mapa)
 export async function checkAndDiscoverCities(revealedHexes) {
     if (!revealedHexes || revealedHexes.length === 0) return;
     const charId = globalState.selectedCharacterId;
@@ -541,6 +496,7 @@ export async function checkAndDiscoverCities(revealedHexes) {
     let hasNewDiscoveries = false;
     const updates = {};
 
+    // Baseado nas constantes do Mapa
     const HEX_RADIUS = 10;
     const R = HEX_RADIUS;
     const H = R * 2;
