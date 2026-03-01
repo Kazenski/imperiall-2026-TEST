@@ -1212,4 +1212,4 @@ window.toggleObjHide = async function(objId) {
             t.update(ref, { objetivos: objs, log_objetivos: logs });
         });
     } catch(e) { console.error(e); }
-};
+}; 
