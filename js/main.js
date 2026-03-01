@@ -54,22 +54,21 @@ window.renderBlankPage = function(title) {
 };
 
 // --- FUNÇÃO GLOBAL PARA EXIBIR UMA DAS 16 ABAS ---
-// --- FUNÇÃO GLOBAL PARA EXIBIR UMA DAS 16 ABAS ---
 window.showTab = function(tabId) {
-    // Esconde todas as abas e arranca a classe 'active'
+    // Esconde todas as abas e ARRANCA a classe 'active' que prendia a ficha na tela
     document.querySelectorAll('.tab-content').forEach(c => {
         c.classList.add('hidden');
-        c.classList.remove('active');
+        c.classList.remove('active'); 
     });
     
     const defaultView = document.getElementById('default-view');
     if (defaultView) defaultView.classList.add('hidden');
 
-    // Mostra a aba alvo, define como 'active' e garante que ela ocupe a altura toda (h-full)
+    // Mostra a aba alvo e garante que ela ocupe a altura toda
     const target = document.getElementById(`${tabId}-content`);
     if (target) {
         target.classList.remove('hidden');
-        target.classList.add('active', 'h-full');
+        target.classList.add('active', 'h-full'); 
     }
 
     // Atualiza a cor visual na barra de ícones (Coluna 2)
@@ -165,8 +164,7 @@ const FICHA_TABS = [
     { id: 'painel-fichas', icon: 'fa-user', label: 'Painel de Ficha', render: () => window.showTab('painel-fichas') },
     //{ id: 'rolagem-dados', icon: 'fa-dice-d20', label: 'Rolagem de Dados', render: () => window.showTab('rolagem-dados') },
     { id: 'minhas-habilidades', icon: 'fa-fire', label: 'Minhas Habilidades', render: () => window.showTab('minhas-habilidades') },
-    { id: 'mochila', icon: 'fa-briefcase', label: 'Mochila', render: () => window.showTab('mochila') },
-    { id: 'itens-equipados', icon: 'fa-tshirt', label: 'Itens Equipados', render: () => window.showTab('itens-equipados') },
+    { id: 'mochila', icon: 'fa-briefcase', label: 'Mochila', render: () => window.showTab('mochila') },    { id: 'itens-equipados', icon: 'fa-tshirt', label: 'Itens Equipados', render: () => window.showTab('itens-equipados') },
     { id: 'calculadora-atributos', icon: 'fa-chart-bar', label: 'Status Base', render: () => window.showTab('calculadora-atributos') },
     { id: 'constelacao', icon: 'fa-star', label: 'Constelação', render: () => window.showTab('constelacao') },
     { id: 'crafting', icon: 'fa-hammer', label: 'Oficina de Criação', render: () => window.showTab('crafting') },

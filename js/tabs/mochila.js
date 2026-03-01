@@ -1,5 +1,3 @@
-// ARQUIVO: js/tabs/mochila.js
-
 import { db, doc, updateDoc, runTransaction, deleteField, getDoc, increment } from '../core/firebase.js';
 import { globalState, PLACEHOLDER_IMAGE_URL } from '../core/state.js';
 import { escapeHTML, getRankWeight } from '../core/utils.js';
@@ -21,7 +19,7 @@ export function renderMochila(isJustFiltering = false) {
         return;
     }
 
-    // 1. INJEÇÃO DO ESQUELETO DE 2 COLUNAS (Apenas na primeira vez)
+    // 1. INJEÇÃO DO ESQUELETO DE 2 COLUNAS
     if (!document.getElementById('mochila-layout-wrapper')) {
         container.innerHTML = `
             <div id="mochila-layout-wrapper" class="flex w-full h-full gap-6 animate-fade-in pb-4">
@@ -179,7 +177,6 @@ export function renderMochila(isJustFiltering = false) {
             if (isEgo) equipClass = 'item-rainbow shadow-[0_0_10px_rgba(255,255,255,0.3)]';
             else if (isEquipped) equipClass = 'equipped shadow-[0_0_8px_rgba(16,185,129,0.5)] border-emerald-500';
 
-            // Verificamos se o item está selecionado na memória para mantê-lo aceso
             const isSelected = globalState.mochila.lastSelectedItem === item.id ? 'ring-2 ring-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.4)]' : '';
 
             return `
@@ -238,13 +235,12 @@ function toggleMochilaItemDetails(itemId, forceOpen = false) {
     
     if(!detailsPanel || !emptyState) return;
 
-    // Se clicou no mesmo item (e não foi forçado a abrir por uma ação), fecha
     if (!forceOpen && !detailsPanel.classList.contains('hidden') && globalState.mochila.lastSelectedItem === itemId) {
         detailsPanel.classList.add('hidden');
         emptyState.classList.remove('hidden');
         if(actionPanel) actionPanel.classList.add('hidden');
         globalState.mochila.lastSelectedItem = null;
-        renderMochila(true); // Remove a borda selecionada do grid
+        renderMochila(true); 
         return;
     }
     
@@ -252,9 +248,8 @@ function toggleMochilaItemDetails(itemId, forceOpen = false) {
     if (!item) return;
 
     globalState.mochila.lastSelectedItem = itemId;
-    renderMochila(true); // Atualiza as bordas laranjas no grid
+    renderMochila(true); 
     
-    // Oculta vazio e ações antigas, mostra detalhes
     emptyState.classList.add('hidden');
     if(actionPanel) actionPanel.classList.add('hidden');
     
@@ -306,11 +301,10 @@ function toggleMochilaItemDetails(itemId, forceOpen = false) {
         }).join(', ');
         
         statsContainer.innerHTML += `<p class="mt-2 text-amber-500/80"><i class="fas fa-bolt mr-1"></i> ${effectNames}</p>`;
+        hasStats = true;
     }
     
-    if(!hasStats && (!item.efeitos_especiais || Object.keys(item.efeitos_especiais).length === 0)) {
-        statsContainer.classList.add('hidden');
-    }
+    if(!hasStats) statsContainer.classList.add('hidden');
 
     detailsPanel.classList.remove('hidden');
 }
@@ -398,7 +392,7 @@ function createMochilaActionPanel(itemId, currentQuantity, actionType) {
     });
 }
 
-// LOGICAS DE BANCO DE DADOS (Inalteradas, apenas ajuste do visual após)
+// LOGICAS DE BANCO DE DADOS
 async function confirmUseItem(itemId) {
     const charId = globalState.selectedCharacterId;
     const itemDetails = globalState.cache.itens.get(itemId);
@@ -516,10 +510,8 @@ export function setupMochilaListeners() {
             
             const { itemId, quantity } = slot.dataset;
             
-            // Força abrir os detalhes na direita e esconde o "empty state"
             toggleMochilaItemDetails(itemId, true);
             
-            // Se clicou num dos botões internos (Ações)
             if (e.target.classList.contains('btn-action-icon')) {
                 e.stopPropagation();
                 const charData = globalState.selectedCharacterData.ficha;
@@ -537,8 +529,6 @@ export function setupMochilaListeners() {
                     createMochilaActionPanel(itemId, quantity, 'share');
                 }
             } else {
-                // Se clicou só na imagem do item, o painel de detalhes já abriu lá no começo do fluxo, 
-                // só precisamos esconder o painel de ação se estiver aberto
                 const actionPanel = document.getElementById('action-panel-container');
                 if (actionPanel) actionPanel.classList.add('hidden');
             }
