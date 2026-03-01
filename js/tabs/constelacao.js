@@ -130,7 +130,6 @@ function renderConstellationBonuses(data) {
     }
     if (!hasBonus) list.innerHTML = '<div class="flex flex-col items-center justify-center h-full text-slate-600"><i class="fas fa-moon text-3xl mb-2 opacity-20"></i><p class="text-[10px] uppercase tracking-widest font-bold">Nenhum poder ativo</p></div>';
 
-    // Barra de Progresso
     const totalNodes = template?.nodes?.length || 1;
     const pct = Math.round((unlocked.size / totalNodes) * 100);
     const progressBar = document.getElementById('const-progress-bar');
@@ -162,7 +161,7 @@ function renderConstellationCanvas(data) {
     const nodes = template.nodes || [];
     const drawn = new Set();
 
-    // Desenhar Linhas restaurando a classe c-line original
+    // Desenhar Linhas (Agora usando posições absolutas em vez de porcentagem)
     nodes.forEach(node => {
         if (!node.connections) return;
         node.connections.forEach(targetId => {
@@ -172,18 +171,21 @@ function renderConstellationCanvas(data) {
             if (target) {
                 const active = unlockedIds.has(node.id) && unlockedIds.has(targetId);
                 const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-                line.setAttribute("x1", `${node.x}%`); 
-                line.setAttribute("y1", `${node.y}%`);
-                line.setAttribute("x2", `${target.x}%`); 
-                line.setAttribute("y2", `${target.y}%`);
+                
+                // CORREÇÃO AQUI: Removido o % e substituído pelo valor puro/px para o SVG
+                line.setAttribute("x1", node.x); 
+                line.setAttribute("y1", node.y);
+                line.setAttribute("x2", target.x); 
+                line.setAttribute("y2", target.y);
                 line.setAttribute("class", `c-line ${active ? 'active' : ''}`);
+                
                 svg.appendChild(line);
                 drawn.add(key);
             }
         });
     });
 
-    // Desenhar Nós restaurando a classe c-node original
+    // Desenhar Nós
     nodes.forEach(node => {
         const el = document.createElement('div');
         const isUnlocked = unlockedIds.has(node.id);
@@ -193,8 +195,10 @@ function renderConstellationCanvas(data) {
         const customColor = (node.data && node.data.color) ? node.data.color : "#0ea5e9"; 
 
         el.className = `c-node ${isUnlocked ? 'unlocked' : ''} ${isAccessible ? 'accessible' : ''} ${(!isUnlocked && !isAccessible) ? 'locked' : ''}`;
-        el.style.left = `${node.x}%`; 
-        el.style.top = `${node.y}%`;
+        
+        // CORREÇÃO AQUI: Removido o % e adicionado 'px' para posicionar a bolinha corretamente no Canvas
+        el.style.left = `${node.x}px`; 
+        el.style.top = `${node.y}px`;
         
         if (isAccessible) el.style.borderColor = customColor;
 
@@ -306,7 +310,7 @@ export function setupConstelacaoListeners() {
     window.onmouseup = null;
 
     canvasWrapper.onmousedown = (e) => {
-        if (e.target.closest('.c-node')) return; // Modificado: não arrasta se clicar na bolinha .c-node
+        if (e.target.closest('.c-node')) return; 
         globalState.constelacao.isDragging = true;
         globalState.constelacao.startPos = { 
             x: e.clientX - globalState.constelacao.transform.x, 
