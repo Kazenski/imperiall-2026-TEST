@@ -373,7 +373,7 @@ window.renderSidebarDiceLog = function() {
 
 // --- GERENCIAMENTO DE CACHES E ATUALIZAÇÃO LATERAL ---
 async function loadCache() {
-    ['players', 'mobs', 'personagens', 'all_personagens'].forEach(key => {
+    ['players', 'mobs', 'personagens', 'all_personagens', 'npcs'].forEach(key => {
         if (!globalState.cache[key]) globalState.cache[key] = new Map();
         else globalState.cache[key].clear();
     });
@@ -393,6 +393,11 @@ async function loadCache() {
         const qM = query(collection(db, "rpg_fichasNPCMonstros"));
         const snapM = await getDocs(qM);
         snapM.forEach(d => globalState.cache.mobs.set(d.id, {id: d.id, type: 'monster', collection: 'rpg_fichasNPCMonstros', ...d.data()}));
+        
+        const qN = query(collection(db, "rpg_Npcs"));
+        const snapN = await getDocs(qN);
+        snapN.forEach(d => globalState.cache.npcs.set(d.id, {id: d.id, type: 'npc', collection: 'rpg_Npcs', ...d.data()}));
+
     } catch(e) { console.error("Erro no loadCache:", e); }
 }
 

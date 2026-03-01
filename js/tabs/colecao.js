@@ -6,7 +6,7 @@ import { escapeHTML } from '../core/utils.js';
 window.switchCollectionTab = function(tabId) {
     if (!globalState.collectionUI) globalState.collectionUI = { activeTab: 'crafts', selectedItem: null };
     globalState.collectionUI.activeTab = tabId;
-    globalState.collectionUI.selectedItem = null; // Limpa a seleção ao trocar de aba
+    globalState.collectionUI.selectedItem = null; 
     window.renderCollectionTab(); 
 };
 
@@ -71,7 +71,7 @@ export function renderCollectionTab() {
             <button onclick="window.switchCollectionTab('players')" class="px-4 py-2 rounded-lg border text-[10px] uppercase tracking-wider transition-all whitespace-nowrap ${getTabClass('players')}"><i class="fas fa-users mr-1"></i> Aventureiros</button>
             <button onclick="window.switchCollectionTab('npcs')" class="px-4 py-2 rounded-lg border text-[10px] uppercase tracking-wider transition-all whitespace-nowrap ${getTabClass('npcs')}"><i class="fas fa-user-tie mr-1"></i> NPCs</button>
             <button onclick="window.switchCollectionTab('monsters')" class="px-4 py-2 rounded-lg border text-[10px] uppercase tracking-wider transition-all whitespace-nowrap ${getTabClass('monsters')}"><i class="fas fa-dragon mr-1"></i> Bestiário</button>
-            <button onclick="window.switchCollectionTab('cities')" class="px-4 py-2 rounded-lg border text-[10px] uppercase tracking-wider transition-all whitespace-nowrap ${getTabClass('cities')}"><i class="fas fa-city mr-1"></i> Locais Descobertos</button>
+            <button onclick="window.switchCollectionTab('cities')" class="px-4 py-2 rounded-lg border text-[10px] uppercase tracking-wider transition-all whitespace-nowrap ${getTabClass('cities')}"><i class="fas fa-city mr-1"></i> Locais</button>
         `;
     }
 
@@ -108,7 +108,6 @@ function renderCollectionCrafts(gridContainer, charData) {
         const profInfo = globalState.cache.profissoes.get(profId);
         const profName = profInfo ? profInfo.nome : (profId === 'geral' ? 'Geral' : profId);
         
-        // Título da Profissão (Ocupa a linha toda)
         const header = document.createElement('div');
         header.className = "col-span-full text-amber-500 font-cinzel font-bold text-lg border-b border-slate-700 pb-1 mt-4 mb-2 flex items-center";
         header.innerHTML = `<i class="fas fa-book text-slate-500 mr-2 text-sm"></i> ${profName}`;
@@ -139,23 +138,39 @@ function renderCollectionEntities(gridContainer, charData, collectionKey, title)
     const colecao = charData.ficha[collectionKey] || {};
     const knownIds = Object.keys(colecao);
     
-    let cacheToUse = collectionKey === 'colecao_jogadores' ? globalState.cache.players : globalState.cache.mobs;
     let allEntities = [];
     
     if (collectionKey === 'colecao_jogadores') {
+        const cacheToUse = globalState.cache.players || new Map();
         knownIds.forEach(id => { const p = cacheToUse.get(id); if(p) allEntities.push(p); });
-    } else {
-        const targetType = collectionKey === 'colecao_npcs' ? 'npc' : 'monster';
-        cacheToUse.forEach(m => {
-            const isNpc = m.type === 'npc' || m.collection === 'rpg_Npcs';
-            if ((targetType === 'npc' && isNpc) || (targetType === 'monster' && !isNpc)) allEntities.push(m);
+    } 
+    else if (collectionKey === 'colecao_npcs') {
+        // Busca apenas no cache de NPCs
+        const cacheNpcs = globalState.cache.npcs || new Map();
+        cacheNpcs.forEach(n => allEntities.push(n));
+        
+        // Fallback: se algum ficou preso no cache de mobs com a collection certa
+        const cacheMobs = globalState.cache.mobs || new Map();
+        cacheMobs.forEach(m => {
+            if (m.collection === 'rpg_Npcs' && !allEntities.some(e => e.id === m.id)) {
+                allEntities.push(m);
+            }
+        });
+    } 
+    else if (collectionKey === 'colecao_monstros') {
+        // Busca apenas no cache de Monstros
+        const cacheMobs = globalState.cache.mobs || new Map();
+        cacheMobs.forEach(m => {
+            if (m.collection !== 'rpg_Npcs') {
+                allEntities.push(m);
+            }
         });
     }
 
     allEntities.sort((a,b) => (a.nome || '').localeCompare(b.nome || ''));
 
     if (allEntities.length === 0) {
-        gridContainer.innerHTML = `<div class="col-span-full text-slate-500 text-center py-10 italic">Nenhum registro encontrado.</div>`;
+        gridContainer.innerHTML = `<div class="col-span-full text-slate-500 text-center py-10 italic">Nenhum registro encontrado no banco de dados para esta categoria.</div>`;
         return;
     }
 
@@ -272,7 +287,6 @@ function renderCollectionRightPanel(charData) {
 
     if (!progPanel || !inspectPanel) return;
 
-    // 1. DADOS DE PROGRESSO GERAL DA ABA
     let total = 0, discovered = 0, claimed = 0;
     let rewardHint = "";
 
@@ -292,14 +306,31 @@ function renderCollectionRightPanel(charData) {
     }
     else if (active === 'npcs') {
         const colecao = charData.ficha.colecao_npcs || {};
-        total = [...globalState.cache.mobs.values()].filter(m => m.type === 'npc' || m.collection === 'rpg_Npcs').length;
+        
+        let allNpcs = [];
+        const cacheNpcs = globalState.cache.npcs || new Map();
+        const cacheMobs = globalState.cache.mobs || new Map();
+        
+        cacheNpcs.forEach(n => allNpcs.push(n));
+        cacheMobs.forEach(m => {
+            if (m.collection === 'rpg_Npcs' && !allNpcs.some(e => e.id === m.id)) allNpcs.push(m);
+        });
+
+        total = allNpcs.length;
         discovered = Object.keys(colecao).length;
         claimed = Object.values(colecao).filter(s => typeof s === 'object' && s.resgatado).length;
         rewardHint = "Recompensa: +5 de Reputação por NPC.";
     }
     else if (active === 'monsters') {
         const colecao = charData.ficha.colecao_monstros || {};
-        total = [...globalState.cache.mobs.values()].filter(m => m.type === 'monster' && m.collection !== 'rpg_Npcs').length;
+        
+        const cacheMobs = globalState.cache.mobs || new Map();
+        let allMonsters = [];
+        cacheMobs.forEach(m => {
+            if (m.collection !== 'rpg_Npcs') allMonsters.push(m);
+        });
+        
+        total = allMonsters.length;
         discovered = Object.keys(colecao).length;
         claimed = Object.values(colecao).filter(s => typeof s === 'object' && s.resgatado).length;
         rewardHint = "Recompensa: +25 EXP e +1 AP por monstro.";
@@ -397,7 +428,6 @@ function renderCollectionRightPanel(charData) {
 
 // ----------------------------------------------------
 // FUNÇÕES DE RESGATE E LÓGICA DE BANCO DE DADOS
-// (Lógicas mantidas exatamente iguais ao original)
 // ----------------------------------------------------
 
 window.claimCollectionReward = async function(collectionKey, entityId, entityName) {
@@ -448,7 +478,7 @@ window.claimCollectionReward = async function(collectionKey, entityId, entityNam
             
         }).then(msg => {
             alert(`Recompensa resgatada com sucesso!\n${msg}`);
-            globalState.collectionUI.selectedItem = null; // reseta seleção após resgatar
+            globalState.collectionUI.selectedItem = null; 
             window.renderCollectionTab();
         });
         
