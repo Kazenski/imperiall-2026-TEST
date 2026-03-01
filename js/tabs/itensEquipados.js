@@ -37,11 +37,8 @@ export async function renderItensEquipados() {
 
         const charData = globalState.selectedCharacterData;
         const ficha = charData.ficha;
-        
-        // CORREÇÃO: Trata os dois nomes que podem vir do banco de dados
         const equipados = ficha.equipamentos || ficha.equipamento || {}; 
 
-        // 1. INJEÇÃO DO ESQUELETO DE 2 COLUNAS
         if (!document.getElementById('equip-layout-wrapper')) {
             container.innerHTML = `
                 <div id="equip-layout-wrapper" class="flex w-full h-full gap-6 animate-fade-in pb-4">
@@ -56,10 +53,10 @@ export async function renderItensEquipados() {
                             <div id="paper-doll-bg-layer" class="absolute inset-0 bg-no-repeat bg-contain bg-center opacity-30 z-0 scale-105 pointer-events-none transition-all duration-500" style="filter: blur(2px) grayscale(50%);"></div>
                             <div class="absolute inset-0 bg-slate-900/60 z-0 pointer-events-none"></div>
 
-                            <div class="relative z-10 flex w-full max-w-3xl justify-between px-2 sm:px-8 xl:px-16 gap-4">
-                                <div id="doll-grid-left" class="flex flex-col gap-3 shrink-0"></div>
+                            <div class="relative z-10 flex w-full max-w-4xl justify-between px-2 sm:px-8 xl:px-12 gap-8">
+                                <div id="doll-grid-left" class="flex flex-col gap-3 shrink-0 items-end"></div>
                                 <div class="flex-1"></div>
-                                <div id="doll-grid-right" class="flex flex-col gap-3 shrink-0"></div>
+                                <div id="doll-grid-right" class="flex flex-col gap-3 shrink-0 items-start"></div>
                             </div>
                         </div>
                     </div>
@@ -103,8 +100,7 @@ export async function renderItensEquipados() {
                                     </button>
                                 </div>
 
-                                <div id="panel-item-list" class="flex-1 overflow-y-auto custom-scroll p-3 space-y-2">
-                                    </div>
+                                <div id="panel-item-list" class="flex-1 overflow-y-auto custom-scroll p-3 space-y-2"></div>
                             </div>
 
                         </div>
@@ -114,7 +110,6 @@ export async function renderItensEquipados() {
             `;
         }
 
-        // 2. CONFIGURA FUNDO (FOTO DO PERSONAGEM)
         const bgLayer = document.getElementById('paper-doll-bg-layer');
         if (bgLayer) {
             let bgUrl = "";
@@ -127,7 +122,6 @@ export async function renderItensEquipados() {
             else bgLayer.style.backgroundImage = "none";
         }
 
-        // 3. RENDERIZAR GRIDS E STATUS
         _renderGrid('doll-grid-left', PAPER_DOLL_CONFIG.left, equipados);
         _renderGrid('doll-grid-right', PAPER_DOLL_CONFIG.right, equipados);
         _updateTotalStats(equipados);
@@ -158,6 +152,8 @@ function _renderGrid(containerId, slots, equipados) {
     if (!container) return;
     container.innerHTML = '';
 
+    const isRight = containerId === 'doll-grid-right';
+
     slots.forEach(slot => {
         const itemId = equipados[slot.id];
         let contentHtml = '';
@@ -184,24 +180,28 @@ function _renderGrid(containerId, slots, equipados) {
         }
 
         const div = document.createElement('div');
-        div.className = `flex items-center gap-3 equip-slot group cursor-pointer`;
+        div.className = `flex items-center gap-3 equip-slot group cursor-pointer w-full ${isRight ? 'justify-start' : 'justify-end'}`;
         div.dataset.slotId = slot.id;
         div.onclick = () => window.openEquipPanel(slot.id, slot.label);
         
-        const isRight = containerId === 'doll-grid-right';
+        // Quadradinho com o item (Sempre encostado no centro/silhueta)
         const boxHTML = `
-            <div class="w-14 h-14 md:w-16 md:h-16 rounded-lg border-2 ${borderClass} relative flex items-center justify-center overflow-hidden shadow-md group-hover:border-amber-400 transition-all shrink-0">
+            <div class="w-14 h-14 md:w-16 md:h-16 rounded-lg border-2 ${borderClass} relative flex items-center justify-center overflow-hidden shadow-md group-hover:border-amber-400 transition-all shrink-0 z-10">
                 ${contentHtml}
             </div>
         `;
+        
+        // Texto com o nome do slot (Sempre para os lados de fora)
         const textHTML = `
-            <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400 group-hover:text-amber-400 transition-colors hidden sm:block ${isRight ? 'text-right' : 'text-left'}">
+            <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400 group-hover:text-amber-400 transition-colors hidden sm:block whitespace-nowrap">
                 ${slot.label}
             </div>
         `;
 
-        if (isRight) div.innerHTML = `${textHTML}${boxHTML}`;
-        else div.innerHTML = `${boxHTML}${textHTML}`;
+        // Se for a grade da ESQUERDA: Texto na esquerda, Caixa na direita.
+        // Se for a grade da DIREITA: Caixa na esquerda, Texto na direita.
+        if (isRight) div.innerHTML = `${boxHTML}${textHTML}`;
+        else div.innerHTML = `${textHTML}${boxHTML}`;
         
         container.appendChild(div);
     });
@@ -349,7 +349,6 @@ window.handleEquip = async function(slotId, itemId) {
             const d = (await t.get(ref)).data();
             
             const moch = d.mochila || {};
-            // Mantém a chave plural para padronizar
             const equip = d.equipamentos || d.equipamento || {}; 
 
             if (equip[slotId]) {
@@ -377,7 +376,6 @@ window.handleEquip = async function(slotId, itemId) {
             if (moch[itemId] > 1) moch[itemId]--; else delete moch[itemId];
             equip[slotId] = itemId;
 
-            // Salva de volta no banco
             t.update(ref, { "mochila": moch, "equipamentos": equip });
         });
         
@@ -409,9 +407,6 @@ window.handleUnequip = async function(slotId, itemId) {
     } catch (e) { alert("Erro ao desequipar: " + e.message); }
 };
 
-// ==========================================
-// FUNÇÃO LEGADA (MANTIDA PARA EVITAR ERROS NO MAIN.JS)
-// ==========================================
 export function renderSlotsEquipamento() {
     const grid = document.querySelector('.equipamento-grid');
     if(!grid) return;
