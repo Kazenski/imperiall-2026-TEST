@@ -198,47 +198,49 @@ function populateSidebar(subAbaArray, isFichaMenu = false) {
     if(!sidebar) return;
     sidebar.innerHTML = '';
 
+    // Botão de Voltar (Sempre no topo da coluna fina)
     if (isFichaMenu) {
         const backBtn = document.createElement('button');
-        backBtn.className = "flex items-center w-full px-4 py-3 hover:bg-slate-800 transition-all border-l-4 border-red-500 overflow-hidden group bg-slate-900/50 mb-1 shrink-0";
+        backBtn.className = "w-12 h-12 rounded-xl flex items-center justify-center bg-red-900/20 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-md group relative shrink-0";
         backBtn.innerHTML = `
-            <div class="w-6 flex items-center justify-center shrink-0"><i class="fas fa-arrow-left text-lg text-red-500 group-hover:text-red-400 transition-colors"></i></div>
-            <span class="ml-3 text-[10px] font-bold uppercase tracking-widest text-red-400 opacity-80 group-hover:opacity-100 transition-opacity text-left">Voltar</span>
+            <i class="fas fa-arrow-left text-lg"></i>
+            <div class="absolute left-16 bg-black border border-slate-700 text-white text-[10px] font-bold px-3 py-1.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 shadow-xl transition-opacity">Voltar ao Menu</div>
         `;
         backBtn.onclick = () => window.setMasterContext('Ao Jogador');
         sidebar.appendChild(backBtn);
+        
+        // Linha divisória
+        const div = document.createElement('div');
+        div.className = "w-8 h-px bg-slate-700 my-1 shrink-0";
+        sidebar.appendChild(div);
     }
 
+    // Botões das 16 Abas (Quadradinhos)
     subAbaArray.forEach(subAba => {
         const btn = document.createElement('button');
-        btn.dataset.tabId = subAba.id; // Marca o ID para sabermos quem colorir na função showTab
-        btn.className = "flex items-center w-full px-4 py-2.5 hover:bg-slate-800 transition-all border-l-4 border-transparent hover:border-amber-500 overflow-hidden group shrink-0";
+        btn.dataset.tabId = subAba.id; 
+        btn.className = "w-12 h-12 rounded-xl flex items-center justify-center text-slate-400 hover:text-amber-400 hover:bg-slate-800 transition-all border border-transparent group relative shrink-0";
         btn.innerHTML = `
-            <div class="w-6 flex items-center justify-center shrink-0">
-                <i class="fas ${subAba.icon} text-base text-slate-500 group-hover:text-amber-400 transition-colors"></i>
-            </div>
-            <span class="ml-3 text-[10px] font-bold uppercase tracking-widest text-slate-300 opacity-80 group-hover:opacity-100 transition-opacity text-left">
-                ${subAba.label}
-            </span>
+            <i class="fas ${subAba.icon} text-lg transition-colors"></i>
+            <div class="absolute left-16 bg-amber-500 text-black font-bold uppercase tracking-widest text-[10px] px-3 py-1.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 shadow-xl transition-opacity">${subAba.label}</div>
         `;
 
         btn.onclick = () => {
-            // Se clicou num botão do menu mestre (simular, manual, etc), garante que a tela de vazio será limpa
+            // Limpa tela de vazio se tiver
             const defaultView = document.getElementById('default-view');
             if (defaultView) defaultView.classList.add('hidden');
 
+            // Remove classe ativa de todos (exceto o botão de voltar)
             document.querySelectorAll('#sub-menu-bar button').forEach(b => {
-                if(!b.classList.contains('border-red-500')) {
-                    b.classList.remove('bg-slate-900', 'border-amber-500');
-                    b.classList.add('border-transparent');
-                    const icon = b.querySelector('i');
-                    if (icon) icon.classList.replace('text-amber-500', 'text-slate-500');
+                if(!b.classList.contains('text-red-500')) {
+                    b.classList.remove('bg-slate-800', 'border-amber-500', 'text-amber-500');
+                    b.classList.add('text-slate-400', 'border-transparent');
                 }
             });
-            btn.classList.add('bg-slate-900', 'border-amber-500');
-            btn.classList.remove('border-transparent');
-            const clickedIcon = btn.querySelector('i');
-            if (clickedIcon) clickedIcon.classList.replace('text-slate-500', 'text-amber-500');
+            
+            // Adiciona classe ativa no clicado
+            btn.classList.add('bg-slate-800', 'border-amber-500', 'text-amber-500');
+            btn.classList.remove('text-slate-400', 'border-transparent');
             
             subAba.render();
         };
