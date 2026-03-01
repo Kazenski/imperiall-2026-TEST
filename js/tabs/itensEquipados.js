@@ -54,7 +54,7 @@ export async function renderItensEquipados() {
                             <div class="absolute inset-0 bg-slate-900/60 z-0 pointer-events-none"></div>
 
                             <div class="relative z-10 flex w-full max-w-4xl justify-between px-2 sm:px-8 xl:px-12 gap-8">
-                                <div id="doll-grid-left" class="flex flex-col gap-3 shrink-0 items-end"></div>
+                                <div id="doll-grid-left" class="flex flex-col gap-3 shrink-0 items-start"></div>
                                 <div class="flex-1"></div>
                                 <div id="doll-grid-right" class="flex flex-col gap-3 shrink-0 items-start"></div>
                             </div>
@@ -152,8 +152,6 @@ function _renderGrid(containerId, slots, equipados) {
     if (!container) return;
     container.innerHTML = '';
 
-    const isRight = containerId === 'doll-grid-right';
-
     slots.forEach(slot => {
         const itemId = equipados[slot.id];
         let contentHtml = '';
@@ -180,28 +178,27 @@ function _renderGrid(containerId, slots, equipados) {
         }
 
         const div = document.createElement('div');
-        div.className = `flex items-center gap-3 equip-slot group cursor-pointer w-full ${isRight ? 'justify-start' : 'justify-end'}`;
+        // Define explicitamente justify-start para garantir que tudo fique alinhado à esquerda no [Caixa] -> [Texto]
+        div.className = `flex items-center gap-3 equip-slot group cursor-pointer w-full justify-start`;
         div.dataset.slotId = slot.id;
         div.onclick = () => window.openEquipPanel(slot.id, slot.label);
         
-        // Quadradinho com o item (Sempre encostado no centro/silhueta)
+        // Quadradinho com o item na Esquerda
         const boxHTML = `
             <div class="w-14 h-14 md:w-16 md:h-16 rounded-lg border-2 ${borderClass} relative flex items-center justify-center overflow-hidden shadow-md group-hover:border-amber-400 transition-all shrink-0 z-10">
                 ${contentHtml}
             </div>
         `;
         
-        // Texto com o nome do slot (Sempre para os lados de fora)
+        // Texto na Direita (alinhado a esquerda dele mesmo)
         const textHTML = `
-            <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400 group-hover:text-amber-400 transition-colors hidden sm:block whitespace-nowrap">
+            <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400 group-hover:text-amber-400 transition-colors hidden sm:block whitespace-nowrap text-left">
                 ${slot.label}
             </div>
         `;
 
-        // Se for a grade da ESQUERDA: Texto na esquerda, Caixa na direita.
-        // Se for a grade da DIREITA: Caixa na esquerda, Texto na direita.
-        if (isRight) div.innerHTML = `${boxHTML}${textHTML}`;
-        else div.innerHTML = `${textHTML}${boxHTML}`;
+        // Agora a ordem é SEMPRE Caixa -> Texto, não importa se é a grade direita ou esquerda
+        div.innerHTML = `${boxHTML}${textHTML}`;
         
         container.appendChild(div);
     });
