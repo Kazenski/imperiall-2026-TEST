@@ -25,45 +25,127 @@ const PAPER_DOLL_CONFIG = {
 };
 
 export async function renderItensEquipados() {
+    const container = document.getElementById('itens-equipados-content');
+    if (!container) return;
+
     const charId = globalState.selectedCharacterId;
-    if (!charId) return;
+    if (!charId || !globalState.selectedCharacterData || !globalState.selectedCharacterData.ficha) {
+        container.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500 italic">Selecione um personagem primeiro.</div>';
+        return;
+    }
 
-    const bgLayer = document.getElementById('paper-doll-bg-layer');
-    if (!bgLayer) return;
-
-    const charData = globalState.cache.all_personagens.get(charId) || globalState.selectedCharacterData || {};
-    const ficha = charData.ficha || charData; 
-    
-    // Lê o campo plural 'equipamentos'
+    const charData = globalState.selectedCharacterData;
+    const ficha = charData.ficha;
     const equipados = ficha.equipamentos || {}; 
 
-    // 1. LÓGICA DO BACKGROUND
-    let bgUrl = "";
-    const mainKey = ficha.imagemPrincipal || charData.imagemPrincipal; 
-    const urls = ficha.imageUrls || charData.imageUrls || {};
+    // 1. INJEÇÃO DO ESQUELETO DE 2 COLUNAS
+    if (!document.getElementById('equip-layout-wrapper')) {
+        container.innerHTML = `
+            <div id="equip-layout-wrapper" class="flex w-full h-full gap-6 animate-fade-in pb-4">
+                
+                <div class="flex-1 flex flex-col min-w-0 h-full">
+                    <div class="flex justify-between items-center mb-4 shrink-0">
+                        <h2 class="font-cinzel text-3xl text-amber-500 m-0"><i class="fas fa-tshirt mr-3 text-slate-600"></i> Itens Equipados</h2>
+                    </div>
+                    
+                    <div class="flex-1 flex items-center justify-center bg-slate-900/50 border border-slate-700 rounded-xl p-4 shadow-inner relative overflow-hidden">
+                        
+                        <div id="paper-doll-bg-layer" class="absolute inset-0 bg-no-repeat bg-contain bg-center opacity-30 z-0 scale-105 pointer-events-none" style="filter: blur(2px) grayscale(50%);"></div>
+                        <div class="absolute inset-0 bg-slate-900/60 z-0 pointer-events-none"></div>
 
-    if (mainKey && urls[mainKey]) {
-        bgUrl = urls[mainKey];
-    } else if (ficha.imagemUrl && ficha.imagemUrl.startsWith('http')) {
-        bgUrl = ficha.imagemUrl;
-    } else if (charData.imagemUrl && charData.imagemUrl.startsWith('http')) {
-        bgUrl = charData.imagemUrl;
+                        <div class="relative z-10 flex w-full max-w-3xl justify-between px-2 sm:px-8 xl:px-16 gap-4">
+                            <div id="doll-grid-left" class="flex flex-col gap-3 shrink-0"></div>
+                            <div class="flex-1"></div>
+                            <div id="doll-grid-right" class="flex flex-col gap-3 shrink-0"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="w-80 shrink-0 flex flex-col h-full pt-12 gap-4">
+                    
+                    <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-2xl flex flex-col shrink-0">
+                        <h4 class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-3"><i class="fas fa-chart-pie mr-1 text-amber-500"></i> Bônus do Equipamento</h4>
+                        <div class="grid grid-cols-3 gap-2 text-center font-mono">
+                            <div class="bg-slate-950 border border-slate-700 p-2 rounded shadow-inner">
+                                <div class="text-[8px] text-slate-500 uppercase">ATK</div>
+                                <div id="doll-total-atk" class="text-amber-400 font-bold text-sm">0</div>
+                            </div>
+                            <div class="bg-slate-950 border border-slate-700 p-2 rounded shadow-inner">
+                                <div class="text-[8px] text-slate-500 uppercase">DEF</div>
+                                <div id="doll-total-def" class="text-blue-400 font-bold text-sm">0</div>
+                            </div>
+                            <div class="bg-slate-950 border border-slate-700 p-2 rounded shadow-inner">
+                                <div class="text-[8px] text-slate-500 uppercase">EVA</div>
+                                <div id="doll-total-eva" class="text-emerald-400 font-bold text-sm">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col flex-1 min-h-0 relative overflow-hidden">
+                        
+                        <div id="equip-empty-state" class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 opacity-50 z-10 bg-slate-800">
+                            <i class="fas fa-hand-pointer text-5xl mb-4"></i>
+                            <p class="text-sm text-center px-6">Clique em um slot do personagem ao lado para trocar de equipamento.</p>
+                        </div>
+
+                        <div id="equip-selector-panel" class="flex-col h-full hidden z-20">
+                            <div class="p-3 border-b border-slate-700 flex justify-between items-center bg-slate-900/50">
+                                <h4 id="panel-slot-name" class="font-cinzel text-amber-500 font-bold tracking-widest uppercase text-sm">Slot</h4>
+                                <button onclick="window.closeEquipPanel()" class="text-slate-400 hover:text-red-400 transition-colors"><i class="fas fa-times text-lg"></i></button>
+                            </div>
+                            
+                            <div class="p-3 shrink-0 border-b border-slate-700 bg-slate-900/30">
+                                <button id="btn-unequip-current" class="w-full bg-red-900/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/50 py-2.5 rounded-lg text-[10px] uppercase font-bold tracking-widest transition-all hidden shadow-md">
+                                    <i class="fas fa-ban mr-1"></i> Desequipar
+                                </button>
+                            </div>
+
+                            <div id="panel-item-list" class="flex-1 overflow-y-auto custom-scroll p-3 space-y-2">
+                                </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        `;
     }
 
-    if (bgUrl) {
-        bgLayer.style.backgroundImage = `url('${bgUrl}')`;
-        bgLayer.style.backgroundColor = "transparent";
-    } else {
-        bgLayer.style.backgroundImage = "none";
-        bgLayer.style.backgroundColor = "#0f172a";
+    // 2. CONFIGURA FUNDO (FOTO DO PERSONAGEM)
+    const bgLayer = document.getElementById('paper-doll-bg-layer');
+    if (bgLayer) {
+        let bgUrl = "";
+        const mainKey = ficha.imagemPrincipal;
+        const urls = ficha.imageUrls || {};
+        if (mainKey && urls[mainKey]) bgUrl = urls[mainKey];
+        else if (ficha.imagemUrl) bgUrl = ficha.imagemUrl;
+
+        if (bgUrl) bgLayer.style.backgroundImage = `url('${bgUrl}')`;
+        else bgLayer.style.backgroundImage = "none";
     }
 
-    // 2. RENDERIZAR GRIDS
+    // 3. RENDERIZAR GRIDS E STATUS
     _renderGrid('doll-grid-left', PAPER_DOLL_CONFIG.left, equipados);
     _renderGrid('doll-grid-right', PAPER_DOLL_CONFIG.right, equipados);
-
-    // 3. CALCULAR STATUS
     _updateTotalStats(equipados);
+
+    // Se o painel estiver aberto, atualiza a lista dele para evitar itens fantasmas após equipar
+    const activeSlotId = document.getElementById('equip-selector-panel')?.dataset.activeSlot;
+    if (activeSlotId && !document.getElementById('equip-selector-panel').classList.contains('hidden')) {
+        const slotLabel = document.getElementById('panel-slot-name').textContent;
+        window.openEquipPanel(activeSlotId, slotLabel);
+    }
+}
+
+function getRarityBorderClass(rarity) {
+    const r = (rarity || '').toLowerCase();
+    if (r === 'ss') return 'border-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.3)] ring-1 ring-amber-400/50';
+    if (r === 's') return 'border-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.3)] ring-1 ring-rose-500/50';
+    if (r === 'a') return 'border-amber-500';
+    if (r === 'b') return 'border-purple-500';
+    if (r === 'c') return 'border-blue-500';
+    if (r === 'd') return 'border-emerald-500';
+    return 'border-slate-600';
 }
 
 function _renderGrid(containerId, slots, equipados) {
@@ -74,35 +156,49 @@ function _renderGrid(containerId, slots, equipados) {
     slots.forEach(slot => {
         const itemId = equipados[slot.id];
         let contentHtml = '';
-        let borderClass = 'border-slate-600';
+        let borderClass = 'border-slate-700 bg-slate-900/80';
+        let imgOpacity = 'opacity-50 grayscale';
 
         if (itemId) {
             const item = globalState.cache.itens.get(itemId);
             if (item) {
-                const raridade = (item.raridade || 'comum').toLowerCase();
-                borderClass = `border-${raridade}`; 
+                borderClass = `bg-slate-950 ${getRarityBorderClass(item.raridade || item.tierId || 'E')}`; 
+                imgOpacity = 'opacity-100 group-hover:scale-110';
                 const itemImg = item.imagemUrl || item.imageUrl || "";
 
                 if (itemImg) {
-                    contentHtml = `<img src="${itemImg}" class="equipped-item-img" title="${item.nome}" onerror="this.style.display='none'">`;
+                    contentHtml = `<img src="${itemImg}" class="w-full h-full object-cover transition-transform duration-300 ${imgOpacity}" title="${item.nome}" onerror="this.style.display='none'">`;
                 } else {
-                    contentHtml = `<i class="fas ${slot.icon} text-amber-500 text-3xl drop-shadow-md"></i>`;
+                    contentHtml = `<i class="fas fa-box text-slate-400 text-xl drop-shadow-md"></i>`;
                 }
             } else {
-                contentHtml = `<i class="fas fa-exclamation-triangle text-red-500" title="Item não encontrado"></i>`;
+                contentHtml = `<i class="fas fa-exclamation-triangle text-red-500 text-xl"></i>`;
             }
         } else {
-            contentHtml = `<i class="fas ${slot.icon} slot-placeholder-icon"></i>`;
+            contentHtml = `<i class="fas ${slot.icon} text-slate-600/50 text-2xl group-hover:text-amber-500/50 transition-colors"></i>`;
         }
 
         const div = document.createElement('div');
-        div.className = `equip-slot-card ${borderClass}`;
-        div.onclick = () => window.openEquipModal(slot.id, slot.label);
+        div.className = `flex items-center gap-3 equip-slot group cursor-pointer`;
+        div.dataset.slotId = slot.id;
+        div.onclick = () => window.openEquipPanel(slot.id, slot.label);
         
-        div.innerHTML = `
-            ${contentHtml}
-            <div class="slot-label">${slot.label}</div>
+        // Estrutura do Card: Caixinha na Esquerda/Direita, Texto do Lado
+        const isRight = containerId === 'doll-grid-right';
+        const boxHTML = `
+            <div class="w-14 h-14 md:w-16 md:h-16 rounded-lg border-2 ${borderClass} relative flex items-center justify-center overflow-hidden shadow-md group-hover:border-amber-400 transition-all shrink-0">
+                ${contentHtml}
+            </div>
         `;
+        const textHTML = `
+            <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400 group-hover:text-amber-400 transition-colors hidden sm:block ${isRight ? 'text-right' : 'text-left'}">
+                ${slot.label}
+            </div>
+        `;
+
+        if (isRight) div.innerHTML = `${textHTML}${boxHTML}`;
+        else div.innerHTML = `${boxHTML}${textHTML}`;
+        
         container.appendChild(div);
     });
 }
@@ -121,7 +217,11 @@ function _updateTotalStats(equipados) {
 
     const set = (id, val) => { 
         const el = document.getElementById(id); 
-        if(el) el.textContent = val > 0 ? `+${val}` : val; 
+        if(el) {
+            el.textContent = val > 0 ? `+${val}` : val; 
+            if(val > 0) el.classList.replace('text-slate-500', id.includes('atk') ? 'text-amber-400' : id.includes('def') ? 'text-blue-400' : 'text-emerald-400');
+            else el.classList.add('text-slate-500');
+        }
     };
     
     set('doll-total-atk', atk); 
@@ -129,31 +229,49 @@ function _updateTotalStats(equipados) {
     set('doll-total-eva', eva);
 }
 
-window.openEquipModal = function(slotTargetId, slotLabel) {
-    const modal = document.getElementById('equipment-selector-modal');
-    const listContainer = document.getElementById('modal-item-list'); 
-    const title = document.getElementById('modal-slot-name');
+window.closeEquipPanel = function() {
+    const panel = document.getElementById('equip-selector-panel');
+    const empty = document.getElementById('equip-empty-state');
+    if(panel) panel.classList.add('hidden');
+    if(empty) empty.classList.remove('hidden');
+    
+    document.querySelectorAll('.equip-slot > div.w-14, .equip-slot > div.w-16').forEach(el => {
+        el.classList.remove('ring-4', 'ring-amber-500/50', 'border-amber-400');
+    });
+};
+
+window.openEquipPanel = function(slotTargetId, slotLabel) {
+    const emptyState = document.getElementById('equip-empty-state');
+    const panel = document.getElementById('equip-selector-panel');
+    const listContainer = document.getElementById('panel-item-list'); 
+    const title = document.getElementById('panel-slot-name');
     const btnUnequip = document.getElementById('btn-unequip-current');
 
-    if (!modal || !listContainer || !title) return;
+    if (!panel || !listContainer || !emptyState) return;
 
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
+    // Efeito Visual de Seleção no Paper Doll
+    document.querySelectorAll('.equip-slot > div.w-14, .equip-slot > div.w-16').forEach(el => el.classList.remove('ring-4', 'ring-amber-500/50', 'border-amber-400'));
+    const clickedSlot = document.querySelector(`.equip-slot[data-slot-id="${slotTargetId}"] > div.rounded-lg`);
+    if(clickedSlot) clickedSlot.classList.add('ring-4', 'ring-amber-500/50', 'border-amber-400');
+
+    emptyState.classList.add('hidden');
+    panel.classList.remove('hidden');
+    panel.classList.add('flex');
+    panel.dataset.activeSlot = slotTargetId; // Guarda o slot aberto para atualizar depois
+    
     listContainer.innerHTML = ''; 
-    title.textContent = slotLabel;
+    title.innerHTML = `<i class="fas fa-crosshairs text-slate-500 mr-2"></i> ${slotLabel}`;
 
     const charData = globalState.selectedCharacterData;
-    const ficha = charData.ficha || charData;
+    const ficha = charData.ficha;
     const mochila = ficha.mochila || {};
     const equipados = ficha.equipamentos || {}; 
     
+    // Configura o Botão de Desequipar
     const itemAtualId = equipados[slotTargetId];
     if (itemAtualId && btnUnequip) {
         btnUnequip.classList.remove('hidden');
-        const newBtn = btnUnequip.cloneNode(true);
-        btnUnequip.parentNode.replaceChild(newBtn, btnUnequip);
-        newBtn.onclick = () => window.handleUnequip(slotTargetId, itemAtualId);
-        newBtn.classList.remove('hidden');
+        btnUnequip.onclick = () => window.handleUnequip(slotTargetId, itemAtualId);
     } else if (btnUnequip) {
         btnUnequip.classList.add('hidden');
     }
@@ -161,29 +279,50 @@ window.openEquipModal = function(slotTargetId, slotLabel) {
     let foundCount = 0;
 
     for (const [itemId, qtd] of Object.entries(mochila)) {
+        if (qtd <= 0) continue;
         const item = globalState.cache.itens.get(itemId);
-        
-        if (item && item.slot_equipavel_id === slotTargetId) {
+        if (!item) continue;
+
+        // Regra de validação flexível de slot (ex: anel serve pra anel_1 e anel_2)
+        const targetClass = item.slot_equipavel_id || item.tipoItem?.toLowerCase() || '';
+        let isMatch = false;
+
+        if (targetClass === slotTargetId) isMatch = true;
+        else if (targetClass.includes('anel') && slotTargetId.includes('anel')) isMatch = true;
+        else if (targetClass.includes('pulseira') && slotTargetId.includes('pulseira')) isMatch = true;
+        else if (targetClass.includes('brinco') && slotTargetId.includes('brinco')) isMatch = true;
+        else if ((targetClass.includes('arma') || targetClass.includes('espada') || targetClass.includes('machado')) && (slotTargetId === 'arma_primaria' || slotTargetId === 'arma_secundaria' || slotTargetId === 'arma_2_maos')) {
+            // Regra básica: se é arma e cabe, libera. A restrição de 2 mãos age no clique (handleEquip).
+            isMatch = true; 
+        }
+
+        if (isMatch) {
             foundCount++;
             
             const itemImg = item.imagemUrl || item.imageUrl || "";
-            let imgTag = itemImg 
-                ? `<img src="${itemImg}" class="w-full h-full object-contain drop-shadow-md">` 
-                : `<i class="fas fa-box text-slate-600 text-3xl"></i>`;
+            const borderRarity = getRarityBorderClass(item.raridade || item.tierId || 'E');
+
+            let statsHtml = [];
+            if(item.atk_base) statsHtml.push(`<span class="text-amber-400">ATK +${item.atk_base}</span>`);
+            if(item.def_base) statsHtml.push(`<span class="text-blue-400">DEF +${item.def_base}</span>`);
+            if(item.eva_base) statsHtml.push(`<span class="text-emerald-400">EVA +${item.eva_base}</span>`);
 
             const card = document.createElement('div');
-            card.className = "bg-slate-800 p-2 rounded border border-slate-600 item-select-card cursor-pointer relative group flex flex-col items-center gap-2 hover:border-amber-500 transition-all";
+            card.className = "bg-slate-900 border border-slate-700 rounded-lg p-2 flex gap-3 cursor-pointer group hover:bg-slate-800 hover:border-amber-500 transition-all";
             card.onclick = () => window.handleEquip(slotTargetId, itemId);
 
             card.innerHTML = `
-                <div class="w-16 h-16 bg-slate-900/50 rounded flex items-center justify-center overflow-hidden border border-slate-700 relative">
-                    ${imgTag}
-                    <div class="absolute bottom-0 right-0 bg-black/80 text-white text-[10px] px-1.5 py-0.5 rounded-tl font-bold border-t border-l border-slate-600">${qtd}</div>
+                <div class="w-12 h-12 bg-slate-950 rounded border ${borderRarity} flex items-center justify-center shrink-0 relative overflow-hidden group-hover:scale-105 transition-transform">
+                    ${itemImg ? `<img src="${itemImg}" class="w-full h-full object-cover">` : `<i class="fas fa-box text-slate-600"></i>`}
+                    <div class="absolute bottom-0 right-0 bg-black/80 text-white text-[8px] px-1 rounded-tl font-mono">x${qtd}</div>
                 </div>
-                <div class="text-[10px] text-center text-slate-300 leading-tight font-bold w-full truncate">
-                    ${item.nome}
+                <div class="flex flex-col justify-center min-w-0 flex-1">
+                    <div class="text-[10px] font-bold text-slate-300 truncate w-full uppercase group-hover:text-amber-400 transition-colors">${item.nome}</div>
+                    <div class="text-[9px] font-mono font-bold mt-1 space-x-2">${statsHtml.join(' | ') || '<span class="text-slate-500 italic">Sem Status</span>'}</div>
                 </div>
-                <div class="text-[9px] text-slate-500 uppercase tracking-widest">${item.raridade || 'Comum'}</div>
+                <div class="flex items-center shrink-0 pr-1">
+                    <i class="fas fa-arrow-right text-slate-600 group-hover:text-amber-500 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all"></i>
+                </div>
             `;
             listContainer.appendChild(card);
         }
@@ -191,10 +330,10 @@ window.openEquipModal = function(slotTargetId, slotLabel) {
 
     if (foundCount === 0) {
         listContainer.innerHTML = `
-            <div class="col-span-full flex flex-col items-center justify-center text-slate-500 py-12 h-full">
-                <i class="fas fa-ghost text-5xl mb-4 opacity-20"></i>
-                <p class="text-sm font-cinzel text-amber-500/50">Mochila vazia para este slot</p>
-                <p class="text-[10px] mt-1 opacity-50">Esperando ID: ${slotTargetId}</p>
+            <div class="flex flex-col items-center justify-center text-slate-500 py-12">
+                <i class="fas fa-box-open text-4xl mb-3 opacity-30"></i>
+                <p class="text-[10px] uppercase font-bold tracking-widest text-slate-400">Mochila Vazia</p>
+                <p class="text-[9px] mt-1 text-center italic max-w-[200px]">Nenhum item encontrado que encaixe neste slot.</p>
             </div>
         `;
     }
@@ -202,18 +341,17 @@ window.openEquipModal = function(slotTargetId, slotLabel) {
 
 window.handleEquip = async function(slotId, itemId) {
     const charId = globalState.selectedCharacterId;
-    document.getElementById('equipment-selector-modal').classList.add('hidden');
+    window.closeEquipPanel();
     
     try {
         await runTransaction(db, async (t) => {
             const ref = doc(db, "rpg_fichas", charId);
             const d = (await t.get(ref)).data();
             
-            let dataRoot = d.ficha ? d.ficha : d; 
-            const moch = dataRoot.mochila || {};
-            const equip = dataRoot.equipamentos || {}; 
+            const moch = d.mochila || {};
+            const equip = d.equipamentos || {}; 
 
-            // 1. Devolve item antigo
+            // 1. Devolve item antigo pra mochila
             if (equip[slotId]) {
                 const oldItem = equip[slotId];
                 moch[oldItem] = (moch[oldItem] || 0) + 1;
@@ -237,20 +375,11 @@ window.handleEquip = async function(slotId, itemId) {
                 }
             }
 
-            // 3. Remove novo e equipa
+            // 3. Remove o novo da mochila e equipa
             if (moch[itemId] > 1) moch[itemId]--; else delete moch[itemId];
             equip[slotId] = itemId;
 
-            // 4. SALVA
-            const updates = {};
-            if(d.ficha) {
-                updates["ficha.mochila"] = moch;
-                updates["ficha.equipamentos"] = equip;
-            } else {
-                updates["mochila"] = moch;
-                updates["equipamentos"] = equip;
-            }
-            t.update(ref, updates);
+            t.update(ref, { "mochila": moch, "equipamentos": equip });
         });
         
         await renderItensEquipados();
@@ -260,59 +389,23 @@ window.handleEquip = async function(slotId, itemId) {
 
 window.handleUnequip = async function(slotId, itemId) {
     const charId = globalState.selectedCharacterId;
-    document.getElementById('equipment-selector-modal').classList.add('hidden');
+    window.closeEquipPanel();
     
     try {
         await runTransaction(db, async (t) => {
             const ref = doc(db, "rpg_fichas", charId);
             const d = (await t.get(ref)).data();
             
-            let dataRoot = d.ficha ? d.ficha : d;
-            const moch = dataRoot.mochila || {};
-            const equip = dataRoot.equipamentos || {}; 
+            const moch = d.mochila || {};
+            const equip = d.equipamentos || {}; 
 
             moch[itemId] = (moch[itemId] || 0) + 1;
             delete equip[slotId];
 
-            const updates = {};
-            if(d.ficha) {
-                updates["ficha.mochila"] = moch;
-                updates["ficha.equipamentos"] = equip;
-            } else {
-                updates["mochila"] = moch;
-                updates["equipamentos"] = equip;
-            }
-            t.update(ref, updates);
+            t.update(ref, { "mochila": moch, "equipamentos": equip });
         });
 
         await renderItensEquipados();
 
     } catch (e) { alert("Erro ao desequipar: " + e.message); }
 };
-
-// Legado: renderizador antigo de slots de select (mantido caso ainda exista em alguma parte do painel admin)
-export function renderSlotsEquipamento() {
-    const grid = document.querySelector('.equipamento-grid');
-    if(!grid) return;
-    grid.innerHTML = '';
-    [...globalState.cache.tiposItens.values()].sort((a,b)=>a.nome.localeCompare(b.nome)).forEach(t => {
-        const slots = (t.id === 'anel') ? ['anel_1','anel_2'] : ((t.id === 'pulseira') ? ['pulseira_1','pulseira_2'] : [t.id]);
-        slots.forEach(sid => {
-            const d = document.createElement('div');
-            d.className = 'slot-equipamento';
-            d.innerHTML = `
-                <i class="fas ${t.icone} slot-icon"></i>
-                <div class="slot-info w-full">
-                    <label>${t.nome} ${slots.length>1 ? (sid.includes('1')?'1':'2') : ''}</label>
-                    <select id="equip-${sid}" data-type="${t.id}" disabled></select>
-                </div>`;
-            grid.appendChild(d);
-            d.querySelector('select').addEventListener('change', e => {
-                const btnSalvar = document.getElementById('btn-salvar-equipamento');
-                if(btnSalvar) btnSalvar.disabled = false;
-                d.classList.add('changed');
-                globalState.selectedCharacterData.ficha.equipamento[sid] = e.target.value;
-            });
-        });
-    });
-}
