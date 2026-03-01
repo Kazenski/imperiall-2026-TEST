@@ -77,7 +77,6 @@ export function renderConstelacaoTab() {
                 </div>
             `;
             
-            // Ativa as funções de mouse assim que criar o HTML
             setupConstelacaoListeners();
         }
 
@@ -163,7 +162,7 @@ function renderConstellationCanvas(data) {
     const nodes = template.nodes || [];
     const drawn = new Set();
 
-    // Desenhar Linhas (SVG)
+    // Desenhar Linhas restaurando a classe c-line original
     nodes.forEach(node => {
         if (!node.connections) return;
         node.connections.forEach(targetId => {
@@ -177,52 +176,32 @@ function renderConstellationCanvas(data) {
                 line.setAttribute("y1", `${node.y}%`);
                 line.setAttribute("x2", `${target.x}%`); 
                 line.setAttribute("y2", `${target.y}%`);
-                
-                if (active) {
-                    line.setAttribute("stroke", "#fbbf24");
-                    line.setAttribute("stroke-width", "3");
-                    line.setAttribute("style", "filter: drop-shadow(0 0 4px rgba(251,191,36,0.8)); transition: all 0.5s;");
-                } else {
-                    line.setAttribute("stroke", "#334155");
-                    line.setAttribute("stroke-width", "1");
-                    line.setAttribute("style", "transition: all 0.5s;");
-                }
-                
+                line.setAttribute("class", `c-line ${active ? 'active' : ''}`);
                 svg.appendChild(line);
                 drawn.add(key);
             }
         });
     });
 
-    // Desenhar Nós (Planetas/Estrelas)
+    // Desenhar Nós restaurando a classe c-node original
     nodes.forEach(node => {
         const el = document.createElement('div');
         const isUnlocked = unlockedIds.has(node.id);
         const isNeighbor = node.connections && node.connections.some(id => unlockedIds.has(id));
         const isStart = (node.id === 0);
         const isAccessible = !isUnlocked && (isStart || isNeighbor);
-        
-        let customColor = (node.data && node.data.color) ? node.data.color : "#0ea5e9"; 
+        const customColor = (node.data && node.data.color) ? node.data.color : "#0ea5e9"; 
 
-        let baseClasses = "absolute w-8 h-8 rounded-full flex items-center justify-center -translate-x-1/2 -translate-y-1/2 transition-all duration-300 z-10 border-2 font-bold text-[10px] select-none ";
-
-        if (isUnlocked) {
-            el.className = baseClasses + "bg-amber-500 text-black border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.8)] z-20 scale-110";
-            el.innerHTML = '<i class="fas fa-check text-sm"></i>';
-        } else if (isAccessible) {
-            el.className = baseClasses + "bg-slate-900/80 cursor-pointer hover:scale-125 hover:z-30 hover:shadow-[0_0_15px_rgba(255,255,255,0.4)]";
-            el.style.borderColor = customColor;
-            el.style.color = customColor;
-            el.style.boxShadow = `0 0 10px ${customColor}40`;
-            el.innerHTML = `<span>${node.data?.cost || 0}</span>`;
-        } else {
-            el.className = baseClasses + "bg-slate-950 border-slate-800 text-slate-700 opacity-60";
-            el.innerHTML = '<i class="fas fa-lock text-[8px]"></i>';
-        }
-
+        el.className = `c-node ${isUnlocked ? 'unlocked' : ''} ${isAccessible ? 'accessible' : ''} ${(!isUnlocked && !isAccessible) ? 'locked' : ''}`;
         el.style.left = `${node.x}%`; 
         el.style.top = `${node.y}%`;
         
+        if (isAccessible) el.style.borderColor = customColor;
+
+        if (isUnlocked) el.innerHTML = '<i class="fas fa-check"></i>';
+        else if (isAccessible) el.innerHTML = `<span class="text-xs">${node.data?.cost || 0}</span>`;
+        else el.innerHTML = '<i class="fas fa-lock text-[10px]"></i>';
+
         el.onmouseenter = (e) => showConstellationTooltip(e, node, isAccessible, isUnlocked);
         el.onmouseleave = () => {
             const tooltip = document.getElementById('constellation-tooltip');
@@ -310,7 +289,7 @@ async function buyConstellationNode(node) {
             });
         });
         
-        renderConstelacaoTab(); // Atualiza a tela após comprar
+        renderConstelacaoTab();
         
     } catch (e) {
         console.error(e);
@@ -327,7 +306,7 @@ export function setupConstelacaoListeners() {
     window.onmouseup = null;
 
     canvasWrapper.onmousedown = (e) => {
-        if (e.target.closest('div.absolute.rounded-full')) return;
+        if (e.target.closest('.c-node')) return; // Modificado: não arrasta se clicar na bolinha .c-node
         globalState.constelacao.isDragging = true;
         globalState.constelacao.startPos = { 
             x: e.clientX - globalState.constelacao.transform.x, 
