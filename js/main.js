@@ -63,7 +63,17 @@ const MASTER_ARCHITECTURE = {
     ],
     'Ao Jogador': [
         { id: 'blank', icon: 'fa-flask', label: 'Simular Ficha', render: () => window.renderBlankPage('Simular Ficha') },
-        { id: 'ficha-menu', icon: 'fa-id-card', label: 'Ficha de Personagem', render: () => window.renderFichaPersonagemWrapper() },
+        { id: 'ficha-menu', icon: 'fa-id-card', label: 'Ficha de Personagem', render: () => {
+            // 1. Puxa as 16 abas para a barra lateral esquerda (passando true para criar o botão "Voltar")
+            populateSidebar(FICHA_TABS, true);
+            
+            // 2. Aguarda um milissegundo para o HTML renderizar e clica na primeira aba ("Painel de Ficha")
+            // Usamos o índice [1] porque o índice [0] agora é o botão de "Voltar"
+            setTimeout(() => {
+                const botoesSidebar = document.querySelectorAll('#sub-menu-bar button');
+                if(botoesSidebar[1]) botoesSidebar[1].click();
+            }, 10);
+        }},
         { id: 'blank', icon: 'fa-images', label: 'Galeria de Imagens', render: () => window.renderBlankPage('Galeria de Imagens') }
     ],
     'Atualizações': [
@@ -91,22 +101,22 @@ window.openFichaPersonagemMenu = function() {
 };
 
 const FICHA_TABS = [
-    { id: 'painel-fichas', icon: 'fa-user', label: 'Painel de Ficha', render: renderPainelFichas },
-    { id: 'rolagem-dados', icon: 'fa-dice-d20', label: 'Rolagem de Dados', render: renderRolagemDados },
-    { id: 'minhas-habilidades', icon: 'fa-fire', label: 'Minhas Habilidades', render: renderMinhasHabilidades },
-    { id: 'mochila', icon: 'fa-briefcase', label: 'Mochila', render: renderMochila },
-    { id: 'itens-equipados', icon: 'fa-tshirt', label: 'Itens Equipados', render: renderItensEquipados },
-    { id: 'calculadora-atributos', icon: 'fa-chart-bar', label: 'Calculadora de atributos', render: renderCalculadoraAtributos },
-    { id: 'constelacao', icon: 'fa-star', label: 'Constelação', render: renderConstelacaoTab },
-    { id: 'crafting', icon: 'fa-hammer', label: 'Oficina de Criação', render: renderCraftingTab },
-    { id: 'extracao', icon: 'fa-recycle', label: 'Extração e Reciclagem', render: renderExtracaoTab },
-    { id: 'colecao-craft', icon: 'fa-book-atlas', label: 'Diário de Coleção', render: renderCollectionTab },
-    { id: 'arma-espiritual', icon: 'fa-ghost', label: 'Arma Espiritual', render: renderArmaEspiritualTab },
-    { id: 'meus-pets', icon: 'fa-dragon', label: 'Meus Pets', render: renderPetsTab },
-    { id: 'recursos-reputacao', icon: 'fa-crown', label: 'Recursos e Reputação', render: renderReputacaoTab },
-    { id: 'comercio', icon: 'fa-coins', label: 'Comércio', render: renderComercioTab },
-    { id: 'mapa-movimento', icon: 'fa-map-marked-alt', label: 'Mapa e Movimento', render: () => { if(window.renderMapTab) window.renderMapTab(); } },
-    { id: 'arena-combate', icon: 'fa-chess-board', label: 'Arena de Combate', render: () => { if(window.arena?.init) window.arena.init(); } }
+    { id: 'painel-fichas', icon: 'fa-user', label: 'Painel de Ficha', render: () => window.showTab('painel-fichas') },
+    { id: 'rolagem-dados', icon: 'fa-dice-d20', label: 'Rolagem de Dados', render: () => window.showTab('rolagem-dados') },
+    { id: 'minhas-habilidades', icon: 'fa-fire', label: 'Minhas Habilidades', render: () => window.showTab('minhas-habilidades') },
+    { id: 'mochila', icon: 'fa-briefcase', label: 'Mochila', render: () => window.showTab('mochila') },
+    { id: 'itens-equipados', icon: 'fa-tshirt', label: 'Itens Equipados', render: () => window.showTab('itens-equipados') },
+    { id: 'calculadora-atributos', icon: 'fa-chart-bar', label: 'Calculadora de atributos', render: () => window.showTab('calculadora-atributos') },
+    { id: 'constelacao', icon: 'fa-star', label: 'Constelação', render: () => window.showTab('constelacao') },
+    { id: 'crafting', icon: 'fa-hammer', label: 'Oficina de Criação', render: () => window.showTab('crafting') },
+    { id: 'extracao', icon: 'fa-recycle', label: 'Extração e Reciclagem', render: () => window.showTab('extracao') },
+    { id: 'colecao-craft', icon: 'fa-book-atlas', label: 'Diário de Coleção', render: () => window.showTab('colecao-craft') },
+    { id: 'arma-espiritual', icon: 'fa-ghost', label: 'Arma Espiritual', render: () => window.showTab('arma-espiritual') },
+    { id: 'meus-pets', icon: 'fa-dragon', label: 'Meus Pets', render: () => window.showTab('meus-pets') },
+    { id: 'recursos-reputacao', icon: 'fa-crown', label: 'Recursos e Reputação', render: () => window.showTab('recursos-reputacao') },
+    { id: 'comercio', icon: 'fa-coins', label: 'Comércio', render: () => window.showTab('comercio') },
+    { id: 'mapa-movimento', icon: 'fa-map-marked-alt', label: 'Mapa e Movimento', render: () => window.showTab('mapa-movimento') },
+    { id: 'arena-combate', icon: 'fa-chess-board', label: 'Arena de Combate', render: () => window.showTab('arena-combate') }
 ];
 
 // 3. FUNÇÃO QUE DESENHA OS BOTÕES NA ÁREA VERMELHA LATERAL
@@ -161,11 +171,11 @@ function populateSidebar(subAbaArray, isFichaMenu = false) {
 }
 
 window.renderBlankPage = function(title) {
-    // Esconde todas as abas de ficha ativas
+    // Esconde as abas ativas
     document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-
+    
+    // Procura a div de tela em branco. Se não existir (foi apagada), recria ela na hora.
     let target = document.getElementById('default-view');
-    // Se a div foi apagada acidentalmente, nós a recriamos
     if (!target) {
         target = document.createElement('div');
         target.id = 'default-view';
@@ -322,11 +332,10 @@ window.setContext = function(masterKey) {
                 <span class="ml-4 text-[10px] uppercase font-bold tracking-widest whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">${tab.label}</span>
             `;
             btn.onclick = () => {
-                // Esconde a tela principal de boas vindas com segurança
+                // Proteção extra: Só adiciona 'hidden' se o elemento existir no HTML
                 const defaultView = document.getElementById('default-view');
-                if (defaultView) defaultView.classList.add('hidden');
+                if(defaultView) defaultView.classList.add('hidden');
                 
-                // Chama a função de renderização da aba clicada
                 tab.render();
             };
             sidebar.appendChild(btn);
