@@ -54,14 +54,23 @@ window.renderBlankPage = function(title) {
 };
 
 // --- FUNÇÃO GLOBAL PARA EXIBIR UMA DAS 16 ABAS ---
+// --- FUNÇÃO GLOBAL PARA EXIBIR UMA DAS 16 ABAS ---
 window.showTab = function(tabId) {
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+    // Esconde todas as abas e arranca a classe 'active'
+    document.querySelectorAll('.tab-content').forEach(c => {
+        c.classList.add('hidden');
+        c.classList.remove('active');
+    });
     
     const defaultView = document.getElementById('default-view');
     if (defaultView) defaultView.classList.add('hidden');
 
+    // Mostra a aba alvo, define como 'active' e garante que ela ocupe a altura toda (h-full)
     const target = document.getElementById(`${tabId}-content`);
-    if (target) target.classList.remove('hidden');
+    if (target) {
+        target.classList.remove('hidden');
+        target.classList.add('active', 'h-full');
+    }
 
     // Atualiza a cor visual na barra de ícones (Coluna 2)
     document.querySelectorAll('#sub-menu-bar button').forEach(btn => {
