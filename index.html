@@ -75,21 +75,27 @@
                     </div>
 
                     <div class="px-4 pt-3 pb-3 text-center border-b border-slate-800">
-                        <h2 id="sidebar-char-name" class="font-cinzel text-xl text-amber-400 font-bold leading-tight mb-1 truncate drop-shadow-md">---</h2>
-                        <p id="sidebar-player-name" class="text-[10px] text-slate-400 uppercase tracking-widest truncate mb-2">---</p>
+                        <h2 id="sidebar-char-name" class="font-cinzel text-xl text-amber-400 font-bold leading-tight mb-2 truncate drop-shadow-md">Nenhum Selecionado</h2>
                         
-                        <div class="flex items-center justify-center gap-1.5 text-[10px] text-slate-300 uppercase font-bold bg-slate-900/80 py-1 rounded border border-slate-700 shadow-inner">
-                            <span id="sidebar-char-class" class="text-sky-400 truncate">---</span>
+                        <div class="flex items-center justify-center gap-1.5 text-[10px] text-slate-300 uppercase font-bold bg-slate-900/80 py-1 rounded border border-slate-700 shadow-inner mb-2">
+                            <span id="sidebar-char-class" class="text-sky-400 truncate">Classe</span>
                             <span class="w-1 h-1 rounded-full bg-slate-600 shrink-0"></span>
-                            <span id="sidebar-char-subclass" class="text-emerald-400 truncate">---</span>
+                            <span id="sidebar-char-subclass" class="text-emerald-400 truncate">Subclasse</span>
                         </div>
-                    </div>
 
-                    <div class="p-3 border-b border-slate-800 bg-slate-900/30">
-                        <div id="session-selector-container">
-                            <select id="session-select" class="w-full bg-slate-950 border border-indigo-900/50 rounded text-indigo-300 p-1.5 text-[9px] font-bold outline-none uppercase shadow-inner">
-                                <option value="world">Mundial (Padrão)</option>
-                            </select>
+                        <div class="flex items-center justify-between gap-1 text-[10px] font-bold">
+                            <div class="bg-slate-950 border border-slate-700 px-2 py-1 rounded flex-1 flex flex-col shadow-inner">
+                                <span class="text-slate-500 uppercase text-[8px]">ATK</span>
+                                <span id="sidebar-char-atk" class="text-amber-400 text-sm">0</span>
+                            </div>
+                            <div class="bg-slate-950 border border-slate-700 px-2 py-1 rounded flex-1 flex flex-col shadow-inner">
+                                <span class="text-slate-500 uppercase text-[8px]">DEF</span>
+                                <span id="sidebar-char-def" class="text-blue-400 text-sm">0</span>
+                            </div>
+                            <div class="bg-slate-950 border border-slate-700 px-2 py-1 rounded flex-1 flex flex-col shadow-inner">
+                                <span class="text-slate-500 uppercase text-[8px]">EVA</span>
+                                <span id="sidebar-char-eva" class="text-emerald-400 text-sm">0</span>
+                            </div>
                         </div>
                     </div>
 
@@ -116,18 +122,25 @@
                     </div>
                 </div>
 
-                <div class="flex-1 flex flex-col min-h-0 bg-slate-900/60 p-4 pb-2">
+                <div class="flex-1 flex flex-col min-h-0 bg-slate-900/60 p-4 pb-2 border-b border-slate-800">
                     <h4 class="text-[9px] text-slate-500 font-bold uppercase mb-2 tracking-widest text-center shrink-0">Log de Rolagens</h4>
                     
                     <div id="sidebar-dice-log" class="flex-1 overflow-y-auto custom-scroll pr-2 mb-4 border border-slate-800 bg-slate-950/50 p-2 rounded shadow-inner space-y-1"></div>
                     
                     <h4 class="text-[9px] text-slate-500 font-bold uppercase mb-2 tracking-widest text-center shrink-0">Rolar Dados</h4>
-                    <div id="sidebar-dice-area" class="grid grid-cols-4 gap-1.5 shrink-0">
-                        </div>
+                    <div id="sidebar-dice-area" class="grid grid-cols-4 gap-1.5 shrink-0"></div>
+                </div>
+                
+                <div class="p-3 bg-slate-900/30 shrink-0">
+                    <div id="session-selector-container">
+                        <select id="session-select" class="w-full bg-slate-950 border border-indigo-900/50 rounded text-indigo-300 p-1.5 text-[9px] font-bold outline-none uppercase shadow-inner">
+                            <option value="world">Mundial (Padrão)</option>
+                        </select>
+                    </div>
                 </div>
             </aside>
 
-            <nav id="sub-menu-bar" class="w-14 bg-slate-900 border-r border-slate-800 flex flex-col items-start py-4 shrink-0 z-[100] gap-2 shadow-2xl relative">
+            <nav id="sub-menu-bar" class="w-48 bg-slate-900 border-r border-slate-800 flex flex-col items-start py-4 shrink-0 overflow-y-auto custom-scroll z-30 gap-1 shadow-2xl">
                 </nav>
 
             <main id="content-container" class="flex-1 overflow-y-auto custom-scroll p-6 relative bg-slate-950">

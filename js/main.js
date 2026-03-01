@@ -2,7 +2,7 @@
 
 import { auth, db, storage, signInWithEmailAndPassword, signOut, onAuthStateChanged, collection, getDocs, doc, getDoc, onSnapshot, query, where, orderBy, writeBatch, runTransaction, deleteField, increment, updateDoc } from './core/firebase.js';
 import { globalState, ADMIN_EMAIL, PLACEHOLDER_IMAGE_URL, COINS } from './core/state.js';
-import { createBonusObject } from './core/calculos.js';
+import { createBonusObject, calculateMainStats, getFomeDebuffMultiplier } from './core/calculos.js';
 
 import { renderPainelFichas, renderFichaEditor } from './tabs/painelFichas.js';
 import { renderRolagemDados } from './tabs/rolagemDados.js';
@@ -205,26 +205,27 @@ function populateSidebar(subAbaArray, isFichaMenu = false) {
 
     if (isFichaMenu) {
         const backBtn = document.createElement('button');
-        backBtn.className = "w-12 h-12 ml-1 rounded-lg flex items-center justify-start pl-3 bg-red-900/20 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-md group relative shrink-0 border border-red-900/50 mb-2";
+        backBtn.className = "w-full h-12 flex items-center justify-start px-4 bg-red-900/10 text-red-500 hover:bg-red-900/30 transition-all border-l-4 border-red-500 shrink-0 mb-2";
         backBtn.innerHTML = `
-            <i class="fas fa-arrow-left text-lg w-5 text-center"></i>
-            <div class="absolute left-[calc(100%+10px)] top-1/2 -translate-y-1/2 bg-slate-800 border border-red-500 text-red-400 text-[10px] font-bold px-3 py-1.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-[9999] shadow-xl transition-all">Voltar ao Menu</div>
+            <i class="fas fa-arrow-left text-lg w-6 text-center"></i>
+            <span class="ml-3 font-bold uppercase tracking-widest text-[10px]">Voltar ao Menu</span>
         `;
         backBtn.onclick = () => window.setMasterContext('Ao Jogador');
         sidebar.appendChild(backBtn);
         
         const div = document.createElement('div');
-        div.className = "w-8 h-px bg-slate-700 my-1 shrink-0 mx-auto";
+        div.className = "w-[80%] h-px bg-slate-800 mb-2 shrink-0 mx-auto";
         sidebar.appendChild(div);
     }
 
     subAbaArray.forEach(subAba => {
         const btn = document.createElement('button');
         btn.dataset.tabId = subAba.id; 
-        btn.className = "w-12 h-12 ml-1 rounded-lg flex items-center justify-start pl-3 text-slate-400 hover:text-amber-400 hover:bg-slate-800 transition-all border border-transparent group relative shrink-0";
+        // Layout de botão expansivo (ícone na esquerda, texto que acompanha)
+        btn.className = "w-full h-11 flex items-center justify-start px-4 text-slate-400 hover:text-amber-400 hover:bg-slate-800 transition-all border-l-4 border-transparent shrink-0";
         btn.innerHTML = `
-            <i class="fas ${subAba.icon} text-[1.1rem] transition-colors w-5 text-center"></i>
-            <div class="absolute left-[calc(100%+10px)] top-1/2 -translate-y-1/2 bg-slate-800 border border-amber-500 text-amber-400 font-bold uppercase tracking-widest text-[10px] px-3 py-2 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-[9999] shadow-2xl transition-all">${subAba.label}</div>
+            <i class="fas ${subAba.icon} text-[1.1rem] transition-colors w-6 text-center shrink-0"></i>
+            <span class="ml-3 font-bold uppercase tracking-widest text-[10px] whitespace-nowrap overflow-hidden text-ellipsis">${subAba.label}</span>
         `;
 
         btn.onclick = () => {
@@ -233,13 +234,13 @@ function populateSidebar(subAbaArray, isFichaMenu = false) {
 
             document.querySelectorAll('#sub-menu-bar button').forEach(b => {
                 if(!b.classList.contains('text-red-500')) {
-                    b.classList.remove('bg-slate-800', 'border-amber-500', 'text-amber-500', 'shadow-md');
+                    b.classList.remove('bg-slate-800', 'border-amber-500', 'text-amber-500');
                     b.classList.add('text-slate-400', 'border-transparent');
                     b.querySelector('i')?.classList.replace('text-amber-500', 'text-slate-400');
                 }
             });
             
-            btn.classList.add('bg-slate-800', 'border-amber-500', 'text-amber-500', 'shadow-md');
+            btn.classList.add('bg-slate-800', 'border-amber-500', 'text-amber-500');
             btn.classList.remove('text-slate-400', 'border-transparent');
             btn.querySelector('i')?.classList.replace('text-slate-400', 'text-amber-500');
             
@@ -612,30 +613,68 @@ function handleCharacterSelect(id) {
 // --- BARRAS GLOBAIS DE STATUS (LATERAL) ---
 window.updateGlobalBars = function() {
     const charId = globalState.selectedCharacterId;
-    if (!charId || !globalState.selectedCharacterData || !globalState.selectedCharacterData.ficha) return;
+    if (!charId || !globalState.selectedCharacterData || !globalState.selectedCharacterData.ficha) {
+        document.getElementById('sidebar-char-name').textContent = 'Selecione um Aventureiro';
+        document.getElementById('sidebar-char-class').textContent = '---';
+        document.getElementById('sidebar-char-subclass').textContent = '---';
+        document.getElementById('sidebar-char-img').src = 'https://placehold.co/400x400/0f172a/d4af37?text=Sem+Foto';
+        document.getElementById('sidebar-char-atk').textContent = '0';
+        document.getElementById('sidebar-char-def').textContent = '0';
+        document.getElementById('sidebar-char-eva').textContent = '0';
+        return;
+    }
 
     const ficha = globalState.selectedCharacterData.ficha;
     const atributos = ficha.atributosBasePersonagem || {};
     
-    // Cálculo Exato do HP (Base, Extra e Shield)
-    const hpMax = Number(ficha.hpMaxPersonagemBase) || 1; 
+    // Atualiza Foto, Nome, Classe e Subclasse
+    const imgKey = ficha.imagemPrincipal;
+    const imgUrl = (imgKey && ficha.imageUrls && ficha.imageUrls[imgKey]) ? ficha.imageUrls[imgKey] : 'https://placehold.co/400x400/0f172a/d4af37?text=Sem+Foto';
+    document.getElementById('sidebar-char-img').src = imgUrl;
+    
+    document.getElementById('sidebar-char-name').textContent = ficha.nome || 'Sem Nome';
+    document.getElementById('sidebar-char-class').textContent = globalState.selectedCharacterData.classe?.nome || 'Sem Classe';
+    document.getElementById('sidebar-char-subclass').textContent = globalState.selectedCharacterData.subclasse?.nome || 'Sem Subc.';
+
+    // Cálculo exato de status (usando a Calculadora Global do Painel de Fichas)
+    const simulado = {
+        ficha: ficha,
+        raca: globalState.selectedCharacterData.raca,
+        classe: globalState.selectedCharacterData.classe,
+        subclasse: globalState.selectedCharacterData.subclasse,
+        bonusItens: globalState.selectedCharacterData.bonusItens,
+        constellationTemplate: globalState.selectedCharacterData.constellationTemplate
+    };
+    const pts = {
+        atk: ficha.pontosDistribuidosAtk || 0,
+        def: ficha.pontosDistribuidosDef || 0,
+        eva: ficha.pontosDistribuidosEva || 0
+    };
+    
+    // A função calculateMainStats busca TODOS os bônus e camadas automaticamente
+    const stats = calculateMainStats(simulado, pts);
+    const debuffFome = getFomeDebuffMultiplier(ficha);
+
+    // Atualiza a trindade ATK/DEF/EVA no painel
+    document.getElementById('sidebar-char-atk').textContent = Math.floor(stats.atk * debuffFome);
+    document.getElementById('sidebar-char-def').textContent = Math.floor(stats.def * debuffFome);
+    document.getElementById('sidebar-char-eva').textContent = Math.floor(stats.eva * debuffFome);
+
+    // Cálculos Exatos de HP e MP usando os valores processados da calculadora
+    const hpMax = stats.hpMax || 1; 
     const hpExtraMax = Number(atributos.pontosHPExtraTotal) || 0;
     const hpShieldMax = Number(atributos.defesaCorporalNativaTotal) || 0; 
-    
     const hpAtual = ficha.hpPersonagemBase !== undefined ? Number(ficha.hpPersonagemBase) : hpMax;
     const hpExtraAtual = ficha.hpExtraAtual !== undefined ? Number(ficha.hpExtraAtual) : hpExtraMax;
     const hpShieldAtual = ficha.hpShieldAtual !== undefined ? Number(ficha.hpShieldAtual) : hpShieldMax;
 
-    // Cálculo Exato do MP (Base, Extra e Shield)
-    const mpMax = Number(ficha.mpMaxPersonagemBase) || 1; 
+    const mpMax = stats.mpMax || 1; 
     const mpExtraMax = Number(atributos.pontosMPExtraTotal) || 0;
     const mpShieldMax = Number(atributos.defesaMagicaNativaTotal) || 0; 
-    
     const mpAtual = ficha.mpPersonagemBase !== undefined ? Number(ficha.mpPersonagemBase) : mpMax;
     const mpExtraAtual = ficha.mpExtraAtual !== undefined ? Number(ficha.mpExtraAtual) : mpExtraMax;
     const mpShieldAtual = ficha.mpShieldAtual !== undefined ? Number(ficha.mpShieldAtual) : mpShieldMax;
 
-    // Totais Reais
     const totalHpMax = hpMax + hpExtraMax + hpShieldMax;
     const totalHpAtual = Math.max(0, hpAtual + hpExtraAtual + hpShieldAtual);
     const totalMpMax = mpMax + mpExtraMax + mpShieldMax;
@@ -643,7 +682,7 @@ window.updateGlobalBars = function() {
 
     const setWidth = (id, pct) => { const el = document.getElementById(id); if(el) el.style.width = `${pct}%`; };
     
-    // Preenchimento Gráfico
+    // Preenchimento Gráfico das 3 barras
     setWidth('hdr-hp-base', Math.min(100, Math.max(0, (hpAtual / hpMax) * 100)));
     setWidth('hdr-hp-extra', hpExtraMax > 0 ? Math.min(100, Math.max(0, (hpExtraAtual / hpExtraMax) * 100)) : 0);
     setWidth('hdr-hp-shield', hpShieldMax > 0 ? Math.min(100, Math.max(0, (hpShieldAtual / hpShieldMax) * 100)) : 0);
@@ -652,7 +691,7 @@ window.updateGlobalBars = function() {
     setWidth('hdr-mp-extra', mpExtraMax > 0 ? Math.min(100, Math.max(0, (mpExtraAtual / mpExtraMax) * 100)) : 0);
     setWidth('hdr-mp-shield', mpShieldMax > 0 ? Math.min(100, Math.max(0, (mpShieldAtual / mpShieldMax) * 100)) : 0);
 
-    // Atualização dos Textos com o Total Exato
+    // Valores em Texto da soma completa
     const txtHpHdr = document.getElementById('hdr-hp-text');
     if(txtHpHdr) txtHpHdr.textContent = `${Math.floor(totalHpAtual)}/${Math.floor(totalHpMax)}`;
 
