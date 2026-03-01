@@ -1017,7 +1017,7 @@ window.syncStorage = async function() {
 
     const btn = document.getElementById('btn-sync-storage');
     if(btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Sincronizando...'; }
-
+ 
     try {
         await runTransaction(db, async (t) => {
             const charRef = doc(db, "rpg_fichas", charId);
