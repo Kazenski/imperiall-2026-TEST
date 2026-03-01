@@ -188,7 +188,8 @@ function createSkillSlotHTML(id, master, level, isLearned, isFavorite = false) {
     const favIcon = isFavorite ? 'fas fa-star text-amber-400' : 'far fa-star text-slate-400';
     const borderClass = isLearned ? 'border-slate-600' : 'border-slate-800 opacity-60 grayscale';
 
-    div.className = `relative group cursor-pointer hover:-translate-y-1 transition-transform skill-slot select-none`;
+    // Adicionado flex-col e items-center para alinhar a imagem e o texto embaixo perfeitamente
+    div.className = `relative group cursor-pointer hover:-translate-y-1 transition-transform skill-slot select-none flex flex-col items-center`;
     div.dataset.name = (master.nome || '').toLowerCase();
     div.title = master.nome;
     
@@ -198,16 +199,17 @@ function createSkillSlotHTML(id, master, level, isLearned, isFavorite = false) {
     };
 
     div.innerHTML = `
-        <div class="w-full aspect-square bg-slate-950 rounded-lg border ${borderClass} overflow-hidden relative shadow-md group-hover:border-rose-400 pointer-events-none transition-all">
+        <div class="w-full aspect-square bg-slate-950 rounded-full border-2 ${borderClass} overflow-hidden relative shadow-md group-hover:border-rose-400 pointer-events-none transition-all">
             <img src="${imgUrl}" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity">
-            
-            <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black via-black/80 to-transparent pt-6 pb-1 px-1 text-center flex flex-col items-center">
-                <span class="text-[9px] font-bold text-white uppercase tracking-wider truncate w-full px-1">${master.nome}</span>
-                ${isLearned ? `<span class="text-[9px] text-rose-400 font-mono font-bold">Nvl ${level}</span>` : `<span class="text-[8px] text-slate-500 font-mono uppercase">Bloqueada</span>`}
-            </div>
         </div>
+        
+        <div class="mt-2 text-center w-full">
+            <div class="text-[9px] font-bold text-white uppercase tracking-wider truncate px-1">${master.nome}</div>
+            ${isLearned ? `<div class="text-[9px] text-rose-400 font-mono font-bold">Nvl ${level}</div>` : `<div class="text-[8px] text-slate-500 font-mono uppercase">Bloqueada</div>`}
+        </div>
+        
         ${isLearned ? `
-            <button class="skill-fav-btn absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center z-10 hover:scale-110 transition-transform shadow" onclick="window.toggleSkillFavorite(event, '${id}')">
+            <button class="skill-fav-btn absolute top-0 right-0 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center z-10 hover:scale-110 transition-transform shadow" onclick="window.toggleSkillFavorite(event, '${id}')">
                 <i class="${favIcon} text-[10px]"></i>
             </button>
         ` : ''}
@@ -333,7 +335,7 @@ window.openSkillDetails = function(skillId, isLearned) {
         <div class="animate-fade-in flex flex-col h-full">
             
             <div class="flex gap-4 items-start mb-3 shrink-0 border-b border-slate-700 pb-3">
-                <img src="${master.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-16 h-16 rounded-lg border-2 border-slate-600 bg-black object-cover shrink-0 shadow-md">
+                <img src="${master.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-16 h-16 rounded-full border-2 border-slate-600 bg-black object-cover shrink-0 shadow-md">
                 <div class="flex-grow min-w-0">
                     <h3 class="font-cinzel text-lg text-amber-400 m-0 leading-tight truncate">${master.nome}</h3>
                     <span class="inline-block mt-1 text-[9px] bg-slate-900 text-rose-400 px-2 py-0.5 rounded border border-rose-900/50 font-bold uppercase tracking-widest">
