@@ -1058,4 +1058,4 @@ window.syncStorage = async function() {
         alert("Erro na transferência: " + e);
         if(btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizar Tudo'; }
     }
-};
+}; 
