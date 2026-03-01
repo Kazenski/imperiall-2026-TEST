@@ -160,75 +160,22 @@ function populateSidebar(subAbaArray, isFichaMenu = false) {
     });
 }
 
-// 4. RENDERIZADOR DA "FICHA DE PERSONAGEM" E SUAS 16 ABAS 
-window.renderFichaPersonagemWrapper = function() {
-    const container = document.getElementById('content-container');
-    
-    // As 16 abas solicitadas rigorosamente
-    const tabsRPG = [
-        { id: 'painel-fichas', name: 'Painel de Ficha', render: () => {
-            if (globalState.selectedCharacterId) window.renderFichaEditor(globalState.selectedCharacterId);
-            else renderPainelFichas();
-        }},
-        { id: 'rolagem-dados', name: 'Rolagem de Dados', render: renderRolagemDados },
-        { id: 'minhas-habilidades', name: 'Minhas Habilidades', render: renderMinhasHabilidades },
-        { id: 'mochila', name: 'Mochila', render: renderMochila },
-        { id: 'itens-equipados', name: 'Itens Equipados', render: renderItensEquipados },
-        { id: 'calculadora-atributos', name: 'Calculadora de atributos', render: renderCalculadoraAtributos },
-        { id: 'constelacao', name: 'Constelação', render: renderConstelacaoTab },
-        { id: 'crafting', name: 'Oficina de Criação', render: renderCraftingTab },
-        { id: 'extracao', name: 'Extração e Reciclagem', render: renderExtracaoTab },
-        { id: 'colecao-craft', name: 'Diário de Coleção', render: renderCollectionTab },
-        { id: 'arma-espiritual', name: 'Arma Espiritual', render: renderArmaEspiritualTab },
-        { id: 'meus-pets', name: 'Meus Pets', render: renderPetsTab },
-        { id: 'recursos-reputacao', name: 'Recursos e Reputação', render: renderReputacaoTab },
-        { id: 'comercio', name: 'Comércio', render: renderComercioTab },
-        { id: 'mapa-movimento', name: 'Mapa e Movimento', render: () => { if(window.renderMapTab) window.renderMapTab(); } },
-        { id: 'arena-combate', name: 'Arena de Combate', render: () => { if(window.arena?.init) window.arena.init(); } }
-    ];
-
-    container.innerHTML = `
-        <div class="flex flex-col h-full w-full bg-[#0f172a]">
-            <div class="bg-[#1e293b] border-b border-slate-700 flex overflow-x-auto hide-scroll shrink-0 px-2 pt-2 gap-1 z-10 shadow-md">
-                ${tabsRPG.map((t, i) => `
-                    <button class="inner-tab-btn ${i===0 ? 'active border-amber-500 text-amber-500' : 'border-transparent text-slate-400'} px-4 py-3 text-[10px] font-bold uppercase tracking-wider hover:text-slate-200 border-b-[3px] transition-colors whitespace-nowrap" data-target="${t.id}-content">
-                        ${t.name}
-                    </button>
-                `).join('')}
-            </div>
-            
-            <div id="ficha-inner-container" class="flex-1 overflow-auto relative p-6 custom-scroll">
-                ${tabsRPG.map((t, i) => `
-                    <div id="${t.id}-content" class="inner-tab-content ${i===0 ? '' : 'hidden'} h-full w-full"></div>
-                `).join('')}
-            </div>
-        </div>
-    `;
-
-    document.querySelectorAll('.inner-tab-btn').forEach((btn, index) => {
-        btn.onclick = (e) => {
-            document.querySelectorAll('.inner-tab-btn').forEach(b => {
-                b.classList.remove('active', 'border-amber-500', 'text-amber-500');
-                b.classList.add('border-transparent', 'text-slate-400');
-            });
-            btn.classList.remove('border-transparent', 'text-slate-400');
-            btn.classList.add('active', 'border-amber-500', 'text-amber-500');
-            
-            document.querySelectorAll('.inner-tab-content').forEach(c => c.classList.add('hidden'));
-            document.getElementById(btn.getAttribute('data-target')).classList.remove('hidden');
-
-            tabsRPG[index].render();
-        };
-    });
-
-    tabsRPG[0].render();
-};
-
 window.renderBlankPage = function(title) {
-    const target = document.getElementById('default-view');
+    // Esconde todas as abas de ficha ativas
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+
+    let target = document.getElementById('default-view');
+    // Se a div foi apagada acidentalmente, nós a recriamos
+    if (!target) {
+        target = document.createElement('div');
+        target.id = 'default-view';
+        target.className = "h-full w-full flex flex-col items-center justify-center opacity-20 pointer-events-none select-none overflow-y-auto p-6";
+        document.getElementById('content-container').appendChild(target);
+    }
+    
     target.classList.remove('hidden');
     target.innerHTML = `
-        <i class="fas fa-file-alt text-[8rem] mb-6 text-slate-700"></i>
+        <i class="fas fa-tools text-[8rem] mb-6 text-slate-700"></i>
         <h2 class="font-cinzel text-4xl tracking-widest uppercase text-slate-500">${title}</h2>
         <p class="mt-4 text-xl uppercase tracking-tighter text-slate-600">Página em construção</p>
     `;
@@ -375,7 +322,11 @@ window.setContext = function(masterKey) {
                 <span class="ml-4 text-[10px] uppercase font-bold tracking-widest whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">${tab.label}</span>
             `;
             btn.onclick = () => {
-                document.getElementById('default-view').classList.add('hidden');
+                // Esconde a tela principal de boas vindas com segurança
+                const defaultView = document.getElementById('default-view');
+                if (defaultView) defaultView.classList.add('hidden');
+                
+                // Chama a função de renderização da aba clicada
                 tab.render();
             };
             sidebar.appendChild(btn);
@@ -679,7 +630,12 @@ function handleCharacterSelect(id) {
         window.updateGlobalBars();
         if(window.renderSidebarDiceLog) window.renderSidebarDiceLog();
         
-        const activeTab = dom.tab_container?.querySelector('.active')?.dataset.tab || 'painel-fichas';
+        // Descobre qual aba está visível no momento olhando as divs de conteúdo
+        let activeTab = 'painel-fichas';
+        document.querySelectorAll('.tab-content').forEach(c => {
+            if (!c.classList.contains('hidden')) activeTab = c.id.replace('-content', '');
+        });
+        
         if(activeTab === 'painel-fichas') renderPainelFichas();
         return;
     }
@@ -698,16 +654,16 @@ function handleCharacterSelect(id) {
             
             if(window.renderSidebarDiceLog) window.renderSidebarDiceLog();
             
-            const activeBtn = document.querySelector('.inner-tab-btn.active');
+            // Descobre qual aba está visível no momento
             let activeTab = 'painel-fichas';
-            if (activeBtn) {
-                activeTab = activeBtn.getAttribute('data-target').replace('-content', '');
-            }
-
+            document.querySelectorAll('.tab-content').forEach(c => {
+                if (!c.classList.contains('hidden')) activeTab = c.id.replace('-content', '');
+            });
+            
             if(activeTab === 'painel-fichas') {
-                // Se o editor já estiver aberto para este personagem, não redesenha para não perder o foco de digitação
+                // Se o editor de ficha JÁ ESTIVER ABERTO, não recarrega a tela para não perder o que você está digitando
                 if (!document.getElementById('editor-nome')) {
-                    window.renderFichaEditor(id); 
+                    renderPainelFichas(); 
                 }
             } 
             else if(activeTab === 'constelacao') renderConstelacaoTab();
@@ -722,6 +678,10 @@ function handleCharacterSelect(id) {
             }
             else if(activeTab === 'calculadora-combate') renderCalculadoraCombate();
             else if(activeTab === 'recursos-reputacao') renderReputacaoTab();
+            else if(activeTab === 'comercio') {
+                if(globalState.commerce) globalState.commerce.sellableCache = null;
+                renderComercioTab();
+            }
         }
     });
 }
