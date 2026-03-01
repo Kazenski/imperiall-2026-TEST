@@ -59,83 +59,75 @@
 
         <div class="flex flex-1 overflow-hidden">
             
-            <aside id="main-sidebar" class="w-64 bg-[#0a0f18] border-r border-slate-800 flex flex-col shrink-0 overflow-y-auto hide-scroll shadow-2xl z-40 relative">
+            <aside id="main-sidebar" class="w-64 bg-[#0a0f18] border-r border-slate-800 flex flex-col shrink-0 overflow-hidden shadow-2xl z-40 relative">
                 
-                <div class="p-3 bg-slate-900 border-b border-slate-800">
-                    <label for="character-select" class="block text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Personagem Ativo</label>
-                    <select id="character-select" class="w-full bg-slate-950 border border-slate-700 rounded text-amber-400 font-bold p-1.5 text-xs focus:border-amber-500 outline-none transition-colors shadow-inner">
-                        <option value="">-- Carregando... --</option>
-                    </select>
-                </div>
-
-                <div class="w-full aspect-square bg-black relative border-b border-slate-800 shrink-0">
-                    <img id="sidebar-char-img" src="https://placehold.co/400x400/0f172a/d4af37?text=Sem+Foto" class="w-full h-full object-cover opacity-90">
-                    <div class="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-t from-[#0a0f18] to-transparent"></div>
-                </div>
-
-                <div class="px-4 pt-3 pb-3 text-center border-b border-slate-800 shrink-0">
-                    <h2 id="sidebar-char-name" class="font-cinzel text-xl text-amber-400 font-bold leading-tight mb-1 truncate drop-shadow-md">---</h2>
-                    <p id="sidebar-player-name" class="text-[10px] text-slate-400 uppercase tracking-widest truncate mb-2">---</p>
-                    
-                    <div class="flex items-center justify-center gap-1.5 text-[10px] text-slate-300 uppercase font-bold bg-slate-900/80 py-1 rounded border border-slate-700 shadow-inner">
-                        <span id="sidebar-char-class" class="text-sky-400 truncate">---</span>
-                        <span class="w-1 h-1 rounded-full bg-slate-600 shrink-0"></span>
-                        <span id="sidebar-char-subclass" class="text-emerald-400 truncate">---</span>
-                    </div>
-                </div>
-
-                <div class="p-3 border-b border-slate-800 bg-slate-900/30 flex flex-col gap-2 shrink-0">
-                    <div id="session-selector-container">
-                        <select id="session-select" class="w-full bg-slate-950 border border-indigo-900/50 rounded text-indigo-300 p-1.5 text-[9px] font-bold outline-none uppercase shadow-inner">
-                            <option value="world">Mundial (Padrão)</option>
+                <div class="flex flex-col shrink-0">
+                    <div class="p-3 bg-slate-900 border-b border-slate-800">
+                        <label for="character-select" class="block text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Personagem Ativo</label>
+                        <select id="character-select" class="w-full bg-slate-950 border border-slate-700 rounded text-amber-400 font-bold p-1.5 text-xs focus:border-amber-500 outline-none transition-colors shadow-inner">
+                            <option value="">-- Carregando... --</option>
                         </select>
                     </div>
-                    <div class="grid grid-cols-2 gap-2 mt-1">
-                        <div class="bg-slate-950 rounded p-1.5 border border-slate-800 text-center shadow-inner">
-                            <span class="block text-[7px] text-slate-500 uppercase">Horário</span>
-                            <span id="sidebar-world-time" class="text-xs font-mono text-white">--:--</span>
+
+                    <div class="w-full aspect-square bg-black relative border-b border-slate-800">
+                        <img id="sidebar-char-img" src="https://placehold.co/400x400/0f172a/d4af37?text=Sem+Foto" class="w-full h-full object-cover opacity-90">
+                        <div class="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-t from-[#0a0f18] to-transparent"></div>
+                    </div>
+
+                    <div class="px-4 pt-3 pb-3 text-center border-b border-slate-800">
+                        <h2 id="sidebar-char-name" class="font-cinzel text-xl text-amber-400 font-bold leading-tight mb-1 truncate drop-shadow-md">---</h2>
+                        <p id="sidebar-player-name" class="text-[10px] text-slate-400 uppercase tracking-widest truncate mb-2">---</p>
+                        
+                        <div class="flex items-center justify-center gap-1.5 text-[10px] text-slate-300 uppercase font-bold bg-slate-900/80 py-1 rounded border border-slate-700 shadow-inner">
+                            <span id="sidebar-char-class" class="text-sky-400 truncate">---</span>
+                            <span class="w-1 h-1 rounded-full bg-slate-600 shrink-0"></span>
+                            <span id="sidebar-char-subclass" class="text-emerald-400 truncate">---</span>
                         </div>
-                        <div class="bg-slate-950 rounded p-1.5 border border-slate-800 text-center shadow-inner">
-                            <span class="block text-[7px] text-slate-500 uppercase">Clima</span>
-                            <span id="sidebar-weather" class="text-[10px] font-mono text-emerald-400 truncate block mt-0.5">---</span>
+                    </div>
+
+                    <div class="p-3 border-b border-slate-800 bg-slate-900/30">
+                        <div id="session-selector-container">
+                            <select id="session-select" class="w-full bg-slate-950 border border-indigo-900/50 rounded text-indigo-300 p-1.5 text-[9px] font-bold outline-none uppercase shadow-inner">
+                                <option value="world">Mundial (Padrão)</option>
+                            </select>
                         </div>
-                        <div class="col-span-2 bg-slate-950 rounded p-1.5 border border-slate-800 text-center shadow-inner flex items-center justify-center gap-2">
-                            <i class="fas fa-map-marker-alt text-amber-500 text-[10px]"></i>
-                            <span id="sidebar-location" class="text-[10px] font-bold text-slate-200 truncate uppercase">---</span>
+                    </div>
+
+                    <div class="p-4 flex flex-col gap-3 border-b border-slate-800 bg-slate-900/20">
+                        <div class="relative w-full h-4 bg-slate-950 rounded border border-slate-700 overflow-hidden shadow-inner group">
+                            <div id="hdr-hp-base" class="absolute left-0 top-0 h-full bg-gradient-to-r from-red-700 to-red-500 transition-all z-0" style="width: 0%;"></div>
+                            <div id="hdr-hp-extra" class="absolute left-0 top-0 h-full bg-gradient-to-r from-red-900 to-red-800 transition-all border-r border-white/30 z-10" style="width: 0%;"></div>
+                            <div id="hdr-hp-shield" class="absolute left-0 top-0 h-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all shadow-[0_0_10px_orange] border-r border-white/60 z-20" style="width: 0%;"></div>
+                            <div class="absolute inset-0 flex items-center justify-between px-2 text-[9px] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,1)] z-30 pointer-events-none">
+                                <span>HP</span> <span id="hdr-hp-text">0/0</span>
+                            </div>
+                        </div>
+                        <div class="relative w-full h-4 bg-slate-950 rounded border border-slate-700 overflow-hidden shadow-inner group">
+                            <div id="hdr-mp-base" class="absolute left-0 top-0 h-full bg-gradient-to-r from-blue-700 to-blue-500 transition-all z-0" style="width: 0%;"></div>
+                            <div id="hdr-mp-extra" class="absolute left-0 top-0 h-full bg-gradient-to-r from-blue-900 to-blue-800 transition-all border-r border-white/30 z-10" style="width: 0%;"></div>
+                            <div id="hdr-mp-shield" class="absolute left-0 top-0 h-full bg-gradient-to-r from-cyan-500 to-cyan-300 transition-all shadow-[0_0_10px_cyan] border-r border-white/60 z-20" style="width: 0%;"></div>
+                            <div class="absolute inset-0 flex items-center justify-between px-2 text-[9px] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,1)] z-30 pointer-events-none">
+                                <span>MP</span> <span id="hdr-mp-text">0/0</span>
+                            </div>
+                        </div>
+                        <div id="bar-fome-track" class="relative w-full h-1.5 bg-slate-950 rounded border border-slate-700 overflow-hidden shadow-inner mt-1">
+                            <div id="bar-fome-fill" class="absolute left-0 top-0 h-full bg-gradient-to-r from-amber-700 to-amber-500 transition-all z-0" style="width: 100%;"></div>
                         </div>
                     </div>
                 </div>
 
-                <div class="p-4 flex flex-col gap-3 border-b border-slate-800 bg-slate-900/20 shrink-0">
-                    <div class="relative w-full h-4 bg-slate-950 rounded border border-slate-700 overflow-hidden shadow-inner group">
-                        <div id="hdr-hp-base" class="absolute left-0 top-0 h-full bg-gradient-to-r from-red-700 to-red-500 transition-all z-0" style="width: 0%;"></div>
-                        <div id="hdr-hp-extra" class="absolute left-0 top-0 h-full bg-gradient-to-r from-red-900 to-red-800 transition-all border-r border-white/30 z-10" style="width: 0%;"></div>
-                        <div id="hdr-hp-shield" class="absolute left-0 top-0 h-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all shadow-[0_0_10px_orange] border-r border-white/60 z-20" style="width: 0%;"></div>
-                        <div class="absolute inset-0 flex items-center justify-between px-2 text-[9px] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,1)] z-30 pointer-events-none">
-                            <span>HP</span> <span id="hdr-hp-text">0/0</span>
-                        </div>
-                    </div>
-                    <div class="relative w-full h-4 bg-slate-950 rounded border border-slate-700 overflow-hidden shadow-inner group">
-                        <div id="hdr-mp-base" class="absolute left-0 top-0 h-full bg-gradient-to-r from-blue-700 to-blue-500 transition-all z-0" style="width: 0%;"></div>
-                        <div id="hdr-mp-extra" class="absolute left-0 top-0 h-full bg-gradient-to-r from-blue-900 to-blue-800 transition-all border-r border-white/30 z-10" style="width: 0%;"></div>
-                        <div id="hdr-mp-shield" class="absolute left-0 top-0 h-full bg-gradient-to-r from-cyan-500 to-cyan-300 transition-all shadow-[0_0_10px_cyan] border-r border-white/60 z-20" style="width: 0%;"></div>
-                        <div class="absolute inset-0 flex items-center justify-between px-2 text-[9px] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,1)] z-30 pointer-events-none">
-                            <span>MP</span> <span id="hdr-mp-text">0/0</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-auto p-4 bg-slate-900/60 shrink-0">
-                    <h4 class="text-[9px] text-slate-500 font-bold uppercase mb-2 tracking-widest text-center">Log de Rolagens</h4>
-                    <div id="sidebar-dice-log" class="space-y-1 h-28 overflow-y-auto custom-scroll pr-1 mb-4 border border-slate-800 bg-slate-950/50 p-2 rounded shadow-inner"></div>
+                <div class="flex-1 flex flex-col min-h-0 bg-slate-900/60 p-4 pb-2">
+                    <h4 class="text-[9px] text-slate-500 font-bold uppercase mb-2 tracking-widest text-center shrink-0">Log de Rolagens</h4>
                     
-                    <h4 class="text-[9px] text-slate-500 font-bold uppercase mb-2 tracking-widest text-center">Rolar Dados</h4>
-                    <div id="sidebar-dice-area" class="grid grid-cols-4 gap-1.5">
+                    <div id="sidebar-dice-log" class="flex-1 overflow-y-auto custom-scroll pr-2 mb-4 border border-slate-800 bg-slate-950/50 p-2 rounded shadow-inner space-y-1"></div>
+                    
+                    <h4 class="text-[9px] text-slate-500 font-bold uppercase mb-2 tracking-widest text-center shrink-0">Rolar Dados</h4>
+                    <div id="sidebar-dice-area" class="grid grid-cols-4 gap-1.5 shrink-0">
                         </div>
                 </div>
             </aside>
 
-            <nav id="sub-menu-bar" class="w-16 bg-slate-900 border-r border-slate-800 flex flex-col items-center py-4 shrink-0 overflow-visible z-50 gap-2 shadow-2xl relative">
+            <nav id="sub-menu-bar" class="w-14 bg-slate-900 border-r border-slate-800 flex flex-col items-start py-4 shrink-0 z-[100] gap-2 shadow-2xl relative">
                 </nav>
 
             <main id="content-container" class="flex-1 overflow-y-auto custom-scroll p-6 relative bg-slate-950">

@@ -205,26 +205,26 @@ function populateSidebar(subAbaArray, isFichaMenu = false) {
 
     if (isFichaMenu) {
         const backBtn = document.createElement('button');
-        backBtn.className = "w-11 h-11 rounded-lg flex items-center justify-center bg-red-900/20 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-md group relative shrink-0 border border-red-900/50 mb-2";
+        backBtn.className = "w-12 h-12 ml-1 rounded-lg flex items-center justify-start pl-3 bg-red-900/20 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-md group relative shrink-0 border border-red-900/50 mb-2";
         backBtn.innerHTML = `
-            <i class="fas fa-arrow-left text-lg"></i>
-            <div class="absolute left-[calc(100%+12px)] bg-slate-800 border border-red-500 text-red-400 text-[10px] font-bold px-3 py-1.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-[100] shadow-xl transition-all">Voltar ao Menu</div>
+            <i class="fas fa-arrow-left text-lg w-5 text-center"></i>
+            <div class="absolute left-[calc(100%+10px)] top-1/2 -translate-y-1/2 bg-slate-800 border border-red-500 text-red-400 text-[10px] font-bold px-3 py-1.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-[9999] shadow-xl transition-all">Voltar ao Menu</div>
         `;
         backBtn.onclick = () => window.setMasterContext('Ao Jogador');
         sidebar.appendChild(backBtn);
         
         const div = document.createElement('div');
-        div.className = "w-8 h-px bg-slate-700 my-1 shrink-0";
+        div.className = "w-8 h-px bg-slate-700 my-1 shrink-0 mx-auto";
         sidebar.appendChild(div);
     }
 
     subAbaArray.forEach(subAba => {
         const btn = document.createElement('button');
         btn.dataset.tabId = subAba.id; 
-        btn.className = "w-11 h-11 rounded-lg flex items-center justify-center text-slate-400 hover:text-amber-400 hover:bg-slate-800 transition-all border border-transparent group relative shrink-0";
+        btn.className = "w-12 h-12 ml-1 rounded-lg flex items-center justify-start pl-3 text-slate-400 hover:text-amber-400 hover:bg-slate-800 transition-all border border-transparent group relative shrink-0";
         btn.innerHTML = `
-            <i class="fas ${subAba.icon} text-[1.1rem] transition-colors"></i>
-            <div class="absolute left-[calc(100%+12px)] bg-slate-800 border border-amber-500 text-amber-400 font-bold uppercase tracking-widest text-[10px] px-3 py-1.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-[100] shadow-xl transition-all">${subAba.label}</div>
+            <i class="fas ${subAba.icon} text-[1.1rem] transition-colors w-5 text-center"></i>
+            <div class="absolute left-[calc(100%+10px)] top-1/2 -translate-y-1/2 bg-slate-800 border border-amber-500 text-amber-400 font-bold uppercase tracking-widest text-[10px] px-3 py-2 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-[9999] shadow-2xl transition-all">${subAba.label}</div>
         `;
 
         btn.onclick = () => {
@@ -612,38 +612,54 @@ function handleCharacterSelect(id) {
 // --- BARRAS GLOBAIS DE STATUS (LATERAL) ---
 window.updateGlobalBars = function() {
     const charId = globalState.selectedCharacterId;
-    if (!charId || !globalState.selectedCharacterData) return;
+    if (!charId || !globalState.selectedCharacterData || !globalState.selectedCharacterData.ficha) return;
 
     const ficha = globalState.selectedCharacterData.ficha;
     const atributos = ficha.atributosBasePersonagem || {};
     
+    // Cálculo Exato do HP (Base, Extra e Shield)
     const hpMax = Number(ficha.hpMaxPersonagemBase) || 1; 
+    const hpExtraMax = Number(atributos.pontosHPExtraTotal) || 0;
     const hpShieldMax = Number(atributos.defesaCorporalNativaTotal) || 0; 
+    
     const hpAtual = ficha.hpPersonagemBase !== undefined ? Number(ficha.hpPersonagemBase) : hpMax;
+    const hpExtraAtual = ficha.hpExtraAtual !== undefined ? Number(ficha.hpExtraAtual) : hpExtraMax;
     const hpShieldAtual = ficha.hpShieldAtual !== undefined ? Number(ficha.hpShieldAtual) : hpShieldMax;
 
+    // Cálculo Exato do MP (Base, Extra e Shield)
     const mpMax = Number(ficha.mpMaxPersonagemBase) || 1; 
+    const mpExtraMax = Number(atributos.pontosMPExtraTotal) || 0;
     const mpShieldMax = Number(atributos.defesaMagicaNativaTotal) || 0; 
+    
     const mpAtual = ficha.mpPersonagemBase !== undefined ? Number(ficha.mpPersonagemBase) : mpMax;
+    const mpExtraAtual = ficha.mpExtraAtual !== undefined ? Number(ficha.mpExtraAtual) : mpExtraMax;
     const mpShieldAtual = ficha.mpShieldAtual !== undefined ? Number(ficha.mpShieldAtual) : mpShieldMax;
 
-    const pctHpBase = Math.min(100, Math.max(0, (hpAtual / hpMax) * 100));
-    const pctHpShield = hpShieldMax > 0 ? Math.min(100, Math.max(0, (hpShieldAtual / hpShieldMax) * 100)) : 0;
-    const pctMpBase = Math.min(100, Math.max(0, (mpAtual / mpMax) * 100));
-    const pctMpShield = mpShieldMax > 0 ? Math.min(100, Math.max(0, (mpShieldAtual / mpShieldMax) * 100)) : 0;
+    // Totais Reais
+    const totalHpMax = hpMax + hpExtraMax + hpShieldMax;
+    const totalHpAtual = Math.max(0, hpAtual + hpExtraAtual + hpShieldAtual);
+    const totalMpMax = mpMax + mpExtraMax + mpShieldMax;
+    const totalMpAtual = Math.max(0, mpAtual + mpExtraAtual + mpShieldAtual);
 
     const setWidth = (id, pct) => { const el = document.getElementById(id); if(el) el.style.width = `${pct}%`; };
-    setWidth('hdr-hp-base', pctHpBase);
-    setWidth('hdr-hp-shield', pctHpShield);
-    setWidth('hdr-mp-base', pctMpBase);
-    setWidth('hdr-mp-shield', pctMpShield);
+    
+    // Preenchimento Gráfico
+    setWidth('hdr-hp-base', Math.min(100, Math.max(0, (hpAtual / hpMax) * 100)));
+    setWidth('hdr-hp-extra', hpExtraMax > 0 ? Math.min(100, Math.max(0, (hpExtraAtual / hpExtraMax) * 100)) : 0);
+    setWidth('hdr-hp-shield', hpShieldMax > 0 ? Math.min(100, Math.max(0, (hpShieldAtual / hpShieldMax) * 100)) : 0);
 
+    setWidth('hdr-mp-base', Math.min(100, Math.max(0, (mpAtual / mpMax) * 100)));
+    setWidth('hdr-mp-extra', mpExtraMax > 0 ? Math.min(100, Math.max(0, (mpExtraAtual / mpExtraMax) * 100)) : 0);
+    setWidth('hdr-mp-shield', mpShieldMax > 0 ? Math.min(100, Math.max(0, (mpShieldAtual / mpShieldMax) * 100)) : 0);
+
+    // Atualização dos Textos com o Total Exato
     const txtHpHdr = document.getElementById('hdr-hp-text');
-    if(txtHpHdr) txtHpHdr.textContent = `${Math.max(0, hpAtual + hpShieldAtual)}/${hpMax + hpShieldMax}`;
+    if(txtHpHdr) txtHpHdr.textContent = `${Math.floor(totalHpAtual)}/${Math.floor(totalHpMax)}`;
 
     const txtMpHdr = document.getElementById('hdr-mp-text');
-    if(txtMpHdr) txtMpHdr.textContent = `${Math.max(0, mpAtual + mpShieldAtual)}/${mpMax + mpShieldMax}`;
+    if(txtMpHdr) txtMpHdr.textContent = `${Math.floor(totalMpAtual)}/${Math.floor(totalMpMax)}`;
     
+    // Fome
     const fomeExtra = Number(atributos.pontosFomeExtraTotal) || 0;
     const fomeMax = Math.floor(100 + fomeExtra);
     let fomeAtual = ficha.fomeAtual !== undefined ? Number(ficha.fomeAtual) : fomeMax;

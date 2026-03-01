@@ -635,8 +635,10 @@ function updateEditorUI(container) {
         
         let total = statBd.base + statBd.equip + statBd.const + tempVal + (statBd.ego || 0);
 
-        const charFicha = globalState.selectedCharacterData.ficha;
-        const debuffFome = getFomeDebuffMultiplier(charFicha);
+        let debuffFome = 1;
+        if (globalState.selectedCharacterData && globalState.selectedCharacterData.ficha) {
+            debuffFome = getFomeDebuffMultiplier(globalState.selectedCharacterData.ficha);
+        }
         total = Math.floor(total * debuffFome);
 
         const displayTotalEl = container.querySelector(`#display-total-${stat}`);
