@@ -7,16 +7,17 @@ function getRankColor(r) {
 }
 
 export function renderExtracaoTab() {
-    try {
-        const container = document.getElementById('extracao-content');
-        if (!container) return;
+    const container = document.getElementById('extracao-content');
+    if (!container) return;
 
+    try {
         const charData = globalState.selectedCharacterData;
         if (!charData || !charData.ficha) {
             container.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500 italic">Selecione um personagem primeiro.</div>';
             return;
         }
 
+        // Garante a existência do estado base
         if (!globalState.extracao) {
             globalState.extracao = { selectedItem: null, recipe: null };
         }
@@ -108,69 +109,84 @@ export function renderExtracaoTab() {
             setupExtracaoListeners();
         }
 
-        // 2. Preencher o Grid com a Lógica de Filtro Correta
-        const gridContainer = document.getElementById('extracao-grid');
-        gridContainer.innerHTML = '';
-        
-        // Garante que o painel volte ao estado limpo ao re-renderizar
-        const detalhesPanel = document.getElementById('extracao-detalhes-panel');
-        const emptyState = document.getElementById('extracao-empty-state');
-        if (detalhesPanel) { detalhesPanel.classList.remove('flex'); detalhesPanel.classList.add('hidden'); }
-        if (emptyState) emptyState.classList.remove('hidden');
-        globalState.extracao.selectedItem = null;
-
-        const mochila = charData.ficha.mochila || {};
-        const equipadosIds = new Set(Object.values(charData.ficha.equipamento || charData.ficha.equipamentos || {}).filter(Boolean));
-        
-        // BLOQUEIO DA ESSÊNCIA MÁGICA
-        const ID_ESSENCIA_BLOQUEADA = 'JwZDdYnOtEjvJuQLaB4f';
-
-        const itemIds = Object.keys(mochila).filter(id => !equipadosIds.has(id) && id !== ID_ESSENCIA_BLOQUEADA);
-        const searchInput = document.getElementById('extracao-filtro');
-        const termo = searchInput ? searchInput.value.toLowerCase() : '';
-
-        if (itemIds.length === 0) {
-            gridContainer.innerHTML = '<div class="col-span-full flex flex-col items-center justify-center text-slate-500 py-16"><i class="fas fa-box-open text-5xl mb-3 opacity-30"></i><p class="text-sm">Nenhum item elegível na mochila.</p></div>';
-            return;
-        }
-
-        let hasFound = false;
-        itemIds.forEach(itemId => {
-            const itemInfo = globalState.cache.itens.get(itemId);
-            if (!itemInfo) return;
-            if (termo && !itemInfo.nome.toLowerCase().includes(termo)) return;
-
-            hasFound = true;
-            const qtd = mochila[itemId];
-            const rankStyle = getRankColor(itemInfo.raridade || itemInfo.tierId || 'E');
-            
-            const el = document.createElement('div');
-            el.className = `inventory-slot relative group cursor-pointer hover:-translate-y-1 transition-transform`;
-            el.dataset.itemId = itemId;
-            el.onclick = () => selectExtractionItem(itemId, itemInfo, qtd);
-
-            el.innerHTML = `
-                <div class="w-full aspect-square bg-slate-950 rounded-lg border-2 ${rankStyle} overflow-hidden relative shadow-md group-hover:border-sky-400 transition-all">
-                    <img src="${itemInfo.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity">
-                    <div class="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black to-transparent"></div>
-                    <div class="absolute bottom-1 right-1 bg-black/90 text-white text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border border-slate-700 shadow">x${qtd}</div>
-                    <div class="absolute bottom-1 left-1 w-[calc(100%-2.5rem)] text-[8.5px] font-bold text-slate-200 uppercase tracking-widest truncate drop-shadow-md">${itemInfo.nome}</div>
-                </div>
-            `;
-            gridContainer.appendChild(el);
-        });
-
-        if (!hasFound) {
-            gridContainer.innerHTML = '<div class="col-span-full text-center text-slate-500 py-10 italic">Nenhum item corresponde à busca.</div>';
-        }
+        renderExtracaoGrid();
 
     } catch (e) {
-        console.error("Erro na aba de Extração:", e);
+        console.error("Erro fatal na aba de Extração:", e);
+        container.innerHTML = `<div class="p-6 text-red-500 bg-red-900/20 border border-red-500/50 rounded-xl m-6 shadow-inner">
+            <h3 class="font-bold uppercase tracking-widest mb-2"><i class="fas fa-exclamation-triangle"></i> Falha no Sistema</h3>
+            <p class="font-mono text-xs">${e.message}</p>
+        </div>`;
     }
 }
 
-// 1. Função de Seleção
-function selectExtractionItem(itemId, itemInfo, qtd) {
+export function renderExtracaoGrid() {
+    const gridContainer = document.getElementById('extracao-grid');
+    if (!gridContainer) return;
+    
+    gridContainer.innerHTML = '';
+    
+    // Esconde painel de detalhes por precaução
+    const detalhesPanel = document.getElementById('extracao-detalhes-panel');
+    const emptyState = document.getElementById('extracao-empty-state');
+    if (detalhesPanel) { detalhesPanel.classList.remove('flex'); detalhesPanel.classList.add('hidden'); }
+    if (emptyState) emptyState.classList.remove('hidden');
+    globalState.extracao.selectedItem = null;
+
+    const charData = globalState.selectedCharacterData;
+    const mochila = charData.ficha.mochila || {};
+    
+    // Leitura ultra segura dos equipamentos 
+    const eq1 = charData.ficha.equipamentos;
+    const eq2 = charData.ficha.equipamento;
+    const eqObj = (eq1 && typeof eq1 === 'object') ? eq1 : ((eq2 && typeof eq2 === 'object') ? eq2 : {});
+    const equipadosIds = new Set(Object.values(eqObj).filter(Boolean));
+    
+    const ID_ESSENCIA_BLOQUEADA = 'JwZDdYnOtEjvJuQLaB4f';
+
+    const itemIds = Object.keys(mochila).filter(id => !equipadosIds.has(id) && id !== ID_ESSENCIA_BLOQUEADA);
+    const searchInput = document.getElementById('extracao-filtro');
+    const termo = searchInput ? searchInput.value.toLowerCase() : '';
+
+    if (itemIds.length === 0) {
+        gridContainer.innerHTML = '<div class="col-span-full flex flex-col items-center justify-center text-slate-500 py-16"><i class="fas fa-box-open text-5xl mb-3 opacity-30"></i><p class="text-sm">Nenhum item elegível na mochila.</p></div>';
+        return;
+    }
+
+    let hasFound = false;
+    itemIds.forEach(itemId => {
+        const itemInfo = globalState.cache.itens.get(itemId);
+        if (!itemInfo || !itemInfo.nome) return;
+        if (termo && !itemInfo.nome.toLowerCase().includes(termo)) return;
+
+        hasFound = true;
+        const qtd = mochila[itemId];
+        const rankStyle = getRankColor(itemInfo.raridade || itemInfo.tierId || 'E');
+        
+        const el = document.createElement('div');
+        el.className = `inventory-slot relative group cursor-pointer hover:-translate-y-1 transition-transform`;
+        el.dataset.itemId = itemId;
+        
+        el.onclick = () => window.selectExtractionItem(itemId, itemInfo, qtd);
+
+        el.innerHTML = `
+            <div class="w-full aspect-square bg-slate-950 rounded-lg border-2 ${rankStyle} overflow-hidden relative shadow-md group-hover:border-sky-400 transition-all">
+                <img src="${itemInfo.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity">
+                <div class="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black to-transparent"></div>
+                <div class="absolute bottom-1 right-1 bg-black/90 text-white text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border border-slate-700 shadow">x${qtd}</div>
+                <div class="absolute bottom-1 left-1 w-[calc(100%-2.5rem)] text-[8.5px] font-bold text-slate-200 uppercase tracking-widest truncate drop-shadow-md">${itemInfo.nome}</div>
+            </div>
+        `;
+        gridContainer.appendChild(el);
+    });
+
+    if (!hasFound) {
+        gridContainer.innerHTML = '<div class="col-span-full text-center text-slate-500 py-10 italic">Nenhum item corresponde à busca.</div>';
+    }
+}
+
+// 1. Função de Seleção (Global)
+window.selectExtractionItem = function(itemId, itemInfo, qtd) {
     globalState.extracao.selectedItem = { id: itemId, info: itemInfo, qtd: qtd };
     
     document.getElementById('extracao-empty-state')?.classList.add('hidden');
@@ -194,7 +210,8 @@ function selectExtractionItem(itemId, itemInfo, qtd) {
     if(imgEl) imgEl.src = itemInfo.imagemUrl || PLACEHOLDER_IMAGE_URL;
     if(nomeEl) nomeEl.textContent = itemInfo.nome;
     
-    const tipo = globalState.cache.tiposItens.get(itemInfo.slot_equipavel_id || itemInfo.tipoId);
+    const tiposMap = globalState.cache.tiposItens;
+    const tipo = tiposMap ? tiposMap.get(itemInfo.slot_equipavel_id || itemInfo.tipoId) : null;
     if(tipoEl) tipoEl.textContent = tipo ? tipo.nome : 'Equipamento / Material';
     
     if(qtdEl) qtdEl.innerHTML = `Qtd em Mãos: <span class="font-bold text-white">${qtd}</span>`;
@@ -203,7 +220,8 @@ function selectExtractionItem(itemId, itemInfo, qtd) {
     const idParaBuscar = itemInfo.itemBaseId || itemId;
     let recipe = null;
     
-    for (const [rId, rec] of globalState.cache.receitas.entries()) {
+    const receitasMap = globalState.cache.receitas || new Map();
+    for (const [rId, rec] of receitasMap.entries()) {
         if (rec.itemId === idParaBuscar) {
             recipe = rec;
             break;
@@ -214,7 +232,7 @@ function selectExtractionItem(itemId, itemInfo, qtd) {
 
     calculateEssenceValues(itemInfo, recipe);
     checkRecycleAvailability(recipe);
-}
+};
 
 // 2. Cálculo de Essência
 function calculateEssenceValues(itemInfo, recipe) {
@@ -358,10 +376,10 @@ async function performExtraction(amount) {
         await runTransaction(db, async (t) => {
             const charRef = doc(db, "rpg_fichas", charId);
             const sf = await t.get(charRef);
-            if (!sf.exists()) throw "Ficha não existe";
+            if (!sf.exists()) throw new Error("Ficha não existe");
 
             const currentMochila = sf.data().mochila || {};
-            if (!currentMochila[itemId] || currentMochila[itemId] < 1) throw "Item não existe mais na mochila";
+            if (!currentMochila[itemId] || currentMochila[itemId] < 1) throw new Error("Item não existe mais na mochila");
             
             const newQtdItem = currentMochila[itemId] - 1;
             if (newQtdItem <= 0) delete currentMochila[itemId];
@@ -374,10 +392,10 @@ async function performExtraction(amount) {
         });
 
         alert("✨ Extração concluída com sucesso! Essências adicionadas à sua mochila.");
-        renderExtracaoTab();
+        renderExtracaoGrid();
     } catch (e) {
         console.error(e);
-        alert("Erro na extração: " + e);
+        alert("Erro na extração: " + e.message);
     }
 }
 
@@ -395,7 +413,7 @@ async function performDecraft(bonusPct) {
             const data = sf.data();
             const currentMochila = data.mochila || {};
 
-            if (!currentMochila[itemId] || currentMochila[itemId] < 1) throw "Item não existe mais na mochila";
+            if (!currentMochila[itemId] || currentMochila[itemId] < 1) throw new Error("Item não existe mais na mochila");
             const newQtd = currentMochila[itemId] - 1;
             if (newQtd <= 0) delete currentMochila[itemId];
             else currentMochila[itemId] = newQtd;
@@ -413,18 +431,19 @@ async function performDecraft(bonusPct) {
         });
         
         alert("♻️ Item desmanchado com sucesso! Materiais devolvidos à sua mochila.");
-        renderExtracaoTab();
+        renderExtracaoGrid();
     } catch (e) {
         console.error(e);
-        alert("Erro ao reciclar: " + e);
+        alert("Erro ao reciclar: " + e.message);
     }
 }
 
 export function setupExtracaoListeners() {
     const searchInput = document.getElementById('extracao-filtro');
     if (searchInput) {
+        // Ao digitar, recarrega apenas o Grid, para não destruir a tela e o usuário não perder o foco de onde está digitando!
         searchInput.oninput = () => {
-            renderExtracaoTab();
+            renderExtracaoGrid();
         };
     }
 }
