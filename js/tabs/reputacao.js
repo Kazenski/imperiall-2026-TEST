@@ -21,97 +21,103 @@ window.selectRepItem = function(tab, id) {
 
 // 2. Renderizador Principal
 export function renderReputacaoTab() {
-    const container = document.getElementById('reputacao-content');
+    // CORREÇÃO: O ID correto gerado pelo main.js é 'recursos-reputacao-content'
+    const container = document.getElementById('recursos-reputacao-content');
     if (!container) return;
 
-    const charData = globalState.selectedCharacterData;
-    if (!charData) {
-        container.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500 italic">Selecione um personagem primeiro.</div>';
-        return;
-    }
+    try {
+        const charData = globalState.selectedCharacterData;
+        if (!charData) {
+            container.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500 italic">Selecione um personagem primeiro.</div>';
+            return;
+        }
 
-    if (!globalState.repUI) globalState.repUI = { tab: 'buildings', selectedId: null };
-    const activeTab = globalState.repUI.tab;
-    
-    const ficha = charData.ficha;
-    const repUsage = calculateReputationUsage(ficha);
-    const repDetails = calculateReputationDetails(ficha);
+        if (!globalState.repUI) globalState.repUI = { tab: 'buildings', selectedId: null };
+        const activeTab = globalState.repUI.tab;
+        
+        const ficha = charData.ficha;
+        const repUsage = calculateReputationUsage(ficha);
+        const repDetails = calculateReputationDetails(ficha);
 
-    // INJEÇÃO DO ESQUELETO DE 2 COLUNAS
-    if (!document.getElementById('rep-layout-wrapper')) {
-        container.innerHTML = `
-            <div id="rep-layout-wrapper" class="flex w-full h-full gap-6 animate-fade-in pb-4">
-                
-                <div class="flex-1 flex flex-col min-w-0 h-full">
+        // INJEÇÃO DO ESQUELETO DE 2 COLUNAS
+        if (!document.getElementById('rep-layout-wrapper')) {
+            container.innerHTML = `
+                <div id="rep-layout-wrapper" class="flex w-full h-full gap-6 animate-fade-in pb-4">
                     
-                    <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-700 mb-4 shadow-sm flex flex-col xl:flex-row justify-between items-center gap-4 shrink-0">
-                        <div class="flex items-center gap-4 w-full xl:w-auto">
-                            <div class="w-14 h-14 rounded-full bg-slate-950 border-2 border-amber-500 flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.3)] shrink-0">
-                                <i class="fas fa-chess-rook text-2xl text-amber-500"></i>
+                    <div class="flex-1 flex flex-col min-w-0 h-full">
+                        
+                        <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-700 mb-4 shadow-sm flex flex-col xl:flex-row justify-between items-center gap-4 shrink-0">
+                            <div class="flex items-center gap-4 w-full xl:w-auto">
+                                <div class="w-14 h-14 rounded-full bg-slate-950 border-2 border-amber-500 flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.3)] shrink-0">
+                                    <i class="fas fa-chess-rook text-2xl text-amber-500"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <h2 class="text-2xl font-cinzel text-amber-400 font-bold leading-none mb-1 truncate">Império & Influência</h2>
+                                    <div class="text-[9px] text-slate-400 font-mono flex flex-wrap gap-x-3 gap-y-1">
+                                        <span title="Nível + Profissões"><i class="fas fa-arrow-up text-emerald-400"></i> ${repDetails.level} + ${repDetails.profissoes}</span>
+                                        <span title="Enciclopédia"><i class="fas fa-book text-sky-400"></i> ${repUsage.colecao}</span>
+                                        ${repDetails.gmBonus ? `<span title="Bônus GM"><i class="fas fa-gift text-purple-400"></i> ${repDetails.gmBonus}</span>` : ''}
+                                    </div>
+                                </div>
                             </div>
-                            <div class="min-w-0">
-                                <h2 class="text-2xl font-cinzel text-amber-400 font-bold leading-none mb-1 truncate">Império & Influência</h2>
-                                <div class="text-[9px] text-slate-400 font-mono flex flex-wrap gap-x-3 gap-y-1">
-                                    <span title="Nível + Profissões"><i class="fas fa-arrow-up text-emerald-400"></i> ${repDetails.level} + ${repDetails.profissoes}</span>
-                                    <span title="Enciclopédia"><i class="fas fa-book text-sky-400"></i> ${repUsage.colecao}</span>
-                                    ${repDetails.gmBonus ? `<span title="Bônus GM"><i class="fas fa-gift text-purple-400"></i> ${repDetails.gmBonus}</span>` : ''}
+
+                            <div class="flex gap-3 w-full xl:w-auto shrink-0">
+                                <div class="bg-slate-950 px-4 py-2 rounded-lg border border-slate-700 flex-1 text-center xl:w-28">
+                                    <div class="text-[9px] uppercase font-bold text-slate-500 mb-0.5">Total</div>
+                                    <div class="text-xl font-cinzel text-amber-400 leading-none">${repUsage.total}</div>
+                                </div>
+                                <div class="bg-slate-950 px-4 py-2 rounded-lg border border-slate-700 flex-1 text-center xl:w-28 shadow-inner">
+                                    <div class="text-[9px] uppercase font-bold text-slate-500 mb-0.5">Disponível</div>
+                                    <div id="rep-available-display" class="text-xl font-cinzel ${repUsage.available >= 0 ? 'text-emerald-400' : 'text-red-400'} leading-none">${repUsage.available}</div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="flex gap-3 w-full xl:w-auto shrink-0">
-                            <div class="bg-slate-950 px-4 py-2 rounded-lg border border-slate-700 flex-1 text-center xl:w-28">
-                                <div class="text-[9px] uppercase font-bold text-slate-500 mb-0.5">Total</div>
-                                <div class="text-xl font-cinzel text-amber-400 leading-none">${repUsage.total}</div>
+                        <div class="flex gap-2 mb-4 shrink-0" id="rep-nav-tabs">
                             </div>
-                            <div class="bg-slate-950 px-4 py-2 rounded-lg border border-slate-700 flex-1 text-center xl:w-28 shadow-inner">
-                                <div class="text-[9px] uppercase font-bold text-slate-500 mb-0.5">Disponível</div>
-                                <div id="rep-available-display" class="text-xl font-cinzel ${repUsage.available >= 0 ? 'text-emerald-400' : 'text-red-400'} leading-none">${repUsage.available}</div>
-                            </div>
+
+                        <div class="flex-1 overflow-y-auto custom-scroll bg-slate-900/50 border border-slate-700 rounded-xl p-4 shadow-inner relative">
+                            <div id="rep-grid-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 content-start"></div>
                         </div>
                     </div>
 
-                    <div class="flex gap-2 mb-4 shrink-0" id="rep-nav-tabs">
-                        </div>
-
-                    <div class="flex-1 overflow-y-auto custom-scroll bg-slate-900/50 border border-slate-700 rounded-xl p-4 shadow-inner relative">
-                        <div id="rep-grid-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 content-start"></div>
+                    <div class="w-80 md:w-96 shrink-0 flex flex-col h-full pt-16">
+                        <div id="rep-inspect-panel" class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col h-full relative overflow-hidden">
+                            </div>
                     </div>
-                </div>
 
-                <div class="w-80 md:w-96 shrink-0 flex flex-col h-full pt-16">
-                    <div id="rep-inspect-panel" class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col h-full relative overflow-hidden">
-                        </div>
                 </div>
-
-            </div>
-            
-            <div id="building-modal-area"></div>
-        `;
-    } else {
-        // Atualiza apenas o número de pontos se não precisar reconstruir o HTML base
-        const availEl = document.getElementById('rep-available-display');
-        if (availEl) {
-            availEl.textContent = repUsage.available;
-            availEl.className = `text-xl font-cinzel ${repUsage.available >= 0 ? 'text-emerald-400' : 'text-red-400'} leading-none`;
+                
+                <div id="building-modal-area"></div>
+            `;
+        } else {
+            const availEl = document.getElementById('rep-available-display');
+            if (availEl) {
+                availEl.textContent = repUsage.available;
+                availEl.className = `text-xl font-cinzel ${repUsage.available >= 0 ? 'text-emerald-400' : 'text-red-400'} leading-none`;
+            }
         }
-    }
 
-    // Atualiza botões
-    const navTabs = document.getElementById('rep-nav-tabs');
-    if (navTabs) {
-        navTabs.innerHTML = `
-            <button onclick="window.switchRepTab('buildings')" class="px-5 py-2.5 rounded-lg border text-[10px] uppercase tracking-wider transition-all whitespace-nowrap ${activeTab === 'buildings' ? 'bg-amber-600 text-black font-bold border-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]' : 'bg-slate-900 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200'}">
-                <i class="fas fa-store mr-1"></i> Estabelecimentos
-            </button>
-            <button onclick="window.switchRepTab('allies')" class="px-5 py-2.5 rounded-lg border text-[10px] uppercase tracking-wider transition-all whitespace-nowrap ${activeTab === 'allies' ? 'bg-sky-600 text-white font-bold border-sky-500 shadow-[0_0_10px_rgba(2,132,199,0.5)]' : 'bg-slate-900 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200'}">
-                <i class="fas fa-users mr-1"></i> Aliados
-            </button>
-        `;
-    }
+        // Atualiza botões
+        const navTabs = document.getElementById('rep-nav-tabs');
+        if (navTabs) {
+            navTabs.innerHTML = `
+                <button onclick="window.switchRepTab('buildings')" class="px-5 py-2.5 rounded-lg border text-[10px] uppercase tracking-wider transition-all whitespace-nowrap ${activeTab === 'buildings' ? 'bg-amber-600 text-black font-bold border-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]' : 'bg-slate-900 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200'}">
+                    <i class="fas fa-store mr-1"></i> Estabelecimentos
+                </button>
+                <button onclick="window.switchRepTab('allies')" class="px-5 py-2.5 rounded-lg border text-[10px] uppercase tracking-wider transition-all whitespace-nowrap ${activeTab === 'allies' ? 'bg-sky-600 text-white font-bold border-sky-500 shadow-[0_0_10px_rgba(2,132,199,0.5)]' : 'bg-slate-900 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200'}">
+                    <i class="fas fa-users mr-1"></i> Aliados
+                </button>
+            `;
+        }
 
-    renderRepGrid(ficha);
-    renderRepRightPanel(ficha, repUsage);
+        renderRepGrid(ficha);
+        renderRepRightPanel(ficha, repUsage);
+
+    } catch (error) {
+        console.error("Erro na aba de Reputação:", error);
+        container.innerHTML = `<div class="p-6 text-red-500 bg-red-900/20 border border-red-500/50 rounded-xl m-6 shadow-inner"><h3 class="font-bold uppercase"><i class="fas fa-exclamation-triangle"></i> Erro Crítico</h3><p class="font-mono text-xs">${error.message}</p></div>`;
+    }
 }
 
 // 3. Renderiza o Grid de Itens
