@@ -4,66 +4,105 @@ import { globalState, PLACEHOLDER_IMAGE_URL } from '../core/state.js';
 let selectedCraftingProfId = 'geral'; // Estado local da sub-aba de craft
 
 export function renderCraftingTab() {
+    const container = document.getElementById('crafting-content');
+    if (!container) return;
+
     const charData = globalState.selectedCharacterData;
-    if (!charData) return;
+    if (!charData || !charData.ficha) {
+        container.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500 italic">Selecione um personagem primeiro.</div>';
+        return;
+    }
 
     const ficha = charData.ficha;
     const profissoes = ficha.profissoes || {};
-    const tabsContainer = document.getElementById('craft-profession-tabs');
-    const recipeContainer = document.getElementById('craft-recipe-list');
-    
-    if(!tabsContainer || !recipeContainer) return;
 
-    // Renderiza as Sub-Abas na horizontal
-    let tabsHtml = `
-        <button onclick="window.switchCraftProf('geral')" 
-            class="sub-tab-btn ${selectedCraftingProfId === 'geral' ? 'active' : ''}">
-            Geral
-        </button>
-    `;
+    // 1. INJEÇÃO DO ESQUELETO DE 2 COLUNAS
+    if (!document.getElementById('crafting-layout-wrapper')) {
+        container.innerHTML = `
+            <div id="crafting-layout-wrapper" class="flex w-full h-full gap-6 animate-fade-in pb-4">
+                
+                <div class="flex-1 flex flex-col min-w-0 h-full">
+                    
+                    <div class="flex justify-between items-center mb-4 shrink-0">
+                        <h2 class="font-cinzel text-3xl text-amber-500 m-0"><i class="fas fa-hammer mr-3 text-slate-600"></i> Oficina de Criação</h2>
+                    </div>
 
-    Object.keys(profissoes).forEach(profId => {
-        const profInfo = globalState.cache.profissoes.get(profId);
-        const level = profissoes[profId].nivel || 1;
-        const nome = profInfo ? profInfo.nome : 'Profissão';
+                    <div class="flex flex-col gap-3 bg-slate-800 p-3 rounded-lg border border-slate-700 shadow-sm shrink-0 mb-4">
+                        <div class="relative w-full">
+                            <i class="fas fa-search absolute left-3 top-2.5 text-slate-500 text-sm"></i>
+                            <input type="text" id="craft-search" placeholder="Buscar receita..." class="w-full bg-slate-900 border border-slate-600 rounded py-1.5 pl-9 pr-4 text-sm text-white focus:border-amber-500 outline-none">
+                        </div>
+                        <div id="craft-profession-tabs" class="flex gap-2 overflow-x-auto hide-scroll pb-1">
+                            </div>
+                    </div>
+                    
+                    <div class="flex-1 overflow-y-auto custom-scroll bg-slate-900/50 border border-slate-700 rounded-xl p-4 shadow-inner relative">
+                        <div id="craft-recipe-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 content-start"></div>
+                    </div>
+                </div>
+
+                <div class="w-80 md:w-96 shrink-0 flex flex-col h-full pt-12">
+                    <div id="craft-bench-panel" class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col h-full relative overflow-hidden">
+                        </div>
+                </div>
+
+            </div>
+        `;
         
-        tabsHtml += `
-            <button onclick="window.switchCraftProf('${profId}')" 
-                class="sub-tab-btn ${selectedCraftingProfId === profId ? 'active' : ''}">
-                ${nome} <span class="ml-2 text-[10px] opacity-60">Lv.${level}</span>
+        // Liga o evento de busca
+        setupCraftingListeners();
+    }
+
+    // 2. Renderiza Abas de Profissões (Horizontal)
+    const tabsContainer = document.getElementById('craft-profession-tabs');
+    if (tabsContainer) {
+        let tabsHtml = `
+            <button onclick="window.switchCraftProf('geral')" 
+                class="px-4 py-2 rounded border text-[10px] uppercase tracking-wider transition-all whitespace-nowrap ${selectedCraftingProfId === 'geral' ? 'bg-amber-600 text-black font-bold border-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]' : 'bg-slate-900 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200'}">
+                <i class="fas fa-globe mr-1"></i> Geral
             </button>
         `;
-    });
 
-    tabsContainer.innerHTML = tabsHtml;
+        Object.keys(profissoes).forEach(profId => {
+            const profInfo = globalState.cache.profissoes.get(profId);
+            const level = profissoes[profId].nivel || 1;
+            const nome = profInfo ? profInfo.nome : 'Profissão';
+            
+            tabsHtml += `
+                <button onclick="window.switchCraftProf('${profId}')" 
+                    class="px-4 py-2 rounded border text-[10px] uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-2 ${selectedCraftingProfId === profId ? 'bg-amber-600 text-black font-bold border-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]' : 'bg-slate-900 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200'}">
+                    <span>${nome}</span>
+                    <span class="bg-black/30 px-1.5 py-0.5 rounded text-[9px]">Lv.${level}</span>
+                </button>
+            `;
+        });
 
-    // Chama a listagem de receitas filtrada
+        tabsContainer.innerHTML = tabsHtml;
+    }
+
+    // 3. Atualiza Lista de Receitas
     const searchInput = document.getElementById('craft-search');
     const searchTerm = searchInput ? searchInput.value : '';
-    renderRecipeList(recipeContainer, searchTerm);
+    const recipeContainer = document.getElementById('craft-recipe-list');
+    if (recipeContainer) renderRecipeList(recipeContainer, searchTerm);
+    
+    // Atualiza a bancada
+    renderWorkbench();
 }
 
-// Exposta para o HTML chamar no onclick das sub-abas
 window.switchCraftProf = function(profId) {
     selectedCraftingProfId = profId;
     globalState.crafting.selectedRecipe = null;
     globalState.crafting.step = 'prepare';
-    
     renderCraftingTab();
-    const bench = document.getElementById('craft-bench');
-    if (bench) {
-        bench.innerHTML = '<p class="text-slate-500 italic">Selecione uma receita para começar a trabalhar.</p>';
-    }
 };
 
 function renderRecipeList(container, filter = '') {
     container.innerHTML = '';
     const term = filter.toLowerCase();
 
-    // Filtra as receitas pela profissão selecionada na sub-aba
     const recipes = [...globalState.cache.receitas.values()].filter(r => {
         const nameMatch = r.nome.toLowerCase().includes(term);
-        // Se a aba for 'geral', mostra receitas sem profissão. Se for ID, mostra apenas as dela.
         const profMatch = selectedCraftingProfId === 'geral' 
             ? (!r.profissaoId || r.profissaoId === "") 
             : (r.profissaoId === selectedCraftingProfId);
@@ -72,7 +111,7 @@ function renderRecipeList(container, filter = '') {
     }).sort((a,b) => a.nome.localeCompare(b.nome));
 
     if (recipes.length === 0) {
-        container.innerHTML = '<p class="text-xs text-slate-500 text-center py-10 italic">Nenhuma receita encontrada.</p>';
+        container.innerHTML = '<div class="col-span-full flex flex-col items-center justify-center text-slate-500 py-12"><i class="fas fa-hammer text-4xl mb-3 opacity-30"></i><p class="text-xs uppercase tracking-widest font-bold">Nenhuma receita encontrada</p></div>';
         return;
     }
 
@@ -81,12 +120,15 @@ function renderRecipeList(container, filter = '') {
         const isSelected = globalState.crafting.selectedRecipe?.id === rec.id;
         
         const el = document.createElement('div');
-        el.className = `recipe-item ${isSelected ? 'selected' : ''}`;
+        el.className = `bg-slate-950 border ${isSelected ? 'border-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.3)] ring-1 ring-amber-500/50' : 'border-slate-700 hover:border-slate-500'} rounded-lg p-3 flex items-center gap-3 cursor-pointer transition-all group`;
+        
         el.innerHTML = `
-            <img src="${itemInfo?.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-10 h-10 rounded bg-slate-800 object-contain">
-            <div class="flex-grow overflow-hidden text-left">
-                <h4 class="text-sm font-bold truncate ${isSelected ? 'text-amber-400' : 'text-slate-300'}">${rec.nome}</h4>
-                <span class="text-[9px] text-slate-500 uppercase font-mono">Sucesso: ${rec.chanceSucessoBase || 0}%</span>
+            <div class="w-12 h-12 rounded bg-black border border-slate-800 shrink-0 overflow-hidden relative">
+                <img src="${itemInfo?.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity">
+            </div>
+            <div class="flex-grow min-w-0">
+                <h4 class="text-xs font-bold ${isSelected ? 'text-amber-400' : 'text-slate-300'} truncate uppercase tracking-wider group-hover:text-amber-400 transition-colors">${rec.nome}</h4>
+                <div class="text-[10px] text-slate-500 font-mono mt-1">Base: <span class="text-sky-400 font-bold">${rec.chanceSucessoBase || 0}%</span></div>
             </div>
         `;
         el.onclick = () => selectRecipe(rec);
@@ -95,7 +137,6 @@ function renderRecipeList(container, filter = '') {
 }
 
 function selectRecipe(recipe) {
-    // Reseta estado
     globalState.crafting = {
         selectedRecipe: recipe,
         step: 'prepare',
@@ -112,12 +153,23 @@ function selectRecipe(recipe) {
 }
 
 function renderWorkbench() {
-    const bench = document.getElementById('craft-bench');
+    const bench = document.getElementById('craft-bench-panel');
     const state = globalState.crafting;
     const recipe = state.selectedRecipe;
     const charData = globalState.selectedCharacterData;
 
-    if (!bench || !recipe || !charData) return;
+    if (!bench || !charData) return;
+
+    // Estado Vazio
+    if (!recipe) {
+        bench.innerHTML = `
+            <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 opacity-50 z-10 bg-slate-800">
+                <i class="fas fa-tools text-6xl mb-4"></i>
+                <p class="text-sm text-center px-6">Selecione uma receita na lista ao lado para começar a trabalhar na forja.</p>
+            </div>
+        `;
+        return;
+    }
 
     const itemResult = globalState.cache.itens.get(recipe.itemId);
     const mochila = charData.ficha.mochila || {};
@@ -133,10 +185,10 @@ function renderWorkbench() {
         if (!enough) hasAllMaterials = false;
 
         return `
-            <div class="craft-material-badge ${enough ? 'ok' : 'missing'}">
-                <img src="${matInfo.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-10 h-10 mb-1 rounded bg-black object-contain">
-                <span class="text-[10px] truncate w-full text-center" title="${matInfo.nome}">${matInfo.nome}</span>
-                <span class="text-xs font-bold ${enough ? 'text-green-400' : 'text-red-400'}">${owned}/${mat.quantidade}</span>
+            <div class="flex flex-col items-center bg-slate-950 border ${enough ? 'border-emerald-500/50' : 'border-red-500/50 bg-red-900/10'} rounded-lg p-2 shadow-inner">
+                <img src="${matInfo.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-10 h-10 mb-1 rounded bg-black object-contain border border-slate-800">
+                <span class="text-[9px] truncate w-full text-center text-slate-400" title="${matInfo.nome}">${matInfo.nome}</span>
+                <span class="text-[10px] font-mono font-bold mt-1 ${enough ? 'text-emerald-400' : 'text-red-400'}">${owned} / ${mat.quantidade}</span>
             </div>
         `;
     }).join('');
@@ -145,10 +197,8 @@ function renderWorkbench() {
     let baseChance = recipe.chanceSucessoBase || 0;
     let profBonus = 0;
     let skillBonus = 0;
-    let rarityPenalty = 0;
     let hasReqProf = true;
 
-    // Profissão
     if (recipe.profissaoId) {
         const pLvl = profissoes[recipe.profissaoId]?.nivel || 0;
         if (pLvl >= (recipe.profissaoLevel || 0)) {
@@ -158,7 +208,6 @@ function renderWorkbench() {
         }
     }
 
-    // Habilidade
     if (recipe.habilidadeId) {
         const hLvl = habilidades[recipe.habilidadeId]?.nivel || 1;
         const habInfo = globalState.cache.habilidades.get(recipe.habilidadeId);
@@ -167,8 +216,7 @@ function renderWorkbench() {
         skillBonus = baseEff;
     }
 
-    // Raridade (Penalidade) omitida ou calculada aqui se houver cache
-    const finalChance = Math.max(0, Math.min(100, baseChance + profBonus + skillBonus - rarityPenalty));
+    const finalChance = Math.max(0, Math.min(100, baseChance + profBonus + skillBonus));
     globalState.crafting.finalChance = finalChance;
 
     // 3. Renderizar Interface Baseada no Passo
@@ -179,59 +227,79 @@ function renderWorkbench() {
         const btnText = !hasReqProf ? "Profissão Insuficiente" : (!hasAllMaterials ? "Materiais Insuficientes" : "Iniciar Criação");
         
         actionArea = `
-            <div class="grid grid-cols-2 gap-4 text-sm text-slate-300 bg-slate-900/50 p-3 rounded mb-4">
-                <div class="flex justify-between"><span>Base:</span> <span>${baseChance}%</span></div>
-                <div class="flex justify-between"><span>Profissão:</span> <span class="text-sky-400">+${profBonus}%</span></div>
-                <div class="flex justify-between"><span>Habilidade:</span> <span class="text-purple-400">+${skillBonus}%</span></div>
-                <div class="flex justify-between border-t border-slate-600 col-span-2 pt-1 mt-1">
-                    <span class="font-bold text-white">Chance Total:</span> 
-                    <span class="font-bold text-amber-400 text-lg">${finalChance}%</span>
-                </div>
-            </div>
-            <button id="btn-craft-start" class="btn btn-primary w-full py-3" ${btnDisabled ? 'disabled' : ''}>
-                ${btnText}
+            <button id="btn-craft-start" class="w-full font-bold uppercase tracking-widest text-[10px] py-3 rounded transition-transform ${!btnDisabled ? 'bg-amber-600 hover:bg-amber-500 text-black hover:scale-[1.02] shadow-md cursor-pointer' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}" ${btnDisabled ? 'disabled' : ''}>
+                <i class="fas fa-fire mr-1"></i> ${btnText}
             </button>
         `;
     } else if (state.step === 'roll') {
         actionArea = `
-            <div class="flex flex-col items-center animate-fade-in">
-                <p class="mb-4 text-amber-400 font-bold">Role o D20 para definir a qualidade!</p>
-                <button id="btn-craft-d20" class="d20-btn"><i class="fas fa-dice-d20"></i></button>
+            <div class="flex flex-col items-center animate-fade-in bg-slate-900 border border-slate-700 p-4 rounded-xl">
+                <p class="text-[10px] uppercase font-bold text-amber-400 tracking-widest mb-3 text-center">Role o dado para a qualidade final</p>
+                <button id="btn-craft-d20" class="text-5xl text-amber-500 hover:text-amber-400 transition-transform hover:rotate-[15deg] hover:scale-110 drop-shadow-[0_0_15px_rgba(245,158,11,0.5)]">
+                    <i class="fas fa-dice-d20"></i>
+                </button>
             </div>
         `;
     } else if (state.step === 'confirm') {
         actionArea = `
-            <div class="bg-slate-900/80 p-4 rounded border border-amber-500/50 mb-4 animate-fade-in">
-                <div class="flex justify-between text-lg mb-2"><span>Chance Sucesso:</span> <span class="text-white">${finalChance}%</span></div>
-                <div class="flex justify-between text-lg mb-2"><span>Dado:</span> <span class="text-amber-400 font-bold">+${state.rollResult}</span></div>
-                <div class="flex justify-between text-xl border-t border-slate-600 pt-2">
-                    <span>Qualidade Final:</span> 
-                    <span class="text-green-400 font-bold">${state.quality}%</span>
+            <div class="bg-slate-900 border border-amber-500/50 p-4 rounded-xl mb-3 animate-fade-in shadow-[0_0_15px_rgba(245,158,11,0.1)] font-mono text-[10px]">
+                <div class="flex justify-between text-slate-300 mb-1"><span>Chance:</span> <span>${finalChance}%</span></div>
+                <div class="flex justify-between text-amber-400 mb-2 font-bold text-xs"><span>Dado rolado:</span> <span>+${state.rollResult}</span></div>
+                <div class="flex justify-between text-emerald-400 font-bold border-t border-slate-700 pt-2 mt-1 text-sm">
+                    <span>Qualidade Final:</span> <span>${state.quality}%</span>
                 </div>
             </div>
-            <button id="btn-craft-confirm" class="btn btn-green w-full py-3">Confirmar e Criar (Consome Itens)</button>
-            <button id="btn-craft-cancel" class="btn btn-danger w-full py-2 mt-2 text-xs">Cancelar</button>
+            <div class="flex gap-2">
+                <button id="btn-craft-confirm" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold uppercase tracking-widest text-[10px] py-3 rounded shadow-md transition-transform hover:scale-[1.02]">
+                    <i class="fas fa-hammer mr-1"></i> Forjar
+                </button>
+                <button id="btn-craft-cancel" class="bg-red-900/40 hover:bg-red-600 text-red-500 hover:text-white font-bold uppercase text-[10px] py-3 px-4 rounded border border-red-900/50 transition-colors">
+                    Cancelar
+                </button>
+            </div>
         `;
     } else if (state.step === 'loading') {
-        actionArea = `<div class="flex justify-center p-6"><div class="animate-spin rounded-full h-10 w-10 border-t-2 border-amber-500"></div></div>`;
+        actionArea = `<div class="flex justify-center items-center py-6 text-amber-500"><i class="fas fa-circle-notch fa-spin text-3xl"></i></div>`;
     }
 
     bench.innerHTML = `
-        <div class="flex flex-col items-center w-full max-w-md mx-auto">
-            <img src="${itemResult?.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-24 h-24 mb-2 object-contain bg-slate-900 border-2 border-slate-600 rounded-lg">
-            <h2 class="text-2xl font-cinzel text-amber-400 mb-6">${itemResult?.nome || recipe.nome}</h2>
+        <div class="p-6 border-b border-slate-700 bg-slate-900/50 flex flex-col items-center shrink-0 shadow-sm z-10">
+            <div class="w-24 h-24 rounded-full border-2 border-amber-500 bg-black overflow-hidden mb-4 shadow-[0_0_20px_rgba(245,158,11,0.3)]">
+                <img src="${itemResult?.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-full h-full object-cover">
+            </div>
+            <h3 class="font-cinzel text-2xl text-amber-400 text-center leading-tight mb-2 drop-shadow-md">${itemResult?.nome || recipe.nome}</h3>
+            <span class="text-[9px] uppercase tracking-widest text-slate-400 bg-slate-950 px-3 py-1 rounded-full border border-slate-700 shadow-inner">Projeto</span>
+        </div>
+
+        <div class="flex-1 overflow-y-auto custom-scroll p-6 flex flex-col gap-6 bg-slate-900/20">
             
-            <div class="flex flex-wrap justify-center gap-3 mb-6 w-full">
-                ${materialsHtml}
+            <div>
+                <h4 class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-3 border-l-2 border-slate-500 pl-2"><i class="fas fa-boxes mr-1"></i> Materiais</h4>
+                <div class="grid grid-cols-3 gap-2">
+                    ${materialsHtml}
+                </div>
             </div>
 
-            <div class="w-full">
-                ${actionArea}
+            <div class="bg-slate-950 border border-slate-700 rounded-xl p-4 shadow-inner">
+                <h4 class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-3"><i class="fas fa-percentage mr-1"></i> Probabilidade Base</h4>
+                <div class="space-y-1 text-[10px] font-mono">
+                    <div class="flex justify-between text-slate-400"><span>Dificuldade Base:</span> <span>${baseChance}%</span></div>
+                    <div class="flex justify-between text-sky-400"><span>Bônus de Profissão:</span> <span>+${profBonus}%</span></div>
+                    <div class="flex justify-between text-purple-400 mb-2"><span>Bônus de Habilidade:</span> <span>+${skillBonus}%</span></div>
+                    <div class="flex justify-between border-t border-slate-700 pt-2 mt-2">
+                        <span class="font-bold text-slate-300">Chance Total de Sucesso:</span> 
+                        <span class="font-bold text-amber-400 text-sm">${finalChance}%</span>
+                    </div>
+                </div>
             </div>
+        </div>
+
+        <div class="p-4 bg-slate-900 border-t border-slate-700 shrink-0 z-10 shadow-[0_-10px_20px_rgba(0,0,0,0.3)]">
+            ${actionArea}
         </div>
     `;
 
-    // Bind Events
+    // Vincular Eventos
     const btnStart = document.getElementById('btn-craft-start');
     if (btnStart) btnStart.onclick = () => {
         globalState.crafting.step = 'roll';
@@ -256,9 +324,8 @@ function handleCraftRoll() {
     state.quality = Math.min(100, state.finalChance + roll);
     state.step = 'confirm';
     
-    // Animação simples
     const btn = document.getElementById('btn-craft-d20');
-    if (btn) btn.style.transform = 'rotate(360deg) scale(1.2)';
+    if (btn) btn.style.transform = 'rotate(360deg) scale(1.5) translateY(-10px)';
     setTimeout(() => renderWorkbench(), 500);
 }
 
@@ -324,12 +391,11 @@ async function executeCraftTransaction() {
             const itemBase = globalState.cache.itens.get(recipe.itemId);
             const nomeItem = itemBase ? itemBase.nome : 'Item Desconhecido';
             
-            // Atualiza livro de receitas
             updateDoc(doc(db, "rpg_fichas", charId), {
                 [`livro_receitas.${recipe.id}.craftado`]: true
             }).catch(e => console.warn("Erro ao atualizar livro de receitas:", e));
 
-            alert(`SUCESSO GLORIOSO!\nVocê criou: ${qtdCriada}x ${nomeItem}\n(Item adicionado à pilha existente na mochila)`);
+            alert(`SUCESSO GLORIOSO!\nVocê criou: ${qtdCriada}x ${nomeItem}\n(Item adicionado à sua mochila)`);
         } else {
             alert(`FALHA CATASTRÓFICA!\nO processo falhou e você perdeu ${(lossFactor*100).toFixed(0)}% dos materiais.`);
         }
@@ -344,13 +410,13 @@ async function executeCraftTransaction() {
     }
 }
 
-// Configura evento de busca da aba
 export function setupCraftingListeners() {
     const searchInput = document.getElementById('craft-search');
     if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
+        // Prevent multiple bindings by replacing the clone or nulling
+        searchInput.oninput = (e) => {
             const recipeContainer = document.getElementById('craft-recipe-list');
             if (recipeContainer) renderRecipeList(recipeContainer, e.target.value);
-        });
+        };
     }
 }
