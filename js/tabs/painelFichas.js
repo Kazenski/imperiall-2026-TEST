@@ -125,7 +125,7 @@ function renderListaPersonagens(container, filtro) {
 // ============================================================================
 // --- TELA 2: EDITOR DE FICHA (LAYOUT VTT FULL SCREEN) ---
 // ============================================================================
-async function renderFichaEditor(fichaId) {
+export async function renderFichaEditor(fichaId) {
     const container = document.getElementById('painel-fichas-content');
     if(!container) return;
     

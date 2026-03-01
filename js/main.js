@@ -1,8 +1,8 @@
 import { auth, db, storage, signInWithEmailAndPassword, signOut, onAuthStateChanged, collection, getDocs, doc, getDoc, onSnapshot, query, where, orderBy, writeBatch, runTransaction, deleteField, increment, updateDoc } from './core/firebase.js';
 import { globalState, ADMIN_EMAIL, PLACEHOLDER_IMAGE_URL, COINS } from './core/state.js';
 import { createBonusObject } from './core/calculos.js';
-
-import { renderPainelFichas } from './tabs/painelFichas.js';
+import { renderPainelFichas, renderFichaEditor } from './tabs/painelFichas.js';
+window.renderFichaEditor = renderFichaEditor;
 import { renderRolagemDados } from './tabs/rolagemDados.js';
 import { renderCalculadoraCombate } from './tabs/calcCombate.js';
 import { renderMinhasHabilidades } from './tabs/habilidades.js';
@@ -63,7 +63,7 @@ const MASTER_ARCHITECTURE = {
     ],
     'Ao Jogador': [
         { id: 'blank', icon: 'fa-flask', label: 'Simular Ficha', render: () => window.renderBlankPage('Simular Ficha') },
-        { id: 'ficha-menu', icon: 'fa-id-card', label: 'Ficha de Personagem', render: () => window.openFichaPersonagemMenu() },
+        { id: 'ficha-menu', icon: 'fa-id-card', label: 'Ficha de Personagem', render: () => window.renderFichaPersonagemWrapper() },
         { id: 'blank', icon: 'fa-images', label: 'Galeria de Imagens', render: () => window.renderBlankPage('Galeria de Imagens') }
     ],
     'Atualizações': [
@@ -166,7 +166,10 @@ window.renderFichaPersonagemWrapper = function() {
     
     // As 16 abas solicitadas rigorosamente
     const tabsRPG = [
-        { id: 'painel-fichas', name: 'Painel de Ficha', render: renderPainelFichas },
+        { id: 'painel-fichas', name: 'Painel de Ficha', render: () => {
+            if (globalState.selectedCharacterId) window.renderFichaEditor(globalState.selectedCharacterId);
+            else renderPainelFichas();
+        }},
         { id: 'rolagem-dados', name: 'Rolagem de Dados', render: renderRolagemDados },
         { id: 'minhas-habilidades', name: 'Minhas Habilidades', render: renderMinhasHabilidades },
         { id: 'mochila', name: 'Mochila', render: renderMochila },
@@ -695,8 +698,18 @@ function handleCharacterSelect(id) {
             
             if(window.renderSidebarDiceLog) window.renderSidebarDiceLog();
             
-            const activeTab = dom.tab_container?.querySelector('.active')?.dataset.tab || 'painel-fichas';
-            if(activeTab === 'painel-fichas') renderPainelFichas(); 
+            const activeBtn = document.querySelector('.inner-tab-btn.active');
+            let activeTab = 'painel-fichas';
+            if (activeBtn) {
+                activeTab = activeBtn.getAttribute('data-target').replace('-content', '');
+            }
+
+            if(activeTab === 'painel-fichas') {
+                // Se o editor já estiver aberto para este personagem, não redesenha para não perder o foco de digitação
+                if (!document.getElementById('editor-nome')) {
+                    window.renderFichaEditor(id); 
+                }
+            } 
             else if(activeTab === 'constelacao') renderConstelacaoTab();
             else if(activeTab === 'arma-espiritual') renderArmaEspiritualTab();
             else if(activeTab === 'meus-pets') renderPetsTab();
