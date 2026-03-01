@@ -33,7 +33,8 @@ export function renderConstelacaoTab() {
                         </div>
                         
                         <div id="canvas-wrapper" class="flex-1 bg-[#020617] border border-slate-700 rounded-xl overflow-hidden relative shadow-inner cursor-grab select-none" style="background-image: radial-gradient(circle at center, #0f172a 0%, #020617 100%);">
-                            <div id="constellation-layer" class="absolute top-1/2 left-1/2 w-[800px] h-[800px] transform-gpu origin-center transition-transform duration-75" style="transform: translate(-50%, -50%) scale(1);">
+                            
+                            <div id="constellation-layer" class="absolute top-1/2 left-1/2 origin-center transition-transform duration-75" style="width: 800px; height: 800px; transform: translate(-50%, -50%) scale(1);">
                                 <svg id="connections-svg" class="w-full h-full absolute inset-0 pointer-events-none z-0"></svg>
                                 <div id="nodes-container" class="w-full h-full absolute inset-0 z-10"></div>
                             </div>
@@ -161,7 +162,7 @@ function renderConstellationCanvas(data) {
     const nodes = template.nodes || [];
     const drawn = new Set();
 
-    // Desenhar Linhas (Agora usando posições absolutas em vez de porcentagem)
+    // Desenhar Linhas
     nodes.forEach(node => {
         if (!node.connections) return;
         node.connections.forEach(targetId => {
@@ -172,11 +173,11 @@ function renderConstellationCanvas(data) {
                 const active = unlockedIds.has(node.id) && unlockedIds.has(targetId);
                 const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
                 
-                // CORREÇÃO AQUI: Removido o % e substituído pelo valor puro/px para o SVG
-                line.setAttribute("x1", node.x); 
-                line.setAttribute("y1", node.y);
-                line.setAttribute("x2", target.x); 
-                line.setAttribute("y2", target.y);
+                // CORREÇÃO: Restaurada a porcentagem (%)
+                line.setAttribute("x1", `${node.x}%`); 
+                line.setAttribute("y1", `${node.y}%`);
+                line.setAttribute("x2", `${target.x}%`); 
+                line.setAttribute("y2", `${target.y}%`);
                 line.setAttribute("class", `c-line ${active ? 'active' : ''}`);
                 
                 svg.appendChild(line);
@@ -196,9 +197,9 @@ function renderConstellationCanvas(data) {
 
         el.className = `c-node ${isUnlocked ? 'unlocked' : ''} ${isAccessible ? 'accessible' : ''} ${(!isUnlocked && !isAccessible) ? 'locked' : ''}`;
         
-        // CORREÇÃO AQUI: Removido o % e adicionado 'px' para posicionar a bolinha corretamente no Canvas
-        el.style.left = `${node.x}px`; 
-        el.style.top = `${node.y}px`;
+        // CORREÇÃO: Restaurada a porcentagem (%)
+        el.style.left = `${node.x}%`; 
+        el.style.top = `${node.y}%`;
         
         if (isAccessible) el.style.borderColor = customColor;
 
