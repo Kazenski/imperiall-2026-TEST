@@ -25,115 +25,120 @@ const PAPER_DOLL_CONFIG = {
 };
 
 export async function renderItensEquipados() {
-    const container = document.getElementById('itens-equipados-content');
-    if (!container) return;
+    try {
+        const container = document.getElementById('itens-equipados-content');
+        if (!container) return;
 
-    const charId = globalState.selectedCharacterId;
-    if (!charId || !globalState.selectedCharacterData || !globalState.selectedCharacterData.ficha) {
-        container.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500 italic">Selecione um personagem primeiro.</div>';
-        return;
-    }
+        const charId = globalState.selectedCharacterId;
+        if (!charId || !globalState.selectedCharacterData || !globalState.selectedCharacterData.ficha) {
+            container.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500 italic">Selecione um personagem primeiro.</div>';
+            return;
+        }
 
-    const charData = globalState.selectedCharacterData;
-    const ficha = charData.ficha;
-    const equipados = ficha.equipamentos || {}; 
+        const charData = globalState.selectedCharacterData;
+        const ficha = charData.ficha;
+        
+        // CORREÇÃO: Trata os dois nomes que podem vir do banco de dados
+        const equipados = ficha.equipamentos || ficha.equipamento || {}; 
 
-    // 1. INJEÇÃO DO ESQUELETO DE 2 COLUNAS
-    if (!document.getElementById('equip-layout-wrapper')) {
-        container.innerHTML = `
-            <div id="equip-layout-wrapper" class="flex w-full h-full gap-6 animate-fade-in pb-4">
-                
-                <div class="flex-1 flex flex-col min-w-0 h-full">
-                    <div class="flex justify-between items-center mb-4 shrink-0">
-                        <h2 class="font-cinzel text-3xl text-amber-500 m-0"><i class="fas fa-tshirt mr-3 text-slate-600"></i> Itens Equipados</h2>
-                    </div>
+        // 1. INJEÇÃO DO ESQUELETO DE 2 COLUNAS
+        if (!document.getElementById('equip-layout-wrapper')) {
+            container.innerHTML = `
+                <div id="equip-layout-wrapper" class="flex w-full h-full gap-6 animate-fade-in pb-4">
                     
-                    <div class="flex-1 flex items-center justify-center bg-slate-900/50 border border-slate-700 rounded-xl p-4 shadow-inner relative overflow-hidden">
+                    <div class="flex-1 flex flex-col min-w-0 h-full">
+                        <div class="flex justify-between items-center mb-4 shrink-0">
+                            <h2 class="font-cinzel text-3xl text-amber-500 m-0"><i class="fas fa-tshirt mr-3 text-slate-600"></i> Itens Equipados</h2>
+                        </div>
                         
-                        <div id="paper-doll-bg-layer" class="absolute inset-0 bg-no-repeat bg-contain bg-center opacity-30 z-0 scale-105 pointer-events-none" style="filter: blur(2px) grayscale(50%);"></div>
-                        <div class="absolute inset-0 bg-slate-900/60 z-0 pointer-events-none"></div>
-
-                        <div class="relative z-10 flex w-full max-w-3xl justify-between px-2 sm:px-8 xl:px-16 gap-4">
-                            <div id="doll-grid-left" class="flex flex-col gap-3 shrink-0"></div>
-                            <div class="flex-1"></div>
-                            <div id="doll-grid-right" class="flex flex-col gap-3 shrink-0"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="w-80 shrink-0 flex flex-col h-full pt-12 gap-4">
-                    
-                    <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-2xl flex flex-col shrink-0">
-                        <h4 class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-3"><i class="fas fa-chart-pie mr-1 text-amber-500"></i> Bônus do Equipamento</h4>
-                        <div class="grid grid-cols-3 gap-2 text-center font-mono">
-                            <div class="bg-slate-950 border border-slate-700 p-2 rounded shadow-inner">
-                                <div class="text-[8px] text-slate-500 uppercase">ATK</div>
-                                <div id="doll-total-atk" class="text-amber-400 font-bold text-sm">0</div>
-                            </div>
-                            <div class="bg-slate-950 border border-slate-700 p-2 rounded shadow-inner">
-                                <div class="text-[8px] text-slate-500 uppercase">DEF</div>
-                                <div id="doll-total-def" class="text-blue-400 font-bold text-sm">0</div>
-                            </div>
-                            <div class="bg-slate-950 border border-slate-700 p-2 rounded shadow-inner">
-                                <div class="text-[8px] text-slate-500 uppercase">EVA</div>
-                                <div id="doll-total-eva" class="text-emerald-400 font-bold text-sm">0</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col flex-1 min-h-0 relative overflow-hidden">
-                        
-                        <div id="equip-empty-state" class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 opacity-50 z-10 bg-slate-800">
-                            <i class="fas fa-hand-pointer text-5xl mb-4"></i>
-                            <p class="text-sm text-center px-6">Clique em um slot do personagem ao lado para trocar de equipamento.</p>
-                        </div>
-
-                        <div id="equip-selector-panel" class="flex-col h-full hidden z-20">
-                            <div class="p-3 border-b border-slate-700 flex justify-between items-center bg-slate-900/50">
-                                <h4 id="panel-slot-name" class="font-cinzel text-amber-500 font-bold tracking-widest uppercase text-sm">Slot</h4>
-                                <button onclick="window.closeEquipPanel()" class="text-slate-400 hover:text-red-400 transition-colors"><i class="fas fa-times text-lg"></i></button>
-                            </div>
+                        <div class="flex-1 flex items-center justify-center bg-slate-900/50 border border-slate-700 rounded-xl p-4 shadow-inner relative overflow-hidden">
                             
-                            <div class="p-3 shrink-0 border-b border-slate-700 bg-slate-900/30">
-                                <button id="btn-unequip-current" class="w-full bg-red-900/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/50 py-2.5 rounded-lg text-[10px] uppercase font-bold tracking-widest transition-all hidden shadow-md">
-                                    <i class="fas fa-ban mr-1"></i> Desequipar
-                                </button>
-                            </div>
+                            <div id="paper-doll-bg-layer" class="absolute inset-0 bg-no-repeat bg-contain bg-center opacity-30 z-0 scale-105 pointer-events-none transition-all duration-500" style="filter: blur(2px) grayscale(50%);"></div>
+                            <div class="absolute inset-0 bg-slate-900/60 z-0 pointer-events-none"></div>
 
-                            <div id="panel-item-list" class="flex-1 overflow-y-auto custom-scroll p-3 space-y-2">
+                            <div class="relative z-10 flex w-full max-w-3xl justify-between px-2 sm:px-8 xl:px-16 gap-4">
+                                <div id="doll-grid-left" class="flex flex-col gap-3 shrink-0"></div>
+                                <div class="flex-1"></div>
+                                <div id="doll-grid-right" class="flex flex-col gap-3 shrink-0"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="w-80 shrink-0 flex flex-col h-full pt-12 gap-4">
+                        
+                        <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-2xl flex flex-col shrink-0">
+                            <h4 class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-3"><i class="fas fa-chart-pie mr-1 text-amber-500"></i> Bônus do Equipamento</h4>
+                            <div class="grid grid-cols-3 gap-2 text-center font-mono">
+                                <div class="bg-slate-950 border border-slate-700 p-2 rounded shadow-inner flex flex-col justify-center items-center">
+                                    <div class="text-[8px] text-slate-500 uppercase mb-0.5">ATK</div>
+                                    <div id="doll-total-atk" class="text-amber-400 font-bold text-sm">0</div>
                                 </div>
+                                <div class="bg-slate-950 border border-slate-700 p-2 rounded shadow-inner flex flex-col justify-center items-center">
+                                    <div class="text-[8px] text-slate-500 uppercase mb-0.5">DEF</div>
+                                    <div id="doll-total-def" class="text-blue-400 font-bold text-sm">0</div>
+                                </div>
+                                <div class="bg-slate-950 border border-slate-700 p-2 rounded shadow-inner flex flex-col justify-center items-center">
+                                    <div class="text-[8px] text-slate-500 uppercase mb-0.5">EVA</div>
+                                    <div id="doll-total-eva" class="text-emerald-400 font-bold text-sm">0</div>
+                                </div>
+                            </div>
                         </div>
 
+                        <div class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col flex-1 min-h-0 relative overflow-hidden">
+                            
+                            <div id="equip-empty-state" class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 opacity-50 z-10 bg-slate-800">
+                                <i class="fas fa-hand-pointer text-5xl mb-4"></i>
+                                <p class="text-sm text-center px-6">Clique em um slot do personagem ao lado para trocar de equipamento.</p>
+                            </div>
+
+                            <div id="equip-selector-panel" class="flex-col h-full hidden z-20">
+                                <div class="p-3 border-b border-slate-700 flex justify-between items-center bg-slate-900/50 shrink-0">
+                                    <h4 id="panel-slot-name" class="font-cinzel text-amber-500 font-bold tracking-widest uppercase text-sm">Slot</h4>
+                                    <button onclick="window.closeEquipPanel()" class="text-slate-400 hover:text-red-400 transition-colors"><i class="fas fa-times text-lg"></i></button>
+                                </div>
+                                
+                                <div class="p-3 shrink-0 border-b border-slate-700 bg-slate-900/30">
+                                    <button id="btn-unequip-current" class="w-full bg-red-900/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/50 py-2.5 rounded-lg text-[10px] uppercase font-bold tracking-widest transition-all hidden shadow-md">
+                                        <i class="fas fa-ban mr-1"></i> Desequipar
+                                    </button>
+                                </div>
+
+                                <div id="panel-item-list" class="flex-1 overflow-y-auto custom-scroll p-3 space-y-2">
+                                    </div>
+                            </div>
+
+                        </div>
                     </div>
+
                 </div>
+            `;
+        }
 
-            </div>
-        `;
-    }
+        // 2. CONFIGURA FUNDO (FOTO DO PERSONAGEM)
+        const bgLayer = document.getElementById('paper-doll-bg-layer');
+        if (bgLayer) {
+            let bgUrl = "";
+            const mainKey = ficha.imagemPrincipal;
+            const urls = ficha.imageUrls || {};
+            if (mainKey && urls[mainKey]) bgUrl = urls[mainKey];
+            else if (ficha.imagemUrl) bgUrl = ficha.imagemUrl;
 
-    // 2. CONFIGURA FUNDO (FOTO DO PERSONAGEM)
-    const bgLayer = document.getElementById('paper-doll-bg-layer');
-    if (bgLayer) {
-        let bgUrl = "";
-        const mainKey = ficha.imagemPrincipal;
-        const urls = ficha.imageUrls || {};
-        if (mainKey && urls[mainKey]) bgUrl = urls[mainKey];
-        else if (ficha.imagemUrl) bgUrl = ficha.imagemUrl;
+            if (bgUrl) bgLayer.style.backgroundImage = `url('${bgUrl}')`;
+            else bgLayer.style.backgroundImage = "none";
+        }
 
-        if (bgUrl) bgLayer.style.backgroundImage = `url('${bgUrl}')`;
-        else bgLayer.style.backgroundImage = "none";
-    }
+        // 3. RENDERIZAR GRIDS E STATUS
+        _renderGrid('doll-grid-left', PAPER_DOLL_CONFIG.left, equipados);
+        _renderGrid('doll-grid-right', PAPER_DOLL_CONFIG.right, equipados);
+        _updateTotalStats(equipados);
 
-    // 3. RENDERIZAR GRIDS E STATUS
-    _renderGrid('doll-grid-left', PAPER_DOLL_CONFIG.left, equipados);
-    _renderGrid('doll-grid-right', PAPER_DOLL_CONFIG.right, equipados);
-    _updateTotalStats(equipados);
-
-    // Se o painel estiver aberto, atualiza a lista dele para evitar itens fantasmas após equipar
-    const activeSlotId = document.getElementById('equip-selector-panel')?.dataset.activeSlot;
-    if (activeSlotId && !document.getElementById('equip-selector-panel').classList.contains('hidden')) {
-        const slotLabel = document.getElementById('panel-slot-name').textContent;
-        window.openEquipPanel(activeSlotId, slotLabel);
+        const activeSlotId = document.getElementById('equip-selector-panel')?.dataset.activeSlot;
+        if (activeSlotId && !document.getElementById('equip-selector-panel').classList.contains('hidden')) {
+            const slotLabel = document.getElementById('panel-slot-name').textContent.replace('🎯 ', '').trim();
+            window.openEquipPanel(activeSlotId, slotLabel);
+        }
+    } catch (e) {
+        console.error("Erro ao renderizar itens equipados:", e);
     }
 }
 
@@ -183,7 +188,6 @@ function _renderGrid(containerId, slots, equipados) {
         div.dataset.slotId = slot.id;
         div.onclick = () => window.openEquipPanel(slot.id, slot.label);
         
-        // Estrutura do Card: Caixinha na Esquerda/Direita, Texto do Lado
         const isRight = containerId === 'doll-grid-right';
         const boxHTML = `
             <div class="w-14 h-14 md:w-16 md:h-16 rounded-lg border-2 ${borderClass} relative flex items-center justify-center overflow-hidden shadow-md group-hover:border-amber-400 transition-all shrink-0">
@@ -249,7 +253,6 @@ window.openEquipPanel = function(slotTargetId, slotLabel) {
 
     if (!panel || !listContainer || !emptyState) return;
 
-    // Efeito Visual de Seleção no Paper Doll
     document.querySelectorAll('.equip-slot > div.w-14, .equip-slot > div.w-16').forEach(el => el.classList.remove('ring-4', 'ring-amber-500/50', 'border-amber-400'));
     const clickedSlot = document.querySelector(`.equip-slot[data-slot-id="${slotTargetId}"] > div.rounded-lg`);
     if(clickedSlot) clickedSlot.classList.add('ring-4', 'ring-amber-500/50', 'border-amber-400');
@@ -257,7 +260,7 @@ window.openEquipPanel = function(slotTargetId, slotLabel) {
     emptyState.classList.add('hidden');
     panel.classList.remove('hidden');
     panel.classList.add('flex');
-    panel.dataset.activeSlot = slotTargetId; // Guarda o slot aberto para atualizar depois
+    panel.dataset.activeSlot = slotTargetId; 
     
     listContainer.innerHTML = ''; 
     title.innerHTML = `<i class="fas fa-crosshairs text-slate-500 mr-2"></i> ${slotLabel}`;
@@ -265,9 +268,8 @@ window.openEquipPanel = function(slotTargetId, slotLabel) {
     const charData = globalState.selectedCharacterData;
     const ficha = charData.ficha;
     const mochila = ficha.mochila || {};
-    const equipados = ficha.equipamentos || {}; 
+    const equipados = ficha.equipamentos || ficha.equipamento || {}; 
     
-    // Configura o Botão de Desequipar
     const itemAtualId = equipados[slotTargetId];
     if (itemAtualId && btnUnequip) {
         btnUnequip.classList.remove('hidden');
@@ -283,7 +285,6 @@ window.openEquipPanel = function(slotTargetId, slotLabel) {
         const item = globalState.cache.itens.get(itemId);
         if (!item) continue;
 
-        // Regra de validação flexível de slot (ex: anel serve pra anel_1 e anel_2)
         const targetClass = item.slot_equipavel_id || item.tipoItem?.toLowerCase() || '';
         let isMatch = false;
 
@@ -292,7 +293,6 @@ window.openEquipPanel = function(slotTargetId, slotLabel) {
         else if (targetClass.includes('pulseira') && slotTargetId.includes('pulseira')) isMatch = true;
         else if (targetClass.includes('brinco') && slotTargetId.includes('brinco')) isMatch = true;
         else if ((targetClass.includes('arma') || targetClass.includes('espada') || targetClass.includes('machado')) && (slotTargetId === 'arma_primaria' || slotTargetId === 'arma_secundaria' || slotTargetId === 'arma_2_maos')) {
-            // Regra básica: se é arma e cabe, libera. A restrição de 2 mãos age no clique (handleEquip).
             isMatch = true; 
         }
 
@@ -349,15 +349,14 @@ window.handleEquip = async function(slotId, itemId) {
             const d = (await t.get(ref)).data();
             
             const moch = d.mochila || {};
-            const equip = d.equipamentos || {}; 
+            // Mantém a chave plural para padronizar
+            const equip = d.equipamentos || d.equipamento || {}; 
 
-            // 1. Devolve item antigo pra mochila
             if (equip[slotId]) {
                 const oldItem = equip[slotId];
                 moch[oldItem] = (moch[oldItem] || 0) + 1;
             }
 
-            // 2. REGRA DE 2 MÃOS
             if (slotId === 'arma_2_maos') {
                 ['arma_primaria', 'arma_secundaria'].forEach(conflict => {
                     if (equip[conflict]) {
@@ -375,10 +374,10 @@ window.handleEquip = async function(slotId, itemId) {
                 }
             }
 
-            // 3. Remove o novo da mochila e equipa
             if (moch[itemId] > 1) moch[itemId]--; else delete moch[itemId];
             equip[slotId] = itemId;
 
+            // Salva de volta no banco
             t.update(ref, { "mochila": moch, "equipamentos": equip });
         });
         
@@ -397,7 +396,7 @@ window.handleUnequip = async function(slotId, itemId) {
             const d = (await t.get(ref)).data();
             
             const moch = d.mochila || {};
-            const equip = d.equipamentos || {}; 
+            const equip = d.equipamentos || d.equipamento || {}; 
 
             moch[itemId] = (moch[itemId] || 0) + 1;
             delete equip[slotId];
@@ -409,3 +408,12 @@ window.handleUnequip = async function(slotId, itemId) {
 
     } catch (e) { alert("Erro ao desequipar: " + e.message); }
 };
+
+// ==========================================
+// FUNÇÃO LEGADA (MANTIDA PARA EVITAR ERROS NO MAIN.JS)
+// ==========================================
+export function renderSlotsEquipamento() {
+    const grid = document.querySelector('.equipamento-grid');
+    if(!grid) return;
+    grid.innerHTML = '';
+}
