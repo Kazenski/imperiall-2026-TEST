@@ -4,94 +4,114 @@ import { globalState, PLACEHOLDER_IMAGE_URL } from '../core/state.js';
 let selectedCraftingProfId = 'geral'; // Estado local da sub-aba de craft
 
 export function renderCraftingTab() {
-    const container = document.getElementById('crafting-content');
-    if (!container) return;
+    try {
+        const container = document.getElementById('crafting-content');
+        if (!container) return;
 
-    const charData = globalState.selectedCharacterData;
-    if (!charData || !charData.ficha) {
-        container.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500 italic">Selecione um personagem primeiro.</div>';
-        return;
-    }
+        const charData = globalState.selectedCharacterData;
+        if (!charData || !charData.ficha) {
+            container.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500 italic">Selecione um personagem primeiro.</div>';
+            return;
+        }
 
-    const ficha = charData.ficha;
-    const profissoes = ficha.profissoes || {};
+        // PREVENÇÃO DE ERRO: Garante que o estado do crafting exista antes de tentar ler
+        if (!globalState.crafting) {
+            globalState.crafting = {
+                selectedRecipe: null,
+                step: 'prepare',
+                rollResult: 0,
+                quality: 0,
+                finalChance: 0
+            };
+        }
 
-    // 1. INJEÇÃO DO ESQUELETO DE 2 COLUNAS
-    if (!document.getElementById('crafting-layout-wrapper')) {
-        container.innerHTML = `
-            <div id="crafting-layout-wrapper" class="flex w-full h-full gap-6 animate-fade-in pb-4">
-                
-                <div class="flex-1 flex flex-col min-w-0 h-full">
+        const ficha = charData.ficha;
+        const profissoes = ficha.profissoes || {};
+
+        // 1. INJEÇÃO DO ESQUELETO DE 2 COLUNAS
+        if (!document.getElementById('crafting-layout-wrapper')) {
+            container.innerHTML = `
+                <div id="crafting-layout-wrapper" class="flex w-full h-full gap-6 animate-fade-in pb-4">
                     
-                    <div class="flex justify-between items-center mb-4 shrink-0">
-                        <h2 class="font-cinzel text-3xl text-amber-500 m-0"><i class="fas fa-hammer mr-3 text-slate-600"></i> Oficina de Criação</h2>
+                    <div class="flex-1 flex flex-col min-w-0 h-full">
+                        
+                        <div class="flex justify-between items-center mb-4 shrink-0">
+                            <h2 class="font-cinzel text-3xl text-amber-500 m-0"><i class="fas fa-hammer mr-3 text-slate-600"></i> Oficina de Criação</h2>
+                        </div>
+
+                        <div class="flex flex-col gap-3 bg-slate-800 p-3 rounded-lg border border-slate-700 shadow-sm shrink-0 mb-4">
+                            <div class="relative w-full">
+                                <i class="fas fa-search absolute left-3 top-2.5 text-slate-500 text-sm"></i>
+                                <input type="text" id="craft-search" placeholder="Buscar receita..." class="w-full bg-slate-900 border border-slate-600 rounded py-1.5 pl-9 pr-4 text-sm text-white focus:border-amber-500 outline-none">
+                            </div>
+                            <div id="craft-profession-tabs" class="flex gap-2 overflow-x-auto hide-scroll pb-1">
+                                </div>
+                        </div>
+                        
+                        <div class="flex-1 overflow-y-auto custom-scroll bg-slate-900/50 border border-slate-700 rounded-xl p-4 shadow-inner relative">
+                            <div id="craft-recipe-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 content-start"></div>
+                        </div>
                     </div>
 
-                    <div class="flex flex-col gap-3 bg-slate-800 p-3 rounded-lg border border-slate-700 shadow-sm shrink-0 mb-4">
-                        <div class="relative w-full">
-                            <i class="fas fa-search absolute left-3 top-2.5 text-slate-500 text-sm"></i>
-                            <input type="text" id="craft-search" placeholder="Buscar receita..." class="w-full bg-slate-900 border border-slate-600 rounded py-1.5 pl-9 pr-4 text-sm text-white focus:border-amber-500 outline-none">
-                        </div>
-                        <div id="craft-profession-tabs" class="flex gap-2 overflow-x-auto hide-scroll pb-1">
+                    <div class="w-80 md:w-96 shrink-0 flex flex-col h-full pt-12">
+                        <div id="craft-bench-panel" class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col h-full relative overflow-hidden">
                             </div>
                     </div>
-                    
-                    <div class="flex-1 overflow-y-auto custom-scroll bg-slate-900/50 border border-slate-700 rounded-xl p-4 shadow-inner relative">
-                        <div id="craft-recipe-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 content-start"></div>
-                    </div>
+
                 </div>
-
-                <div class="w-80 md:w-96 shrink-0 flex flex-col h-full pt-12">
-                    <div id="craft-bench-panel" class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col h-full relative overflow-hidden">
-                        </div>
-                </div>
-
-            </div>
-        `;
-        
-        // Liga o evento de busca
-        setupCraftingListeners();
-    }
-
-    // 2. Renderiza Abas de Profissões (Horizontal)
-    const tabsContainer = document.getElementById('craft-profession-tabs');
-    if (tabsContainer) {
-        let tabsHtml = `
-            <button onclick="window.switchCraftProf('geral')" 
-                class="px-4 py-2 rounded border text-[10px] uppercase tracking-wider transition-all whitespace-nowrap ${selectedCraftingProfId === 'geral' ? 'bg-amber-600 text-black font-bold border-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]' : 'bg-slate-900 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200'}">
-                <i class="fas fa-globe mr-1"></i> Geral
-            </button>
-        `;
-
-        Object.keys(profissoes).forEach(profId => {
-            const profInfo = globalState.cache.profissoes.get(profId);
-            const level = profissoes[profId].nivel || 1;
-            const nome = profInfo ? profInfo.nome : 'Profissão';
+            `;
             
-            tabsHtml += `
-                <button onclick="window.switchCraftProf('${profId}')" 
-                    class="px-4 py-2 rounded border text-[10px] uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-2 ${selectedCraftingProfId === profId ? 'bg-amber-600 text-black font-bold border-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]' : 'bg-slate-900 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200'}">
-                    <span>${nome}</span>
-                    <span class="bg-black/30 px-1.5 py-0.5 rounded text-[9px]">Lv.${level}</span>
+            setupCraftingListeners();
+        }
+
+        // 2. Renderiza Abas de Profissões (Horizontal)
+        const tabsContainer = document.getElementById('craft-profession-tabs');
+        if (tabsContainer) {
+            let tabsHtml = `
+                <button onclick="window.switchCraftProf('geral')" 
+                    class="px-4 py-2 rounded border text-[10px] uppercase tracking-wider transition-all whitespace-nowrap ${selectedCraftingProfId === 'geral' ? 'bg-amber-600 text-black font-bold border-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]' : 'bg-slate-900 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200'}">
+                    <i class="fas fa-globe mr-1"></i> Geral
                 </button>
             `;
-        });
 
-        tabsContainer.innerHTML = tabsHtml;
+            Object.keys(profissoes).forEach(profId => {
+                const profInfo = globalState.cache.profissoes.get(profId);
+                const level = profissoes[profId].nivel || 1;
+                const nome = profInfo ? profInfo.nome : 'Profissão';
+                
+                tabsHtml += `
+                    <button onclick="window.switchCraftProf('${profId}')" 
+                        class="px-4 py-2 rounded border text-[10px] uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-2 ${selectedCraftingProfId === profId ? 'bg-amber-600 text-black font-bold border-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]' : 'bg-slate-900 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200'}">
+                        <span>${nome}</span>
+                        <span class="bg-black/30 px-1.5 py-0.5 rounded text-[9px]">Lv.${level}</span>
+                    </button>
+                `;
+            });
+
+            tabsContainer.innerHTML = tabsHtml;
+        }
+
+        // 3. Atualiza Lista de Receitas
+        const searchInput = document.getElementById('craft-search');
+        const searchTerm = searchInput ? searchInput.value : '';
+        const recipeContainer = document.getElementById('craft-recipe-list');
+        if (recipeContainer) renderRecipeList(recipeContainer, searchTerm);
+        
+        // Atualiza a bancada
+        renderWorkbench();
+
+    } catch (error) {
+        console.error("Erro na aba de Oficina de Criação:", error);
+        const container = document.getElementById('crafting-content');
+        if (container) {
+            container.innerHTML = `<div class="flex h-full items-center justify-center text-red-500 italic p-6 text-center border border-red-900/50 bg-red-900/10 rounded-xl m-6">Erro ao carregar Oficina de Criação.<br><br>Detalhes: ${error.message}</div>`;
+        }
     }
-
-    // 3. Atualiza Lista de Receitas
-    const searchInput = document.getElementById('craft-search');
-    const searchTerm = searchInput ? searchInput.value : '';
-    const recipeContainer = document.getElementById('craft-recipe-list');
-    if (recipeContainer) renderRecipeList(recipeContainer, searchTerm);
-    
-    // Atualiza a bancada
-    renderWorkbench();
 }
 
 window.switchCraftProf = function(profId) {
     selectedCraftingProfId = profId;
+    if (!globalState.crafting) globalState.crafting = {};
     globalState.crafting.selectedRecipe = null;
     globalState.crafting.step = 'prepare';
     renderCraftingTab();
@@ -101,14 +121,16 @@ function renderRecipeList(container, filter = '') {
     container.innerHTML = '';
     const term = filter.toLowerCase();
 
-    const recipes = [...globalState.cache.receitas.values()].filter(r => {
-        const nameMatch = r.nome.toLowerCase().includes(term);
+    const receitasMap = globalState.cache.receitas || new Map();
+
+    const recipes = [...receitasMap.values()].filter(r => {
+        const nameMatch = (r.nome || '').toLowerCase().includes(term);
         const profMatch = selectedCraftingProfId === 'geral' 
             ? (!r.profissaoId || r.profissaoId === "") 
             : (r.profissaoId === selectedCraftingProfId);
             
         return nameMatch && profMatch;
-    }).sort((a,b) => a.nome.localeCompare(b.nome));
+    }).sort((a,b) => (a.nome || '').localeCompare(b.nome || ''));
 
     if (recipes.length === 0) {
         container.innerHTML = '<div class="col-span-full flex flex-col items-center justify-center text-slate-500 py-12"><i class="fas fa-hammer text-4xl mb-3 opacity-30"></i><p class="text-xs uppercase tracking-widest font-bold">Nenhuma receita encontrada</p></div>';
@@ -127,7 +149,7 @@ function renderRecipeList(container, filter = '') {
                 <img src="${itemInfo?.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity">
             </div>
             <div class="flex-grow min-w-0">
-                <h4 class="text-xs font-bold ${isSelected ? 'text-amber-400' : 'text-slate-300'} truncate uppercase tracking-wider group-hover:text-amber-400 transition-colors">${rec.nome}</h4>
+                <h4 class="text-xs font-bold ${isSelected ? 'text-amber-400' : 'text-slate-300'} truncate uppercase tracking-wider group-hover:text-amber-400 transition-colors">${rec.nome || 'Desconhecida'}</h4>
                 <div class="text-[10px] text-slate-500 font-mono mt-1">Base: <span class="text-sky-400 font-bold">${rec.chanceSucessoBase || 0}%</span></div>
             </div>
         `;
@@ -178,7 +200,9 @@ function renderWorkbench() {
 
     // 1. Verificar Materiais
     let hasAllMaterials = true;
-    const materialsHtml = recipe.materiais.map(mat => {
+    const recipeMaterials = recipe.materiais || [];
+    
+    const materialsHtml = recipeMaterials.map(mat => {
         const matInfo = globalState.cache.itens.get(mat.itemId) || { nome: 'Desconhecido', imagemUrl: '' };
         const owned = mochila[mat.itemId] || 0;
         const enough = owned >= mat.quantidade;
@@ -274,9 +298,9 @@ function renderWorkbench() {
         <div class="flex-1 overflow-y-auto custom-scroll p-6 flex flex-col gap-6 bg-slate-900/20">
             
             <div>
-                <h4 class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-3 border-l-2 border-slate-500 pl-2"><i class="fas fa-boxes mr-1"></i> Materiais</h4>
+                <h4 class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-3 border-l-2 border-slate-500 pl-2"><i class="fas fa-boxes mr-1"></i> Materiais Necessários</h4>
                 <div class="grid grid-cols-3 gap-2">
-                    ${materialsHtml}
+                    ${materialsHtml || '<span class="text-slate-500 text-xs italic">Sem materiais.</span>'}
                 </div>
             </div>
 
@@ -353,17 +377,18 @@ async function executeCraftTransaction() {
         await runTransaction(db, async (t) => {
             const charRef = doc(db, "rpg_fichas", charId);
             const sf = await t.get(charRef);
-            if (!sf.exists()) throw "Ficha não encontrada";
+            if (!sf.exists()) throw new Error("Ficha não encontrada");
 
             const currentMochila = sf.data().mochila || {};
+            const recipeMaterials = recipe.materiais || [];
             
             // Consumir Materiais
-            for (const mat of recipe.materiais) {
+            for (const mat of recipeMaterials) {
                 const qtdNecessaria = mat.quantidade;
                 const qtdConsumir = Math.ceil(qtdNecessaria * lossFactor);
                 const emMaos = currentMochila[mat.itemId] || 0;
 
-                if (emMaos < qtdNecessaria) throw `Falta material: ${mat.itemId}`;
+                if (emMaos < qtdNecessaria) throw new Error(`Falta material: ${mat.itemId}`);
 
                 const novaQtd = emMaos - qtdConsumir;
                 if (novaQtd <= 0) delete currentMochila[mat.itemId]; 
@@ -413,7 +438,6 @@ async function executeCraftTransaction() {
 export function setupCraftingListeners() {
     const searchInput = document.getElementById('craft-search');
     if (searchInput) {
-        // Prevent multiple bindings by replacing the clone or nulling
         searchInput.oninput = (e) => {
             const recipeContainer = document.getElementById('craft-recipe-list');
             if (recipeContainer) renderRecipeList(recipeContainer, e.target.value);
