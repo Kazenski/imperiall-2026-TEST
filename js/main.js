@@ -1,8 +1,8 @@
-import { auth, db, storage, signInWithEmailAndPassword, signOut, onAuthStateChanged, collection, getDocs, doc, getDoc, onSnapshot, query, where, orderBy, writeBatch, runTransaction, deleteField, increment } from './core/firebase.js';
+import { auth, db, storage, signInWithEmailAndPassword, signOut, onAuthStateChanged, collection, getDocs, doc, getDoc, onSnapshot, query, where, orderBy, writeBatch, runTransaction, deleteField, increment, updateDoc } from './core/firebase.js';
 import { globalState, ADMIN_EMAIL, PLACEHOLDER_IMAGE_URL, COINS } from './core/state.js';
 import { createBonusObject } from './core/calculos.js';
-
-import { renderPainelFichas } from './tabs/painelFichas.js';
+import { renderPainelFichas, renderFichaEditor } from './tabs/painelFichas.js';
+window.renderFichaEditor = renderFichaEditor;
 import { renderRolagemDados } from './tabs/rolagemDados.js';
 import { renderCalculadoraCombate } from './tabs/calcCombate.js';
 import { renderMinhasHabilidades } from './tabs/habilidades.js';
@@ -63,7 +63,17 @@ const MASTER_ARCHITECTURE = {
     ],
     'Ao Jogador': [
         { id: 'blank', icon: 'fa-flask', label: 'Simular Ficha', render: () => window.renderBlankPage('Simular Ficha') },
-        { id: 'ficha-menu', icon: 'fa-id-card', label: 'Ficha de Personagem', render: () => window.openFichaPersonagemMenu() },
+        { id: 'ficha-menu', icon: 'fa-id-card', label: 'Ficha de Personagem', render: () => {
+            // 1. Puxa as 16 abas para a barra lateral esquerda (passando true para criar o botão "Voltar")
+            populateSidebar(FICHA_TABS, true);
+            
+            // 2. Aguarda um milissegundo para o HTML renderizar e clica na primeira aba ("Painel de Ficha")
+            // Usamos o índice [1] porque o índice [0] agora é o botão de "Voltar"
+            setTimeout(() => {
+                const botoesSidebar = document.querySelectorAll('#sub-menu-bar button');
+                if(botoesSidebar[1]) botoesSidebar[1].click();
+            }, 10);
+        }},
         { id: 'blank', icon: 'fa-images', label: 'Galeria de Imagens', render: () => window.renderBlankPage('Galeria de Imagens') }
     ],
     'Atualizações': [
@@ -91,22 +101,22 @@ window.openFichaPersonagemMenu = function() {
 };
 
 const FICHA_TABS = [
-    { id: 'painel-fichas', icon: 'fa-user', label: 'Painel de Ficha', render: renderPainelFichas },
-    { id: 'rolagem-dados', icon: 'fa-dice-d20', label: 'Rolagem de Dados', render: renderRolagemDados },
-    { id: 'minhas-habilidades', icon: 'fa-fire', label: 'Minhas Habilidades', render: renderMinhasHabilidades },
-    { id: 'mochila', icon: 'fa-briefcase', label: 'Mochila', render: renderMochila },
-    { id: 'itens-equipados', icon: 'fa-tshirt', label: 'Itens Equipados', render: renderItensEquipados },
-    { id: 'calculadora-atributos', icon: 'fa-chart-bar', label: 'Calculadora de atributos', render: renderCalculadoraAtributos },
-    { id: 'constelacao', icon: 'fa-star', label: 'Constelação', render: renderConstelacaoTab },
-    { id: 'crafting', icon: 'fa-hammer', label: 'Oficina de Criação', render: renderCraftingTab },
-    { id: 'extracao', icon: 'fa-recycle', label: 'Extração e Reciclagem', render: renderExtracaoTab },
-    { id: 'colecao-craft', icon: 'fa-book-atlas', label: 'Diário de Coleção', render: renderCollectionTab },
-    { id: 'arma-espiritual', icon: 'fa-ghost', label: 'Arma Espiritual', render: renderArmaEspiritualTab },
-    { id: 'meus-pets', icon: 'fa-dragon', label: 'Meus Pets', render: renderPetsTab },
-    { id: 'recursos-reputacao', icon: 'fa-crown', label: 'Recursos e Reputação', render: renderReputacaoTab },
-    { id: 'comercio', icon: 'fa-coins', label: 'Comércio', render: renderComercioTab },
-    { id: 'mapa-movimento', icon: 'fa-map-marked-alt', label: 'Mapa e Movimento', render: () => { if(window.renderMapTab) window.renderMapTab(); } },
-    { id: 'arena-combate', icon: 'fa-chess-board', label: 'Arena de Combate', render: () => { if(window.arena?.init) window.arena.init(); } }
+    { id: 'painel-fichas', icon: 'fa-user', label: 'Painel de Ficha', render: () => window.showTab('painel-fichas') },
+    { id: 'rolagem-dados', icon: 'fa-dice-d20', label: 'Rolagem de Dados', render: () => window.showTab('rolagem-dados') },
+    { id: 'minhas-habilidades', icon: 'fa-fire', label: 'Minhas Habilidades', render: () => window.showTab('minhas-habilidades') },
+    { id: 'mochila', icon: 'fa-briefcase', label: 'Mochila', render: () => window.showTab('mochila') },
+    { id: 'itens-equipados', icon: 'fa-tshirt', label: 'Itens Equipados', render: () => window.showTab('itens-equipados') },
+    { id: 'calculadora-atributos', icon: 'fa-chart-bar', label: 'Calculadora de atributos', render: () => window.showTab('calculadora-atributos') },
+    { id: 'constelacao', icon: 'fa-star', label: 'Constelação', render: () => window.showTab('constelacao') },
+    { id: 'crafting', icon: 'fa-hammer', label: 'Oficina de Criação', render: () => window.showTab('crafting') },
+    { id: 'extracao', icon: 'fa-recycle', label: 'Extração e Reciclagem', render: () => window.showTab('extracao') },
+    { id: 'colecao-craft', icon: 'fa-book-atlas', label: 'Diário de Coleção', render: () => window.showTab('colecao-craft') },
+    { id: 'arma-espiritual', icon: 'fa-ghost', label: 'Arma Espiritual', render: () => window.showTab('arma-espiritual') },
+    { id: 'meus-pets', icon: 'fa-dragon', label: 'Meus Pets', render: () => window.showTab('meus-pets') },
+    { id: 'recursos-reputacao', icon: 'fa-crown', label: 'Recursos e Reputação', render: () => window.showTab('recursos-reputacao') },
+    { id: 'comercio', icon: 'fa-coins', label: 'Comércio', render: () => window.showTab('comercio') },
+    { id: 'mapa-movimento', icon: 'fa-map-marked-alt', label: 'Mapa e Movimento', render: () => window.showTab('mapa-movimento') },
+    { id: 'arena-combate', icon: 'fa-chess-board', label: 'Arena de Combate', render: () => window.showTab('arena-combate') }
 ];
 
 // 3. FUNÇÃO QUE DESENHA OS BOTÕES NA ÁREA VERMELHA LATERAL
@@ -160,72 +170,22 @@ function populateSidebar(subAbaArray, isFichaMenu = false) {
     });
 }
 
-// 4. RENDERIZADOR DA "FICHA DE PERSONAGEM" E SUAS 16 ABAS 
-window.renderFichaPersonagemWrapper = function() {
-    const container = document.getElementById('content-container');
-    
-    // As 16 abas solicitadas rigorosamente
-    const tabsRPG = [
-        { id: 'painel-fichas', name: 'Painel de Ficha', render: renderPainelFichas },
-        { id: 'rolagem-dados', name: 'Rolagem de Dados', render: renderRolagemDados },
-        { id: 'minhas-habilidades', name: 'Minhas Habilidades', render: renderMinhasHabilidades },
-        { id: 'mochila', name: 'Mochila', render: renderMochila },
-        { id: 'itens-equipados', name: 'Itens Equipados', render: renderItensEquipados },
-        { id: 'calculadora-atributos', name: 'Calculadora de atributos', render: renderCalculadoraAtributos },
-        { id: 'constelacao', name: 'Constelação', render: renderConstelacaoTab },
-        { id: 'crafting', name: 'Oficina de Criação', render: renderCraftingTab },
-        { id: 'extracao', name: 'Extração e Reciclagem', render: renderExtracaoTab },
-        { id: 'colecao-craft', name: 'Diário de Coleção', render: renderCollectionTab },
-        { id: 'arma-espiritual', name: 'Arma Espiritual', render: renderArmaEspiritualTab },
-        { id: 'meus-pets', name: 'Meus Pets', render: renderPetsTab },
-        { id: 'recursos-reputacao', name: 'Recursos e Reputação', render: renderReputacaoTab },
-        { id: 'comercio', name: 'Comércio', render: renderComercioTab },
-        { id: 'mapa-movimento', name: 'Mapa e Movimento', render: () => { if(window.renderMapTab) window.renderMapTab(); } },
-        { id: 'arena-combate', name: 'Arena de Combate', render: () => { if(window.arena?.init) window.arena.init(); } }
-    ];
-
-    container.innerHTML = `
-        <div class="flex flex-col h-full w-full bg-[#0f172a]">
-            <div class="bg-[#1e293b] border-b border-slate-700 flex overflow-x-auto hide-scroll shrink-0 px-2 pt-2 gap-1 z-10 shadow-md">
-                ${tabsRPG.map((t, i) => `
-                    <button class="inner-tab-btn ${i===0 ? 'active border-amber-500 text-amber-500' : 'border-transparent text-slate-400'} px-4 py-3 text-[10px] font-bold uppercase tracking-wider hover:text-slate-200 border-b-[3px] transition-colors whitespace-nowrap" data-target="${t.id}-content">
-                        ${t.name}
-                    </button>
-                `).join('')}
-            </div>
-            
-            <div id="ficha-inner-container" class="flex-1 overflow-auto relative p-6 custom-scroll">
-                ${tabsRPG.map((t, i) => `
-                    <div id="${t.id}-content" class="inner-tab-content ${i===0 ? '' : 'hidden'} h-full w-full"></div>
-                `).join('')}
-            </div>
-        </div>
-    `;
-
-    document.querySelectorAll('.inner-tab-btn').forEach((btn, index) => {
-        btn.onclick = (e) => {
-            document.querySelectorAll('.inner-tab-btn').forEach(b => {
-                b.classList.remove('active', 'border-amber-500', 'text-amber-500');
-                b.classList.add('border-transparent', 'text-slate-400');
-            });
-            btn.classList.remove('border-transparent', 'text-slate-400');
-            btn.classList.add('active', 'border-amber-500', 'text-amber-500');
-            
-            document.querySelectorAll('.inner-tab-content').forEach(c => c.classList.add('hidden'));
-            document.getElementById(btn.getAttribute('data-target')).classList.remove('hidden');
-
-            tabsRPG[index].render();
-        };
-    });
-
-    tabsRPG[0].render();
-};
-
 window.renderBlankPage = function(title) {
-    const target = document.getElementById('default-view');
+    // Esconde as abas ativas
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+    
+    // Procura a div de tela em branco. Se não existir (foi apagada), recria ela na hora.
+    let target = document.getElementById('default-view');
+    if (!target) {
+        target = document.createElement('div');
+        target.id = 'default-view';
+        target.className = "h-full w-full flex flex-col items-center justify-center opacity-20 pointer-events-none select-none overflow-y-auto p-6";
+        document.getElementById('content-container').appendChild(target);
+    }
+    
     target.classList.remove('hidden');
     target.innerHTML = `
-        <i class="fas fa-file-alt text-[8rem] mb-6 text-slate-700"></i>
+        <i class="fas fa-tools text-[8rem] mb-6 text-slate-700"></i>
         <h2 class="font-cinzel text-4xl tracking-widest uppercase text-slate-500">${title}</h2>
         <p class="mt-4 text-xl uppercase tracking-tighter text-slate-600">Página em construção</p>
     `;
@@ -372,7 +332,10 @@ window.setContext = function(masterKey) {
                 <span class="ml-4 text-[10px] uppercase font-bold tracking-widest whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">${tab.label}</span>
             `;
             btn.onclick = () => {
-                document.getElementById('default-view').classList.add('hidden');
+                // Proteção extra: Só adiciona 'hidden' se o elemento existir no HTML
+                const defaultView = document.getElementById('default-view');
+                if(defaultView) defaultView.classList.add('hidden');
+                
                 tab.render();
             };
             sidebar.appendChild(btn);
@@ -667,44 +630,66 @@ function handleCharacterSelect(id) {
     
     updateCharacterSessions(id);
 
-    // Se nenhum personagem for selecionado (vazio)
     if(!id) {
         globalState.selectedCharacterId = null;
         globalState.selectedCharacterData = null;
         localStorage.removeItem('personagemAtivoId');
-        
         renderHeaderWidget();
         window.updateSidebarUI(); // Limpa a interface
         window.updateGlobalBars();
         if(window.renderSidebarDiceLog) window.renderSidebarDiceLog();
         
-        // Se estiver na Ficha, volta para a tela em branco
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-        document.getElementById('default-view')?.classList.remove('hidden');
+        // Descobre qual aba está visível no momento olhando as divs de conteúdo
+        let activeTab = 'painel-fichas';
+        document.querySelectorAll('.tab-content').forEach(c => {
+            if (!c.classList.contains('hidden')) activeTab = c.id.replace('-content', '');
+        });
+        
+        if(activeTab === 'painel-fichas') renderPainelFichas();
         return;
     }
 
     globalState.selectedCharacterId = id;
     localStorage.setItem('personagemAtivoId', id);
 
-    // Listener do personagem ativo (Escuta o Firebase em tempo real)
     unsubscribeChar = onSnapshot(doc(db, "rpg_fichas", id), async (docSnap) => {
         if(docSnap.exists()) {
             const fichaAtualizada = { id: docSnap.id, ...docSnap.data() };
             globalState.cache.all_personagens.set(id, fichaAtualizada);
             
-            // Processa todos os itens e bônus (math pesada)
             globalState.selectedCharacterData = await gatherAllCharacterData(id);
-            
-            // Atualiza a Interface Lateral com os dados do Firebase
-            window.updateSidebarUI();
+            window.updateSidebarUI(); // Puxa e exibe dados (Foto, Nome, ATK, DEF, EVA)
             window.updateGlobalBars();
+            
             if(window.renderSidebarDiceLog) window.renderSidebarDiceLog();
             
-            // Re-renderiza a aba que estiver aberta (se for da ficha)
-            const painelAberto = document.querySelector('.inner-tab-btn.active');
-            if (painelAberto) {
-                painelAberto.click(); // Força o clique para re-renderizar com os dados novos
+            // Descobre qual aba está visível no momento
+            let activeTab = 'painel-fichas';
+            document.querySelectorAll('.tab-content').forEach(c => {
+                if (!c.classList.contains('hidden')) activeTab = c.id.replace('-content', '');
+            });
+            
+            if(activeTab === 'painel-fichas') {
+                // Se o editor de ficha JÁ ESTIVER ABERTO, não recarrega a tela para não perder o que você está digitando
+                if (!document.getElementById('editor-nome')) {
+                    renderPainelFichas(); 
+                }
+            } 
+            else if(activeTab === 'constelacao') renderConstelacaoTab();
+            else if(activeTab === 'arma-espiritual') renderArmaEspiritualTab();
+            else if(activeTab === 'meus-pets') renderPetsTab();
+            else if(activeTab === 'itens-equipados') renderItensEquipados();
+            else if(activeTab === 'calculadora-atributos') renderCalculadoraAtributos();
+            else if(activeTab === 'mochila') renderMochila();
+            else if(activeTab === 'minhas-habilidades') {
+                renderMinhasHabilidades();
+                if(window.renderSkillUsageLogs) window.renderSkillUsageLogs(); 
+            }
+            else if(activeTab === 'calculadora-combate') renderCalculadoraCombate();
+            else if(activeTab === 'recursos-reputacao') renderReputacaoTab();
+            else if(activeTab === 'comercio') {
+                if(globalState.commerce) globalState.commerce.sellableCache = null;
+                renderComercioTab();
             }
         }
     });
@@ -713,14 +698,15 @@ function handleCharacterSelect(id) {
 // NOVA FUNÇÃO: Preenche Foto, Nome, Classe e Subclasse na Lateral
 window.updateSidebarUI = function() {
     const data = globalState.selectedCharacterData;
-    const barsContainer = document.getElementById('header-bars-container');
     
     if (!data || !data.ficha) {
         document.getElementById('sidebar-char-name').textContent = '---';
         document.getElementById('sidebar-char-class').textContent = '---';
         document.getElementById('sidebar-char-subclass').textContent = '---';
         document.getElementById('sidebar-char-img').src = 'https://placehold.co/400x400/0f172a/d4af37?text=Sem+Foto';
-        if (barsContainer) barsContainer.classList.add('hidden');
+        document.getElementById('sidebar-stat-atk').textContent = '0';
+        document.getElementById('sidebar-stat-def').textContent = '0';
+        document.getElementById('sidebar-stat-eva').textContent = '0';
         return;
     }
 
@@ -729,64 +715,63 @@ window.updateSidebarUI = function() {
     document.getElementById('sidebar-char-class').textContent = data.classe?.nome || 'Sem Classe';
     document.getElementById('sidebar-char-subclass').textContent = data.subclasse?.nome || 'Sem Subc.';
 
-    // Lógica da Imagem Favorita (Puxa do array imageUrls da ficha)
     const imgKey = f.imagemPrincipal;
     const imgUrl = (imgKey && f.imageUrls && f.imageUrls[imgKey]) ? f.imageUrls[imgKey] : (f.imagemUrl || 'https://placehold.co/400x400/0f172a/d4af37?text=Sem+Foto');
     document.getElementById('sidebar-char-img').src = imgUrl;
 
-    if (barsContainer) barsContainer.classList.remove('hidden');
+    // ATK, DEF e EVA (Puxa o valor total já calculado salvo na ficha)
+    document.getElementById('sidebar-stat-atk').textContent = f.atkPersonagemBase || 0;
+    document.getElementById('sidebar-stat-def').textContent = f.defPersonagemBase || 0;
+    document.getElementById('sidebar-stat-eva').textContent = f.evaPersonagemBase || 0;
 };
 
 // --- BARRAS GLOBAIS DE STATUS (LATERAL) ---
 window.updateGlobalBars = function() {
     const charId = globalState.selectedCharacterId;
-    if (!charId || !globalState.selectedCharacterData) return;
+    const containerHdr = document.getElementById('header-bars-container');
+    
+    if (!charId || !globalState.selectedCharacterData) {
+        if(containerHdr) containerHdr.classList.add('hidden');
+        return;
+    }
+    if(containerHdr) containerHdr.classList.remove('hidden');
 
     const ficha = globalState.selectedCharacterData.ficha;
     const atributos = ficha.atributosBasePersonagem || {};
     
-    // HP Matemático
     const hpMax = Number(ficha.hpMaxPersonagemBase) || 1; 
     const hpShieldMax = Number(atributos.defesaCorporalNativaTotal) || 0; 
     const hpAtual = ficha.hpPersonagemBase !== undefined ? Number(ficha.hpPersonagemBase) : hpMax;
     const hpShieldAtual = ficha.hpShieldAtual !== undefined ? Number(ficha.hpShieldAtual) : hpShieldMax;
-    const pctHpBase = Math.min(100, Math.max(0, (hpAtual / hpMax) * 100));
-    const pctHpShield = hpShieldMax > 0 ? Math.min(100, Math.max(0, (hpShieldAtual / hpShieldMax) * 100)) : 0;
 
-    // MP Matemático
     const mpMax = Number(ficha.mpMaxPersonagemBase) || 1; 
     const mpShieldMax = Number(atributos.defesaMagicaNativaTotal) || 0; 
     const mpAtual = ficha.mpPersonagemBase !== undefined ? Number(ficha.mpPersonagemBase) : mpMax;
     const mpShieldAtual = ficha.mpShieldAtual !== undefined ? Number(ficha.mpShieldAtual) : mpShieldMax;
+
+    const pctHpBase = Math.min(100, Math.max(0, (hpAtual / hpMax) * 100));
+    const pctHpShield = hpShieldMax > 0 ? Math.min(100, Math.max(0, (hpShieldAtual / hpShieldMax) * 100)) : 0;
     const pctMpBase = Math.min(100, Math.max(0, (mpAtual / mpMax) * 100));
     const pctMpShield = mpShieldMax > 0 ? Math.min(100, Math.max(0, (mpShieldAtual / mpShieldMax) * 100)) : 0;
 
-    // Aplicação na UI (IDs do novo HTML)
     const setWidth = (id, pct) => { const el = document.getElementById(id); if(el) el.style.width = `${pct}%`; };
     setWidth('hdr-hp-base', pctHpBase);
     setWidth('hdr-hp-shield', pctHpShield);
     setWidth('hdr-mp-base', pctMpBase);
     setWidth('hdr-mp-shield', pctMpShield);
 
-    // Textos de HP e MP
-    const hpTotalAtual = Math.max(0, hpAtual + hpShieldAtual);
-    const hpTotalMax = hpMax + hpShieldMax;
     const txtHpHdr = document.getElementById('hdr-hp-text');
-    if(txtHpHdr) txtHpHdr.textContent = `${hpTotalAtual}/${hpTotalMax}`;
+    if(txtHpHdr) txtHpHdr.textContent = `${Math.max(0, hpAtual + hpShieldAtual)}/${hpMax + hpShieldMax}`;
 
-    const mpTotalAtual = Math.max(0, mpAtual + mpShieldAtual);
-    const mpTotalMax = mpMax + mpShieldMax;
     const txtMpHdr = document.getElementById('hdr-mp-text');
-    if(txtMpHdr) txtMpHdr.textContent = `${mpTotalAtual}/${mpTotalMax}`;
+    if(txtMpHdr) txtMpHdr.textContent = `${Math.max(0, mpAtual + mpShieldAtual)}/${mpMax + mpShieldMax}`;
     
-    // Lógica da Fome
     const fomeExtra = Number(atributos.pontosFomeExtraTotal) || 0;
     const fomeMax = Math.floor(100 + fomeExtra);
     let fomeAtual = ficha.fomeAtual !== undefined ? Number(ficha.fomeAtual) : fomeMax;
     if (fomeAtual > fomeMax) fomeAtual = fomeMax;
 
-    const fomePct = Math.max(0, Math.min(100, (fomeAtual / fomeMax) * 100));
-    setWidth('bar-fome-fill', fomePct);
+    setWidth('bar-fome-fill', Math.max(0, Math.min(100, (fomeAtual / fomeMax) * 100)));
     
     const fomeText = document.getElementById('hdr-fome-text');
     if (fomeText) {
@@ -921,13 +906,10 @@ function renderHeaderWidget() {
     if (!container || !globalState.world.data) return;
 
     const w = globalState.world.data;
-    const locations = globalState.world.locations;
-    const events = globalState.world.events || [];
-
-    let timeDisplay = w.time;
-    let dayDisplay = w.day;
-    let monthDisplay = w.month;
-    let yearDisplay = w.year;
+    let timeDisplay = w.time || "12:00";
+    let dayDisplay = w.day || "1";
+    let monthDisplay = w.month || "1";
+    let yearDisplay = w.year || "1000";
     let isCustomSession = false;
 
     if (globalState.activeSessionId && globalState.activeSessionId !== "world") {
@@ -955,40 +937,19 @@ function renderHeaderWidget() {
     let moon = MOON_PHASES[Math.floor((totalDays % 28) / 3.5)] || MOON_PHASES[0];
     const seasonName = globalState.world.seasons?.find(s => s.id === w.seasonId)?.name || "---";
 
-    const activeLocId = globalState.world.selectedLocId;
-    const location = locations?.find(l => l.id === activeLocId);
-    let localEvents = [];
-    let isDanger = false;
-
-    if (location && location.x !== undefined && location.y !== undefined) {
-        localEvents = events.filter(ev => {
-            const distance = Math.sqrt(Math.pow(Number(location.x) - Number(ev.x), 2) + Math.pow(Number(location.y) - Number(ev.y), 2));
-            return distance <= Number(ev.radius || 0);
-        });
-        isDanger = localEvents.length > 0;
-    }
-
-    // AQUI OCORRE A REDUÇÃO DE TAMANHOS (text-lg em vez de text-2xl, e paddings menores)
+    // Widget compacto focado no Top Nav
     container.innerHTML = `
-        <div class="flex items-center gap-4 animate-fade-in">
-            <div class="flex items-center gap-2 border-r border-slate-700 pr-4">
-                <div class="text-right">
-                    <div class="text-lg font-mono font-bold ${isCustomSession ? 'text-indigo-400' : 'text-white'} leading-none">${timeDisplay}</div>
-                    <div class="text-[9px] ${isCustomSession ? 'text-indigo-500' : 'text-amber-500'} font-bold uppercase tracking-widest mt-0.5">
-                        ${isCustomSession ? '<i class="fas fa-users"></i> SESSÃO' : 'MUNDIAL'} • ${dayDisplay}/${monthDisplay}/${yearDisplay}
-                    </div>
-                </div>
-                <div class="text-center ml-2">
-                    <div class="text-sm" title="${moon.name}"><i class="fas ${moon.icon}" style="color: ${moon.color}"></i></div>
-                    <div class="text-[8px] text-slate-400 uppercase font-bold">${seasonName}</div>
+        <div class="flex items-center gap-4 animate-fade-in mr-4">
+            <div class="text-right">
+                <div class="text-lg font-mono font-bold ${isCustomSession ? 'text-indigo-400' : 'text-white'} leading-none">${timeDisplay}</div>
+                <div class="text-[9px] ${isCustomSession ? 'text-indigo-500' : 'text-amber-500'} font-bold uppercase tracking-widest mt-0.5">
+                    ${isCustomSession ? '<i class="fas fa-users"></i> SESSÃO' : 'MUNDIAL'} • ${dayDisplay}/${monthDisplay}/${yearDisplay}
                 </div>
             </div>
-
-            <div class="flex items-center gap-2 bg-slate-900/50 border ${isDanger ? 'border-red-500' : 'border-slate-700'} rounded px-2 py-1">
-                <i class="fas fa-map-marker-alt ${isDanger ? 'text-red-500 animate-bounce' : 'text-slate-400'} text-xs"></i>
-                <select onchange="window.updateHeaderLoc(this.value)" class="bg-transparent text-white font-bold text-[11px] outline-none border-none cursor-pointer w-32 truncate">
-                    ${locations?.map(loc => `<option value="${loc.id}" ${loc.id === activeLocId ? 'selected' : ''} class="bg-slate-800">${loc.name}</option>`).join('') || '<option>Nenhum Local</option>'}
-                </select>
+            <div class="h-6 w-[1px] bg-slate-700"></div>
+            <div class="text-center w-16">
+                <div class="text-sm" title="${moon.name}"><i class="fas ${moon.icon}" style="color: ${moon.color}"></i></div>
+                <div class="text-[8px] text-slate-400 uppercase font-bold">${seasonName}</div>
             </div>
         </div>
     `;
@@ -1056,7 +1017,7 @@ window.syncStorage = async function() {
 
     const btn = document.getElementById('btn-sync-storage');
     if(btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Sincronizando...'; }
-
+ 
     try {
         await runTransaction(db, async (t) => {
             const charRef = doc(db, "rpg_fichas", charId);
