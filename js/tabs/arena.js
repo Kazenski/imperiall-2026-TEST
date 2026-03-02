@@ -514,21 +514,26 @@ window.arena = {
         try {
             const sessionRef = doc(db, "rpg_sessions", window.arena.sessionDocId);
             let cascadeUpdates = null;
+            let cascadeTotal = null; // Guarda o valor total (Base + Extra + Escudo)
             
+            // Consome o MP aplicando a lógica de cascata
             if (myTokenId && charId && charData) {
-                const cascade = calculateStatCascade(charData.ficha || charData, 'mp', -costToDeduct);
+                const cascade = calculateStatCascade(charData.ficha || charData, 'mp', -Math.abs(costToDeduct));
                 cascadeUpdates = cascade.updates;
+                cascadeTotal = cascade.total; // <- O Segredo está aqui
             }
 
             const newLogEntry = { text: logMsg, timestamp: Date.now(), type: 'attack' };
             const sessionUpdates = { combat_log: arrayUnion(newLogEntry) };
 
-            if (myTokenId && cascadeUpdates) {
-                sessionUpdates[`arena_state.tokens.${myTokenId}.mp`] = cascadeUpdates.mpPersonagemBase || 0;
+            // Aplica a dedução de MP no Token da Arena (Visual em Tempo Real)
+            if (myTokenId && cascadeUpdates !== null) {
+                sessionUpdates[`arena_state.tokens.${myTokenId}.mp`] = cascadeTotal;
             }
 
             await updateDoc(sessionRef, sessionUpdates);
 
+            // Atualiza a Ficha Raiz do Jogador
             if (cascadeUpdates && charId) {
                 try {
                     await updateDoc(doc(db, "rpg_fichas", charId), cascadeUpdates);
@@ -631,24 +636,26 @@ window.arena = {
         try {
             const sessionRef = doc(db, "rpg_sessions", window.arena.sessionDocId);
             let cascadeUpdates = null;
+            let cascadeTotal = null; // Guarda o valor total (Base + Extra + Escudo)
             
+            // Consome o MP aplicando a lógica de cascata
             if (myTokenId && charId && charData) {
                 const cascade = calculateStatCascade(charData.ficha || charData, 'mp', -Math.abs(costToDeduct));
                 cascadeUpdates = cascade.updates;
+                cascadeTotal = cascade.total; // <- O Segredo está aqui
             }
 
             const newLogEntry = { text: logMsg, timestamp: Date.now(), type: 'attack' };
-            const sessionUpdates = {
-                combat_log: arrayUnion(newLogEntry),
-                [`arena_state.auras.${auraId}`]: newAura
-            };
+            const sessionUpdates = { combat_log: arrayUnion(newLogEntry) };
 
-            if (myTokenId && cascadeUpdates) {
-                sessionUpdates[`arena_state.tokens.${myTokenId}.mp`] = cascadeUpdates.mpPersonagemBase || 0;
+            // Aplica a dedução de MP no Token da Arena (Visual em Tempo Real)
+            if (myTokenId && cascadeUpdates !== null) {
+                sessionUpdates[`arena_state.tokens.${myTokenId}.mp`] = cascadeTotal;
             }
 
             await updateDoc(sessionRef, sessionUpdates);
 
+            // Atualiza a Ficha Raiz do Jogador
             if (cascadeUpdates && charId) {
                 try {
                     await updateDoc(doc(db, "rpg_fichas", charId), cascadeUpdates);
@@ -658,7 +665,7 @@ window.arena = {
             }
 
             window.arena.showFloatingText(`-${costToDeduct} MP`, myTokenId, '#60a5fa');
-            hitTokensIds.forEach(id => window.arena.showFloatingText(`HIT! ${totalDano}`, id, '#ef4444'));
+            window.arena.showFloatingText(`HIT! ${totalDano}`, targetTokenId, '#ef4444');
 
             window.arena.turnActions.action = true;
             window.arena.updateActionHUD();
@@ -764,6 +771,14 @@ window.arena = {
         } catch (e) {
             console.error("Erro ao inserir token:", e);
         }
+    },
+
+    endTurn: function() {
+        // Confirmação para evitar que o jogador clique sem querer e pule a sua vez
+        if(!confirm("Tem certeza que deseja encerrar o seu turno?")) return;
+        
+        // Se confirmar, chama a função principal que repassa a iniciativa e calcula as auras
+        window.arena.nextTurn();
     },
 
     nextTurn: async function() {
