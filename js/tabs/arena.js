@@ -918,34 +918,34 @@ window.arena = {
         gridLayer.innerHTML = '';
         mapLayer.innerHTML = '';
 
-        if (this.data.mapaUrl) {
+        if (window.arena.data && window.arena.data.mapaUrl) {
             const width = (GRID_COLS + 0.5) * HEX_WIDTH;
             const height = (GRID_ROWS * 1.5 * HEX_SIZE) + HEX_SIZE;
-            mapLayer.innerHTML = `<image href="${this.data.mapaUrl}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="none" style="opacity: 0.6;" />`;
+            mapLayer.innerHTML = `<image href="${window.arena.data.mapaUrl}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="none" style="opacity: 0.6;" />`;
         }
 
         for (let r = 0; r < GRID_ROWS; r++) {
             for (let q = 0; q < GRID_COLS; q++) {
                 const qAxial = q - Math.floor(r / 2);
-                const pos = this.hexToPixel(qAxial, r);
+                const pos = window.arena.hexToPixel(qAxial, r);
                 
                 const hex = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-                hex.setAttribute("points", this.getHexPoints(pos.x, pos.y));
+                hex.setAttribute("points", window.arena.getHexPoints(pos.x, pos.y));
                 hex.setAttribute("class", "hex");
                 hex.dataset.q = qAxial;
                 hex.dataset.r = r;
                 
-                hex.onclick = () => this.handleHexClick(qAxial, r);
+                hex.onclick = () => window.arena.handleHexClick(qAxial, r);
                 hex.onmouseenter = () => {
-                    if (this.targeting) this.renderAoEPreview(qAxial, r);
+                    if (window.arena.targeting) window.arena.renderAoEPreview(qAxial, r);
                 };
                 
                 gridLayer.appendChild(hex);
             }
         }
-        this.gridRendered = true;
-        this.updateObstacles();
-        this.renderAuras(); 
+        window.arena.gridRendered = true;
+        window.arena.updateObstacles();
+        window.arena.renderAuras(); 
     },
 
     renderAoEPreview: function(q, r) {
@@ -953,7 +953,7 @@ window.arena = {
         if (!previewLayer) return;
         previewLayer.innerHTML = '';
         
-        const skill = this.targeting;
+        const skill = window.arena.targeting;
         if (!skill) return;
         
         const hexEl = document.querySelector(`.hex[data-q="${q}"][data-r="${r}"]`);
@@ -963,15 +963,13 @@ window.arena = {
             for (let tq = 0; tq < GRID_COLS; tq++) {
                 const tqAxial = tq - Math.floor(tr / 2);
                 
-                if (this.hexDistance(q, r, tqAxial, tr) <= skill.radius) {
-                    const pos = this.hexToPixel(tqAxial, tr);
+                if (window.arena.hexDistance(q, r, tqAxial, tr) <= skill.radius) {
+                    const pos = window.arena.hexToPixel(tqAxial, tr);
                     const ghost = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-                    ghost.setAttribute("points", this.getHexPoints(pos.x, pos.y));
+                    ghost.setAttribute("points", window.arena.getHexPoints(pos.x, pos.y));
                     ghost.setAttribute("fill", skill.color);
                     ghost.setAttribute("fill-opacity", "0.4");
                     ghost.setAttribute("stroke", "#ffffff");
-                    ghost.setAttribute("stroke-dasharray", "4");
-                    ghost.setAttribute("stroke-width", "2");
                     ghost.style.pointerEvents = "none";
                     previewLayer.appendChild(ghost);
                 }
@@ -984,22 +982,21 @@ window.arena = {
         if (!aurasLayer) return;
         aurasLayer.innerHTML = '';
 
-        const auras = this.data.auras || {};
+        const auras = window.arena.data?.auras || {};
         
         Object.values(auras).forEach(aura => {
             for (let r = 0; r < GRID_ROWS; r++) {
                 for (let q = 0; q < GRID_COLS; q++) {
                     const qAxial = q - Math.floor(r / 2);
                     
-                    if (this.hexDistance(aura.q, aura.r, qAxial, r) <= aura.radius) {
-                        const pos = this.hexToPixel(qAxial, r);
+                    if (window.arena.hexDistance(aura.q, aura.r, qAxial, r) <= aura.radius) {
+                        const pos = window.arena.hexToPixel(qAxial, r);
                         const hex = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-                        hex.setAttribute("points", this.getHexPoints(pos.x, pos.y));
+                        hex.setAttribute("points", window.arena.getHexPoints(pos.x, pos.y));
                         hex.setAttribute("fill", aura.color);
                         hex.setAttribute("fill-opacity", "0.2"); 
                         hex.setAttribute("stroke", aura.color);
                         hex.setAttribute("stroke-opacity", "0.2");
-                        hex.setAttribute("stroke-width", "2");
                         hex.style.pointerEvents = "none";
                         aurasLayer.appendChild(hex);
                     }
@@ -1235,7 +1232,8 @@ window.arena = {
     },
 
     renderSpawnList: function() {
-        const filter = document.getElementById('arena-spawn-filter').value.toLowerCase();
+        const filterEl = document.getElementById('arena-spawn-filter');
+        const filter = filterEl ? filterEl.value.toLowerCase() : "";
         
         const listPlayers = document.getElementById('spawn-list-players');
         const listNPCs = document.getElementById('spawn-list-npcs');
@@ -1245,14 +1243,17 @@ window.arena = {
         if(listNPCs) listNPCs.innerHTML = '';
         if(listMonsters) listMonsters.innerHTML = '';
 
-        if(globalState.cache.players) {
-            globalState.cache.players.forEach((p, id) => {
+        // Lista de Jogadores
+        if(globalState.cache.players || globalState.cache.personagens) {
+            const playersMap = globalState.cache.players || globalState.cache.personagens;
+            playersMap.forEach((p, id) => {
                 if ((p.nome || "").toLowerCase().includes(filter)) {
-                    this.createSpawnItem(listPlayers, p.nome || "Sem Nome", id, 'player', p.imageUrls?.imagem1, p.hpPersonagemBase, p.mpPersonagemBase, p.explorix || 5, 'rpg_fichas');
+                    window.arena.createSpawnItem(listPlayers, p.nome || "Sem Nome", id, 'player', p.imageUrls?.imagem1 || p.imagemUrl, p.hpPersonagemBase, p.mpPersonagemBase, p.movimentoPersonagemBase || 5, 'rpg_fichas');
                 }
             });
         }
         
+        // Lista de NPCs e Monstros
         if(globalState.cache.mobs) {
             globalState.cache.mobs.forEach((m, id) => {
                 if ((m.nome || "").toLowerCase().includes(filter)) {
@@ -1261,8 +1262,8 @@ window.arena = {
                     const type = isNpc ? 'npc' : 'monster';
                     const hp = m.hpPersonagemBase || m.hpMaxPersonagemBase || 10;
                     const mp = m.mpPersonagemBase || m.mpMaxPersonagemBase || 10;
-                    const move = m.explorixMovimento || 5; 
-                    this.createSpawnItem(targetList, m.nome || "Mob", id, type, m.imageUrls?.imagem1, hp, mp, move, m.collection);
+                    const move = m.explorixMovimento || m.movimentoPersonagemBase || 5; 
+                    window.arena.createSpawnItem(targetList, m.nome || "Mob", id, type, m.imageUrls?.imagem1 || m.imagemUrl, hp, mp, move, m.collection);
                 }
             });
         }
@@ -1272,15 +1273,16 @@ window.arena = {
         if(!container) return;
         const div = document.createElement('div');
         div.className = "flex items-center gap-2 bg-slate-900 p-1 rounded hover:bg-slate-800 cursor-pointer border border-transparent hover:border-amber-500/30";
-        div.innerHTML = `<img src="${img||IMG_PLACEHOLDER_BASE64}" class="w-6 h-6 rounded bg-black object-cover"><span class="text-[10px] truncate text-slate-300">${name}</span>`;
-        div.onclick = () => this.prepareSpawn(id, name, img, hp, mp, move, type, col);
+        div.innerHTML = `<img src="${img||IMG_PLACEHOLDER_BASE64}" class="w-6 h-6 rounded bg-black object-cover"><span class="text-[10px] truncate text-slate-300">${escapeHTML(name)}</span>`;
+        div.onclick = () => window.arena.prepareSpawn(id, name, img, hp, mp, move, type, col);
         container.appendChild(div);
     },
 
     prepareSpawn: function(id, name, img, hp, mp, move, type, collection) {
-        this.tool = 'spawn';
-        this.spawnTarget = { id, collection, data: { name, img, hp, hpMax: hp, mp, mpMax: mp, movimento: move, type, visivel: (type === 'player') } };
-        document.getElementById('arena-tool-display').textContent = `Spawn: ${name}`; 
+        window.arena.tool = 'spawn';
+        window.arena.spawnTarget = { id, collection, data: { name, img, hp, hpMax: hp, mp, mpMax: mp, movimento: move, type, visivel: (type === 'player') } };
+        const display = document.getElementById('arena-tool-display');
+        if(display) display.textContent = `Spawn: ${name}`; 
         document.body.style.cursor = 'copy';
     },
 
@@ -1599,5 +1601,53 @@ window.arena = {
                 </div>
             </div>
         `;
+    }
+
+    // --- FUNÇÕES UTILITÁRIAS E MATEMÁTICAS ---
+    hexToPixel: function(q, r) { 
+        return { 
+            x: HEX_SIZE * (Math.sqrt(3) * q + Math.sqrt(3)/2 * r) + 60, 
+            y: HEX_SIZE * (3/2 * r) + 60 
+        }; 
+    },
+    getHexPoints: function(x, y) {
+        let p = ""; 
+        for(let i=0; i<6; i++) { 
+            const rad = Math.PI/180*(60*i-30); 
+            p+=`${x+(HEX_SIZE-1)*Math.cos(rad)},${y+(HEX_SIZE-1)*Math.sin(rad)} `; 
+        } 
+        return p;
+    },
+    pixelToHex: function(x, y) {
+        let q = (Math.sqrt(3)/3 * (x - 60) - 1/3 * (y - 60)) / HEX_SIZE;
+        let r = (2/3 * (y - 60)) / HEX_SIZE;
+        return window.arena.hexRound(q, r);
+    },
+    hexRound: function(q, r) {
+        let rq = Math.round(q), rr = Math.round(r), rs = Math.round(-q - r);
+        let q_diff = Math.abs(rq - q), r_diff = Math.abs(rr - r), s_diff = Math.abs(rs - (-q - r));
+        if (q_diff > r_diff && q_diff > s_diff) rq = -rr - rs;
+        else if (r_diff > s_diff) rr = -rq - rs;
+        return { q: rq, r: rr };
+    },
+    getSVGPoint: function(e) {
+        const svg = document.getElementById('arena-svg');
+        if(!svg) return {x:0, y:0};
+        const pt = svg.createSVGPoint();
+        pt.x = e.clientX; pt.y = e.clientY;
+        return pt.matrixTransform(svg.getScreenCTM().inverse());
+    },
+    updateTransform: function() { 
+        const svg = document.getElementById('arena-svg');
+        if(svg) svg.style.transform = `translate(${window.arena.drag.panX}px, ${window.arena.drag.panY}px) scale(${window.arena.scale})`; 
+    },
+    zoom: function(f) { 
+        window.arena.scale *= f; 
+        window.arena.updateTransform(); 
+    },
+    setTool: function(t) { 
+        window.arena.tool = t; 
+        const d = document.getElementById('arena-tool-display'); 
+        if(d) d.textContent = `Ferramenta: ${t.toUpperCase()}`; 
     }
 };
