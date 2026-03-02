@@ -20,37 +20,38 @@ export function renderAtualizacoesTab() {
 
     // Constrói o esqueleto base da página
     container.innerHTML = `
-        <div class="w-full h-full fade-in relative pb-10">
-            <header class="mb-8 w-full relative pt-2">
-                <h1 class="text-3xl md:text-4xl text-amber-500 font-bold mb-2 drop-shadow-md font-cinzel text-left border-b border-slate-700 pb-2">
-                    Novidades do Sistema
-                </h1>
-                <p class="text-slate-400 mb-6 text-left text-sm mt-2">
-                    Acompanhe todas as melhorias, correções e novos conteúdos implementados no mundo de Imperiall.
-                </p>
-
-                <div class="absolute top-2 right-0" id="btn-container-admin">
+        <div class="w-full h-full fade-in flex flex-col">
+            <header class="mb-4 w-full flex items-center justify-between border-b border-slate-700 pb-2">
+                <div>
+                    <h1 class="text-3xl text-amber-500 font-bold drop-shadow-md font-cinzel text-left leading-none">
+                        Novidades do Sistema
+                    </h1>
+                    <p class="text-slate-400 text-xs mt-1 text-left">
+                        Acompanhe todas as melhorias, correções e novos conteúdos implementados.
+                    </p>
+                </div>
+                <div id="btn-container-admin">
                     </div>
             </header>
 
-            <div id="atualizacoes-form-container" class="hidden mb-8 w-full"></div>
+            <div id="atualizacoes-form-container" class="hidden mb-6 w-full shrink-0"></div>
 
-            <div class="mb-6 relative w-full">
+            <div class="mb-4 relative w-full shrink-0">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i class="fas fa-search text-slate-500"></i>
                 </div>
                 <input 
                     type="text" 
                     id="atualizacoes-search-input"
-                    class="w-full bg-slate-800 text-white pl-10 h-12 text-sm border border-slate-700 focus:border-amber-500 rounded-lg shadow-lg outline-none transition" 
-                    placeholder="Pesquisar por código, título, mudanças ou status..."
+                    class="w-full bg-slate-800 text-white pl-10 h-10 text-sm border border-slate-700 focus:border-amber-500 rounded shadow-sm outline-none transition" 
+                    placeholder="Pesquisar atualizações..."
                 >
             </div>
 
-            <div id="atualizacoes-list" class="space-y-6 w-full">
+            <div id="atualizacoes-list" class="space-y-4 w-full">
                 </div>
 
-            <div id="atualizacoes-pagination" class="flex justify-center gap-2 mt-8">
+            <div id="atualizacoes-pagination" class="flex justify-center gap-2 mt-6 pb-10 shrink-0">
                 </div>
         </div>
     `;
