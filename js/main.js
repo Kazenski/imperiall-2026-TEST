@@ -56,38 +56,41 @@ window.renderBlankPage = function(title) {
 
 // --- FUNÇÃO GLOBAL PARA EXIBIR UMA DAS 16 ABAS ---
 window.showTab = function (tabId) {
-    // Esconde todas as abas ativas
+    // 1. Esconde todas as abas ativas
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.add('hidden');
         tab.classList.remove('flex', 'flex-col', 'active');
     });
 
+    // 2. Prepara o container alvo
     const target = document.getElementById(tabId);
-    if (target) {
-        target.classList.remove('hidden');
-        target.classList.add('flex', 'flex-col', 'active');
-    }
+    if (!target) return; // Se a div não existir no HTML, aborta.
+
+    target.classList.remove('hidden');
+    target.classList.add('flex', 'flex-col', 'active');
 
     // --- ROTEAMENTO DAS ABAS ---
     
-    // 1. Abas Globais (Não precisam de personagem selecionado)
-    // 1. Abas Globais (Não precisam de personagem selecionado)
+    // ABA: PAINEL DE FICHAS
     if (tabId === 'painel-fichas-content' || tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
         } else {
             renderPainelFichas();
         }
-        return; // Sai da função para não executar o "else" lá de baixo
+        return; // <- O RETURN É A MÁGICA QUE IMPEDE A MENSAGEM DE CONSTRUÇÃO DE APARECER JUNTO!
     } 
     
+    // ABA: NOVIDADES (Livre para todos)
     if (tabId === 'atualizacoes-novidades-content' || tabId === 'atualizacoes-novidades') {
-        if (target) target.innerHTML = ''; // Limpa qualquer vestígio de "Em Construção"
-        renderAtualizacoesTab();
-        return; // Sai da função
+        target.innerHTML = ''; // Esvazia o container completamente primeiro
+        if (typeof renderAtualizacoesTab === 'function') {
+            renderAtualizacoesTab();
+        }
+        return; 
     }
     
-    // 2. Abas Específicas (Requerem um Personagem Selecionado)
+    // ABAS ESPECÍFICAS (Requerem um Personagem Selecionado)
     if (globalState.selectedCharacterId) {
         if(tabId === 'rolagem-dados-content') { renderRolagemDados(); return; }
         if(tabId === 'calculadora-combate-content') { renderCalculadoraCombate(); return; }
@@ -106,14 +109,13 @@ window.showTab = function (tabId) {
         if(tabId === 'mapa-movimento-content') { setTimeout(() => window.renderMapTab(), 100); return; }
         if(tabId === 'arena-combate-content') { if (window.arena && window.arena.init) window.arena.init(); return; }
         
-        // 3. Fallback: Se a aba existe mas não tem código programado (ex: "O Mundo")
+        // SE CHEGOU AQUI: O botão existe, mas a página não tem código ainda.
         renderPaginaEmConstrucao(target);
+        return;
     } 
     
-    // 4. Fallback: Se tentou acessar aba específica sem personagem
-    else {
-        if (target) target.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500"><p>Selecione um personagem na barra lateral para acessar.</p></div>';
-    }
+    // SE CHEGOU AQUI: O jogador tentou abrir uma aba de personagem sem selecionar um.
+    target.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500"><p>Selecione um personagem na barra lateral para acessar.</p></div>';
 };
 
 // --- AUTENTICAÇÃO E LOGIN ---
