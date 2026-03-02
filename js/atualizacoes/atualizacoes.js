@@ -21,16 +21,15 @@ export function renderAtualizacoesTab() {
     // Constrói o esqueleto base da página
     container.innerHTML = `
         <div class="w-full h-full fade-in relative pb-10">
-            <header class="mb-6 text-center relative w-full">
-                <h1 class="text-3xl md:text-4xl text-amber-500 font-bold mb-2 drop-shadow-md font-cinzel text-center">
+            <header class="mb-8 w-full relative pt-2">
+                <h1 class="text-3xl md:text-4xl text-amber-500 font-bold mb-2 drop-shadow-md font-cinzel text-left border-b border-slate-700 pb-2">
                     Novidades do Sistema
                 </h1>
-                <div class="h-1 w-32 bg-gradient-to-r from-transparent via-amber-600 to-transparent mx-auto mb-4"></div>
-                <p class="text-slate-400 mb-6 text-center">
+                <p class="text-slate-400 mb-6 text-left text-sm mt-2">
                     Acompanhe todas as melhorias, correções e novos conteúdos implementados no mundo de Imperiall.
                 </p>
 
-                <div class="absolute top-0 right-0" id="btn-container-admin">
+                <div class="absolute top-2 right-0" id="btn-container-admin">
                     </div>
             </header>
 
@@ -43,7 +42,7 @@ export function renderAtualizacoesTab() {
                 <input 
                     type="text" 
                     id="atualizacoes-search-input"
-                    class="w-full bg-slate-800 text-white pl-10 h-12 text-lg border border-slate-700 focus:border-amber-500 rounded-lg shadow-lg outline-none transition" 
+                    class="w-full bg-slate-800 text-white pl-10 h-12 text-sm border border-slate-700 focus:border-amber-500 rounded-lg shadow-lg outline-none transition" 
                     placeholder="Pesquisar por código, título, mudanças ou status..."
                 >
             </div>

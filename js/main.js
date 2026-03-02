@@ -55,69 +55,60 @@ window.renderBlankPage = function(title) {
 };
 
 // --- FUNÇÃO GLOBAL PARA EXIBIR UMA DAS 16 ABAS ---
-window.showTab = function(tabId) {
-    // Esconde todas as abas e ARRANCA a classe 'active' que prendia a ficha na tela
-    document.querySelectorAll('.tab-content').forEach(c => {
-        c.classList.add('hidden');
-        c.classList.remove('active'); 
+window.showTab = function (tabId) {
+    // Esconde todas as abas ativas
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.add('hidden');
+        tab.classList.remove('flex', 'flex-col', 'active');
     });
-    
-    const defaultView = document.getElementById('default-view');
-    if (defaultView) defaultView.classList.add('hidden');
 
-    // Mostra a aba alvo e garante que ela ocupe a altura toda
-    const target = document.getElementById(`${tabId}-content`);
+    const target = document.getElementById(tabId);
     if (target) {
         target.classList.remove('hidden');
-        target.classList.add('active', 'h-full'); 
+        target.classList.add('flex', 'flex-col', 'active');
     }
 
-    // Atualiza a cor visual na barra de ícones (Coluna 2)
-    document.querySelectorAll('#sub-menu-bar button').forEach(btn => {
-        if (btn.dataset.tabId) {
-            if (btn.dataset.tabId === tabId) {
-                btn.classList.add('bg-slate-800', 'border-amber-500');
-                btn.classList.remove('border-transparent');
-                btn.querySelector('i')?.classList.replace('text-slate-400', 'text-amber-500');
-            } else {
-                btn.classList.remove('bg-slate-800', 'border-amber-500');
-                btn.classList.add('border-transparent');
-                btn.querySelector('i')?.classList.replace('text-amber-500', 'text-slate-400');
-            }
-        }
-    });
-
-    if (tabId === 'painel-fichas') {
+    // --- ROTEAMENTO DAS ABAS ---
+    
+    // 1. Abas Globais (Não precisam de personagem selecionado)
+    if (tabId === 'painel-fichas-content' || tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
         } else {
             renderPainelFichas();
         }
     } 
-    // ---> COLOQUE A ABA DE ATUALIZAÇÕES AQUI (Visível para todos, com ou sem personagem) <---
-    else if (tabId === 'atualizacoes-novidades' || tabId === 'atualizacoes-novidades-content') {
+    else if (tabId === 'atualizacoes-novidades-content' || tabId === 'atualizacoes-novidades') {
+        if(target) target.innerHTML = ''; // Limpa antes de renderizar
         renderAtualizacoesTab();
-    } 
-    // ---> DAQUI PARA BAIXO, SÓ ABRE SE TIVER PERSONAGEM SELECIONADO <---
+    }
+    
+    // 2. Abas Específicas (Requerem um Personagem Selecionado)
     else if (globalState.selectedCharacterId) {
-        if(tabId === 'rolagem-dados') renderRolagemDados();
-        else if(tabId === 'calculadora-combate') renderCalculadoraCombate();
-        else if(tabId === 'minhas-habilidades') { renderMinhasHabilidades(); if(window.renderSkillUsageLogs) window.renderSkillUsageLogs(); }
-        else if(tabId === 'mochila') renderMochila();
-        else if(tabId === 'itens-equipados') renderItensEquipados();
-        else if(tabId === 'calculadora-atributos') renderCalculadoraAtributos();
-        else if(tabId === 'constelacao') renderConstelacaoTab(); 
-        else if(tabId === 'crafting') renderCraftingTab();
-        else if(tabId === 'extracao') renderExtracaoTab();
-        else if(tabId === 'colecao-craft') renderCollectionTab();
-        else if(tabId === 'arma-espiritual') renderArmaEspiritualTab();
-        else if(tabId === 'meus-pets') renderPetsTab();
-        else if(tabId === 'recursos-reputacao') renderReputacaoTab();
-        else if(tabId === 'comercio') { if(globalState.commerce) globalState.commerce.sellableCache = null; renderComercioTab(); }
-        else if(tabId === 'mapa-movimento') { setTimeout(() => window.renderMapTab(), 100); }
-        else if(tabId === 'arena-combate') { if (window.arena && window.arena.init) window.arena.init(); }
+        if(tabId === 'rolagem-dados-content') renderRolagemDados();
+        else if(tabId === 'calculadora-combate-content') renderCalculadoraCombate();
+        else if(tabId === 'minhas-habilidades-content') { renderMinhasHabilidades(); if(window.renderSkillUsageLogs) window.renderSkillUsageLogs(); }
+        else if(tabId === 'mochila-content') renderMochila();
+        else if(tabId === 'itens-equipados-content') renderItensEquipados();
+        else if(tabId === 'calculadora-atributos-content') renderCalculadoraAtributos();
+        else if(tabId === 'constelacao-content') renderConstelacaoTab(); 
+        else if(tabId === 'crafting-content') renderCraftingTab();
+        else if(tabId === 'extracao-content') renderExtracaoTab();
+        else if(tabId === 'colecao-craft-content') renderCollectionTab();
+        else if(tabId === 'arma-espiritual-content') renderArmaEspiritualTab();
+        else if(tabId === 'meus-pets-content') renderPetsTab();
+        else if(tabId === 'recursos-reputacao-content') renderReputacaoTab();
+        else if(tabId === 'comercio-content') { if(globalState.commerce) globalState.commerce.sellableCache = null; renderComercioTab(); }
+        else if(tabId === 'mapa-movimento-content') { setTimeout(() => window.renderMapTab(), 100); }
+        else if(tabId === 'arena-combate-content') { if (window.arena && window.arena.init) window.arena.init(); }
+        
+        // 3. Fallback: Se a aba existe mas não tem código programado ainda
+        else {
+            renderPaginaEmConstrucao(target);
+        }
     } 
-    // ---> SE NÃO TIVER PERSONAGEM SELECIONADO E TENTAR ABRIR O RESTO <---
+    
+    // 4. Fallback: Se tentou acessar aba específica sem personagem
     else {
         if (target) target.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500"><p>Selecione um personagem na barra lateral para acessar.</p></div>';
     }
@@ -869,4 +860,15 @@ function renderHeaderWidget() {
         </div>
     `;
     container.classList.remove('hidden');
+}
+
+function renderPaginaEmConstrucao(target) {
+    if (!target) return;
+    target.innerHTML = `
+        <div class="flex flex-col h-full w-full items-center justify-center text-center opacity-50 select-none">
+            <i class="fas fa-tools text-[8rem] mb-6 text-slate-700 animate-pulse"></i>
+            <h2 class="font-cinzel text-4xl tracking-widest uppercase text-slate-400">Em Breve</h2>
+            <p class="mt-4 text-xl uppercase tracking-widest text-slate-600">Esta área do império ainda está sendo forjada.</p>
+        </div>
+    `;
 }
