@@ -20,13 +20,13 @@ export function renderAtualizacoesTab() {
 
     // Constrói o esqueleto base da página
     container.innerHTML = `
-        <div class="max-w-6xl mx-auto p-4 md:p-8 animate-fade-in relative pb-32">
-            <header className="mb-8 text-center relative">
-                <h1 class="text-4xl md:text-5xl text-amber-500 font-bold mb-3 drop-shadow-md font-cinzel text-center">
+        <div class="w-full h-full fade-in relative pb-10">
+            <header class="mb-6 text-center relative w-full">
+                <h1 class="text-3xl md:text-4xl text-amber-500 font-bold mb-2 drop-shadow-md font-cinzel text-center">
                     Novidades do Sistema
                 </h1>
                 <div class="h-1 w-32 bg-gradient-to-r from-transparent via-amber-600 to-transparent mx-auto mb-4"></div>
-                <p class="text-slate-400 max-w-2xl mx-auto mb-6 text-center">
+                <p class="text-slate-400 mb-6 text-center">
                     Acompanhe todas as melhorias, correções e novos conteúdos implementados no mundo de Imperiall.
                 </p>
 
@@ -34,9 +34,9 @@ export function renderAtualizacoesTab() {
                     </div>
             </header>
 
-            <div id="atualizacoes-form-container" class="hidden mb-12"></div>
+            <div id="atualizacoes-form-container" class="hidden mb-8 w-full"></div>
 
-            <div class="mb-6 relative">
+            <div class="mb-6 relative w-full">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i class="fas fa-search text-slate-500"></i>
                 </div>
@@ -48,7 +48,7 @@ export function renderAtualizacoesTab() {
                 >
             </div>
 
-            <div id="atualizacoes-list" class="space-y-8 min-h-[50vh]">
+            <div id="atualizacoes-list" class="space-y-6 w-full">
                 </div>
 
             <div id="atualizacoes-pagination" class="flex justify-center gap-2 mt-8">
