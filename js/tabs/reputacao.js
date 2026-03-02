@@ -1,23 +1,27 @@
-import { db, doc, getDoc, setDoc, updateDoc, runTransaction } from '../core/firebase.js';
+import { db, doc, getDoc, updateDoc, runTransaction } from '../core/firebase.js';
 import { globalState, PLACEHOLDER_IMAGE_URL } from '../core/state.js';
 import { calculateReputationUsage, calculateReputationDetails } from '../core/calculos.js';
 import { escapeHTML } from '../core/utils.js';
 
-const COLET_COOLDOWN_MS = 10 * 60 * 1000; // 10 minutos para simulação
+const COLET_COOLDOWN_MS = 10 * 60 * 1000;
 
 // --- GESTÃO DE ESTADO DA INTERFACE ---
 window.switchRepTab = function(tabName) {
-    if (!globalState.repUI) globalState.repUI = { tab: 'buildings', selectedId: null, innerTab: 'details', shopCategory: 'buildings' };
+    if (!globalState.repUI) globalState.repUI = { tab: 'buildings', selectedId: null, innerTab: 'details', shopCategory: 'buildings', showHelp: false };
     globalState.repUI.tab = tabName;
     globalState.repUI.selectedId = null; 
+    globalState.repUI.showHelp = false;
+    
     if (tabName === 'shop' && !globalState.repUI.shopCategory) globalState.repUI.shopCategory = 'buildings';
+
     window.renderReputacaoTab();
 };
 
 window.selectRepItem = function(tab, id) {
-    if (!globalState.repUI) globalState.repUI = { tab: 'buildings', selectedId: null, innerTab: 'details' };
+    if (!globalState.repUI) globalState.repUI = { tab: 'buildings', selectedId: null, innerTab: 'details', showHelp: false };
     globalState.repUI.selectedId = id;
     globalState.repUI.innerTab = 'details';
+    globalState.repUI.showHelp = false;
     window.renderReputacaoTab();
 };
 
@@ -31,8 +35,15 @@ window.switchShopCategory = function(category) {
     if (!globalState.repUI) return;
     globalState.repUI.shopCategory = category;
     globalState.repUI.selectedId = null;
+    globalState.repUI.showHelp = false;
     window.renderReputacaoTab();
 };
+
+window.toggleRepHelp = function() {
+    if (!globalState.repUI) return;
+    globalState.repUI.showHelp = !globalState.repUI.showHelp;
+    window.renderReputacaoTab();
+}
 
 window.transferWithInput = function(from, to, itemId, inputId) {
     const inputEl = document.getElementById(inputId);
@@ -50,6 +61,19 @@ window.withdrawLocalWithInput = function(instanceId, itemId, inputId) {
     window.withdrawLocalBuildingItem(instanceId, itemId, val);
 };
 
+// --- CÁLCULO DE CAPACIDADE DO ARMAZÉM ---
+function calculateStorageCapacity(ficha) {
+    let armazemCap = 50; 
+    const mochilaForCap = ficha.mochila || {};
+    Object.entries(mochilaForCap).forEach(([id, qty]) => {
+        const tpl = globalState.cache.itens.get(id);
+        if (tpl && (tpl.tipoItem === 'Armazenamento' || tpl.categoria === 'Armazenamento' || tpl.slot_equipavel_id === 'bau')) {
+            armazemCap += (Number(tpl.bonusCapacidadeMochila) || 0) * qty;
+        }
+    });
+    return armazemCap;
+}
+
 // --- RENDERIZADOR PRINCIPAL ---
 export async function renderReputacaoTab() {
     const container = document.getElementById('recursos-reputacao-content');
@@ -62,18 +86,18 @@ export async function renderReputacaoTab() {
         const charData = globalState.selectedCharacterData;
         
         if (!charId || !charData || !charData.ficha) {
-            container.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500 italic">Selecione um personagem primeiro na barra lateral.</div>';
+            container.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500 italic">Selecione um personagem primeiro.</div>';
             return;
         }
 
-        if (!globalState.repUI) globalState.repUI = { tab: 'buildings', selectedId: null, innerTab: 'details', shopCategory: 'buildings' };
+        if (!globalState.repUI) globalState.repUI = { tab: 'buildings', selectedId: null, innerTab: 'details', shopCategory: 'buildings', showHelp: false };
         const activeTab = globalState.repUI.tab;
         
         const ficha = charData.ficha;
         const repUsage = calculateReputationUsage(ficha);
         const repDetails = calculateReputationDetails(ficha);
+        const maxStorage = calculateStorageCapacity(ficha);
 
-        // EXTRAÇÃO DO ARMAZÉM GERAL (SEM LIMITE)
         let storageId = String(charId); 
         if (ficha.recursos && typeof ficha.recursos.armazemGeral === 'string' && ficha.recursos.armazemGeral.trim() !== '') {
             storageId = ficha.recursos.armazemGeral.trim();
@@ -103,7 +127,6 @@ export async function renderReputacaoTab() {
 
         container.innerHTML = `
             <div id="rep-layout-wrapper" class="flex w-full h-full gap-6 animate-fade-in pb-4">
-                
                 <div class="flex-1 flex flex-col min-w-0 h-full">
                     
                     <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4 shrink-0">
@@ -136,7 +159,7 @@ export async function renderReputacaoTab() {
                                 <strong class="text-lg text-white font-cinzel">${(ficha.recursos?.aliados || []).length}</strong>
                             </div>
                             <div class="flex flex-col justify-center">
-                                <span class="text-[8px] text-slate-500 uppercase font-black" title="Armazém Infinito">Cofre Infinito</span>
+                                <span class="text-[8px] text-slate-500 uppercase font-black" title="Armazém Infinito">Itens Cofre</span>
                                 <strong class="text-lg text-sky-400 font-cinzel">${totalGuardado} <i class="fas fa-infinity text-[10px] ml-1 opacity-50"></i></strong>
                             </div>
                         </div>
@@ -150,10 +173,10 @@ export async function renderReputacaoTab() {
                             <i class="fas fa-users mr-1"></i> Meu Exército
                         </button>
                         <button onclick="window.switchRepTab('storage')" class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black transition-all ${activeTab === 'storage' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'}">
-                            <i class="fas fa-boxes mr-1"></i> Cofre Central
+                            <i class="fas fa-boxes mr-1"></i> Cofre Imperial
                         </button>
                         <button onclick="window.switchRepTab('shop')" class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black transition-all ${activeTab === 'shop' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'}">
-                            <i class="fas fa-shopping-cart mr-1"></i> Loja Imperial
+                            <i class="fas fa-shopping-cart mr-1"></i> Loja & Aluguel
                         </button>
                     </div>
 
@@ -161,6 +184,7 @@ export async function renderReputacaoTab() {
                         <div class="flex gap-2 mb-2">
                             <button onclick="window.switchShopCategory('buildings')" class="flex-1 py-1 text-[9px] uppercase font-bold rounded ${globalState.repUI.shopCategory === 'buildings' ? 'bg-slate-700 text-amber-400' : 'bg-slate-900 text-slate-500'}">Terrenos & Propriedades</button>
                             <button onclick="window.switchShopCategory('allies')" class="flex-1 py-1 text-[9px] uppercase font-bold rounded ${globalState.repUI.shopCategory === 'allies' ? 'bg-slate-700 text-sky-400' : 'bg-slate-900 text-slate-500'}">Contratos & Mercenários</button>
+                            <button onclick="window.switchShopCategory('storage')" class="flex-1 py-1 text-[9px] uppercase font-bold rounded ${globalState.repUI.shopCategory === 'storage' ? 'bg-slate-700 text-purple-400' : 'bg-slate-900 text-slate-500'}">Expansões de Carga</button>
                         </div>
                     ` : ''}
 
@@ -173,7 +197,6 @@ export async function renderReputacaoTab() {
             </div>
         `;
 
-        // Agora chamamos as funções que já estão no escopo do arquivo (abaixo)
         if (activeTab === 'storage') {
             renderStorageMochila(ficha);
             renderStorageVault(armazemGeral);
@@ -219,7 +242,7 @@ function renderMyEmpireGrid(ficha) {
         let extraBadge = '';
         if (activeTab === 'buildings') {
             const workers = inst.trabalhadores || [];
-            extraBadge = `<div class="absolute top-1 right-1 bg-black/80 border border-slate-700 text-slate-300 text-[8px] font-mono px-1 rounded shadow" title="Vagas Ocupadas"><i class="fas fa-users mr-1 text-sky-400"></i>${workers.length}/${tpl.vagas || 0}</div>`;
+            extraBadge = `<div class="absolute top-1 right-1 bg-black/80 border border-slate-700 text-slate-300 text-[8px] font-mono px-1 rounded shadow"><i class="fas fa-users mr-1 text-sky-400"></i>${workers.length}/${tpl.vagas || 0}</div>`;
         }
 
         const el = document.createElement('div');
@@ -247,9 +270,16 @@ function renderMyEmpireInspector(ficha) {
     const activeTab = globalState.repUI.tab;
     const selectedIdx = globalState.repUI.selectedId;
     const innerTab = globalState.repUI.innerTab || 'details';
+    const showHelp = globalState.repUI.showHelp;
+
+    if (showHelp) {
+        panel.innerHTML = renderHelpPanel();
+        return;
+    }
 
     if (!selectedIdx) {
-        panel.innerHTML = `<div class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 opacity-40 p-10 text-center"><i class="fas fa-chess-rook text-6xl mb-4"></i><p class="font-cinzel text-sm uppercase tracking-widest">Gestão de Instância</p></div>`;
+        panel.innerHTML = `<div class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 opacity-40 p-10 text-center"><i class="fas fa-chess-rook text-6xl mb-4"></i><p class="font-cinzel text-sm uppercase tracking-widest">Gestão de Instância</p></div>
+        <button onclick="window.toggleRepHelp()" class="absolute top-4 right-4 text-slate-500 hover:text-white cursor-pointer z-10 p-2"><i class="fas fa-question-circle text-xl"></i></button>`;
         return;
     }
 
@@ -302,7 +332,7 @@ function renderMyEmpireInspector(ficha) {
                                 <img src="${allyTpl?.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-6 h-6 rounded-full object-cover">
                                 <span class="text-[9px] text-slate-200 font-bold">${allyTpl?.nome || 'Desconhecido'}</span>
                             </div>
-                            <button onclick="window.unassignWorker('${selectedIdx}', ${allyIdx})" class="text-red-500 hover:text-red-400 text-[10px]" title="Remover do posto"><i class="fas fa-user-minus"></i></button>
+                            <button onclick="window.unassignWorker('${selectedIdx}', ${allyIdx})" class="text-red-500 hover:text-red-400 text-[10px]"><i class="fas fa-user-minus"></i></button>
                         </div>
                     `;
                 } else {
@@ -360,7 +390,8 @@ function renderMyEmpireInspector(ficha) {
         }
 
         panel.innerHTML = `
-            <div class="flex flex-col h-full">
+            <div class="flex flex-col h-full relative">
+                <button onclick="window.toggleRepHelp()" class="absolute top-4 right-4 text-slate-500 hover:text-white cursor-pointer z-10 p-2"><i class="fas fa-question-circle text-xl"></i></button>
                 <div class="p-6 border-b border-slate-700 bg-slate-900/50 flex flex-col items-center shrink-0">
                     <div class="w-24 h-24 rounded-xl bg-black border-2 border-amber-500 overflow-hidden mb-2 relative">
                         <img src="${tpl.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-full h-full object-cover">
@@ -396,7 +427,8 @@ function renderMyEmpireInspector(ficha) {
         });
 
         panel.innerHTML = `
-            <div class="flex flex-col h-full">
+            <div class="flex flex-col h-full relative">
+                <button onclick="window.toggleRepHelp()" class="absolute top-4 right-4 text-slate-500 hover:text-white cursor-pointer z-10 p-2"><i class="fas fa-question-circle text-xl"></i></button>
                 <div class="p-6 border-b border-slate-700 bg-slate-900/50 flex flex-col items-center shrink-0">
                     <div class="w-24 h-24 rounded-full bg-black border-4 border-sky-500 overflow-hidden mb-2 relative">
                         <img src="${tpl.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-full h-full object-cover">
@@ -435,6 +467,7 @@ function renderShopGrid() {
     let itemsToDisplay = [];
     if (cat === 'buildings') itemsToDisplay = [...globalState.cache.buildings.values()];
     else if (cat === 'allies') itemsToDisplay = [...globalState.cache.allies.values()];
+    else if (cat === 'storage') itemsToDisplay = [...globalState.cache.itens.values()].filter(i => i.tipoItem === 'Armazenamento' || i.categoria === 'Armazenamento' || i.slot_equipavel_id === 'bau');
 
     itemsToDisplay.sort((a,b) => a.nome.localeCompare(b.nome)).forEach(tpl => {
         const isSelected = selectedId === tpl.id;
@@ -466,15 +499,23 @@ function renderShopInspector(ficha, repUsage) {
 
     const cat = globalState.repUI.shopCategory;
     const selectedId = globalState.repUI.selectedId;
+    const showHelp = globalState.repUI.showHelp;
+
+    if (showHelp) {
+        panel.innerHTML = renderHelpPanel();
+        return;
+    }
 
     if (!selectedId) {
-        panel.innerHTML = `<div class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 opacity-40 p-10 text-center"><i class="fas fa-shopping-cart text-6xl mb-4"></i><p class="font-cinzel text-sm uppercase tracking-widest">Loja Imperial</p></div>`;
+        panel.innerHTML = `<div class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 opacity-40 p-10 text-center"><i class="fas fa-shopping-cart text-6xl mb-4"></i><p class="font-cinzel text-sm uppercase tracking-widest">Loja Imperial</p></div>
+        <button onclick="window.toggleRepHelp()" class="absolute top-4 right-4 text-slate-500 hover:text-white cursor-pointer z-10 p-2"><i class="fas fa-question-circle text-xl"></i></button>`;
         return;
     }
 
     let tpl;
     if (cat === 'buildings') tpl = globalState.cache.buildings.get(selectedId);
     else if (cat === 'allies') tpl = globalState.cache.allies.get(selectedId);
+    else tpl = globalState.cache.itens.get(selectedId);
 
     if (!tpl) return;
 
@@ -483,30 +524,34 @@ function renderShopInspector(ficha, repUsage) {
     let qtdPosse = 0;
     if (cat === 'buildings') qtdPosse = (ficha.recursos?.estabelecimentos || []).filter(e => e.templateId === selectedId).length;
     else if (cat === 'allies') qtdPosse = (ficha.recursos?.aliados || []).filter(a => a.templateId === selectedId).length;
+    else qtdPosse = (ficha.mochila || {})[selectedId] || 0;
 
     let canAffordRep = repUsage.available >= costRep;
+    let canAffordMats = true;
+    let purchaseMatsHtml = '';
 
-    // INFORMAÇÕES ANTECIPADAS DE COMPRA, CONSUMO E GERAÇÃO DA PROPRIEDADE
-    let requirementsHtml = '';
-    const reqs = tpl.custoMateriais || tpl.requisitos || [];
-    if (reqs.length > 0) {
-        requirementsHtml = `<div class="mt-4 bg-slate-950/50 p-2 rounded border border-slate-800"><h4 class="text-[9px] uppercase font-black text-amber-500 mb-2 border-b border-amber-500/20 pb-1">Custo Único de Construção/Contrato (Mochila):</h4><div class="grid grid-cols-2 gap-2">`;
-        reqs.forEach(req => {
+    const buyRequirements = tpl.custoMateriais || tpl.requisitos || [];
+    if (buyRequirements.length > 0) {
+        purchaseMatsHtml = `<div class="mt-4"><h4 class="text-[9px] uppercase font-black text-amber-500 mb-2 border-b border-amber-500/20 pb-1">Custo de Construção/Contrato (Requerido na Mochila):</h4><div class="grid grid-cols-2 gap-2">`;
+        buyRequirements.forEach(req => {
             const itemReq = globalState.cache.itens.get(req.itemId);
-            requirementsHtml += `
-                <div class="flex items-center gap-2 bg-slate-900 border border-slate-700 p-1.5 rounded">
-                    <img src="${itemReq?.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-5 h-5 rounded shrink-0">
-                    <span class="text-[9px] text-slate-300 font-bold font-mono">${req.quantidade}x ${itemReq?.nome || req.itemId}</span>
+            const has = (ficha.mochila || {})[req.itemId] || 0;
+            const enough = has >= req.quantidade;
+            if (!enough) canAffordMats = false;
+            purchaseMatsHtml += `
+                <div class="flex items-center gap-2 bg-slate-900 border ${enough ? 'border-emerald-900/40' : 'border-red-900/40'} p-2 rounded">
+                    <img src="${itemReq?.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-6 h-6 rounded shrink-0">
+                    <span class="text-[10px] font-bold font-mono ${enough ? 'text-emerald-400' : 'text-red-400'}">${has} / ${req.quantidade}</span>
                 </div>`;
         });
-        requirementsHtml += `</div></div>`;
+        purchaseMatsHtml += `</div></div>`;
     }
 
     let opsBox = '';
     if ((tpl.producao?.length || 0) > 0 || (tpl.consumo?.length || 0) > 0) {
         opsBox = `<div class="space-y-4 mt-4">`;
         if (tpl.consumo?.length > 0) {
-            opsBox += `<div><h4 class="text-[9px] uppercase font-black text-red-500 mb-2 border-b border-red-900/30 pb-1"><i class="fas fa-fire mr-1"></i> Necessário para Operar (Por Hora):</h4>`;
+            opsBox += `<div><h4 class="text-[9px] uppercase font-black text-red-500 mb-2 border-b border-red-900/30 pb-1"><i class="fas fa-fire mr-1"></i> Custo de Operação (Gasto p/ Hora):</h4>`;
             tpl.consumo.forEach(c => {
                 const item = globalState.cache.itens.get(c.itemId);
                 opsBox += `<div class="flex justify-between items-center text-[10px] bg-red-950 p-1.5 rounded mb-1 border border-red-900/50">
@@ -517,7 +562,7 @@ function renderShopInspector(ficha, repUsage) {
             opsBox += `</div>`;
         }
         if (tpl.producao?.length > 0) {
-            opsBox += `<div><h4 class="text-[9px] uppercase font-black text-emerald-500 mb-2 border-b border-emerald-900/30 pb-1"><i class="fas fa-box-open mr-1"></i> Gera no Armazém Local (Por Hora):</h4>`;
+            opsBox += `<div><h4 class="text-[9px] uppercase font-black text-emerald-500 mb-2 border-b border-emerald-900/30 pb-1"><i class="fas fa-box-open mr-1"></i> Produção Diária (Gerado p/ Hora):</h4>`;
             tpl.producao.forEach(p => {
                 const item = globalState.cache.itens.get(p.itemId);
                 opsBox += `<div class="flex justify-between items-center text-[10px] bg-emerald-950 p-1.5 rounded mb-1 border border-emerald-900/50">
@@ -531,13 +576,15 @@ function renderShopInspector(ficha, repUsage) {
     }
 
     panel.innerHTML = `
-        <div class="flex flex-col h-full animate-fade-in">
+        <div class="flex flex-col h-full relative animate-fade-in">
+            <button onclick="window.toggleRepHelp()" class="absolute top-4 right-4 text-slate-500 hover:text-white cursor-pointer z-10 p-2"><i class="fas fa-question-circle text-xl"></i></button>
+
             <div class="p-8 border-b border-slate-700 bg-slate-900/50 flex flex-col items-center shrink-0">
                 <div class="w-24 h-24 rounded-2xl bg-black border-2 border-slate-600 overflow-hidden mb-4">
                     <img src="${tpl.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-full h-full object-cover">
                 </div>
                 <h3 class="font-cinzel text-xl text-slate-200 text-center leading-tight mb-1">${tpl.nome}</h3>
-                <p class="text-[9px] text-emerald-500 uppercase font-black bg-emerald-900/20 px-2 py-0.5 rounded">Possui: ${qtdPosse}</p>
+                <p class="text-[9px] text-emerald-500 uppercase font-black bg-emerald-900/20 px-2 py-0.5 rounded">Em posse: ${qtdPosse}</p>
             </div>
 
             <div class="flex-1 overflow-y-auto custom-scroll p-6 bg-slate-900/20">
@@ -545,28 +592,69 @@ function renderShopInspector(ficha, repUsage) {
                 
                 <div class="grid grid-cols-2 gap-4 mt-2">
                     <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center shadow-inner">
-                        <span class="block text-[8px] text-slate-500 uppercase font-black">Custo Influência</span>
+                        <span class="block text-[8px] text-slate-500 uppercase font-black">Reputação/Influência</span>
                         <strong class="${canAffordRep ? 'text-white' : 'text-red-500'} font-cinzel text-lg">${costRep}</strong>
                     </div>
                     ${cat === 'buildings' ? `<div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center shadow-inner"><span class="block text-[8px] text-slate-500 uppercase font-black">Vagas de Trab.</span><strong class="text-sky-400 font-cinzel text-lg">${tpl.vagas || 0}</strong></div>` : ''}
+                    ${cat === 'storage' ? `<div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center shadow-inner"><span class="block text-[8px] text-slate-500 uppercase font-black">Carga Adicional</span><strong class="text-purple-400 font-cinzel text-lg">+${tpl.bonusCapacidadeMochila || 0}</strong></div>` : ''}
                 </div>
                 
-                ${requirementsHtml}
+                ${purchaseMatsHtml}
                 ${opsBox}
             </div>
 
             <div class="p-4 bg-slate-900 border-t border-slate-700">
                 <div class="flex gap-2 items-center">
                     <div class="flex flex-col w-20">
-                        <span class="text-[8px] text-slate-400 uppercase font-bold text-center mb-1">Quantidade</span>
+                        <span class="text-[8px] text-slate-400 uppercase font-bold text-center mb-1">Qtd</span>
                         <input type="number" id="shop_qty" value="1" min="1" class="bg-slate-950 text-white text-center text-sm font-bold border border-slate-600 rounded outline-none py-2">
                     </div>
                     <button onclick="window.buyInstance('${selectedId}', '${cat}', ${costRep}, 'shop_qty')" 
-                        class="flex-1 ${canAffordRep ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg' : 'bg-slate-700 text-slate-500 cursor-not-allowed'} py-3 rounded-xl text-[11px] font-black uppercase transition-all"
-                        ${!canAffordRep ? 'disabled' : ''}>
+                        class="flex-1 ${canAffordRep && canAffordMats ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg' : 'bg-slate-700 text-slate-500 cursor-not-allowed'} py-3 rounded-xl text-[11px] font-black uppercase transition-all"
+                        ${!(canAffordRep && canAffordMats) ? 'disabled' : ''}>
                         <i class="fas fa-shopping-cart mr-2"></i> Adquirir Novas
                     </button>
                 </div>
+            </div>
+        </div>
+    `;
+}
+
+// ------------------------------------------------------------------
+// MENU DE INFORMAÇÕES EXPLICATIVO (O HELP)
+// ------------------------------------------------------------------
+function renderHelpPanel() {
+    return `
+        <div class="flex flex-col h-full animate-fade-in relative bg-slate-900 text-slate-300">
+            <button onclick="window.toggleRepHelp()" class="absolute top-4 right-4 text-red-400 hover:text-red-300 cursor-pointer z-10"><i class="fas fa-times text-xl"></i></button>
+            
+            <div class="p-6 border-b border-slate-700 shrink-0">
+                <h3 class="font-cinzel text-2xl text-amber-400"><i class="fas fa-book-open mr-2"></i> Manual Imperial</h3>
+                <p class="text-[10px] text-slate-500 uppercase tracking-widest mt-1">Como gerir o seu Império</p>
+            </div>
+
+            <div class="flex-1 overflow-y-auto custom-scroll p-6 space-y-6">
+                
+                <div>
+                    <h4 class="text-sky-400 font-bold mb-2 uppercase text-xs border-b border-slate-700 pb-1"><i class="fas fa-shopping-cart mr-1"></i> 1. Adquirindo Bens</h4>
+                    <p class="text-xs leading-relaxed">Vá até a aba <strong class="text-white">Loja Imperial</strong>. Lá você poderá usar a sua <strong class="text-amber-400">Reputação Livre</strong> e os materiais físicos da sua <strong class="text-white">Mochila</strong> para construir Propriedades ou contratar Aliados.</p>
+                </div>
+
+                <div>
+                    <h4 class="text-emerald-400 font-bold mb-2 uppercase text-xs border-b border-slate-700 pb-1"><i class="fas fa-industry mr-1"></i> 2. Produção e Consumo</h4>
+                    <p class="text-xs leading-relaxed mb-2">Cada propriedade tem um <strong>Custo de Operação</strong>. Para que ela gere loots (produza), você deve ter os materiais exigidos na sua mochila. Ao clicar em <strong>Simular 1 Hora de Produção</strong>, os materiais são descontados da mochila e o loot gerado vai direto para o <strong>Armazém Local</strong> do prédio.</p>
+                </div>
+
+                <div>
+                    <h4 class="text-purple-400 font-bold mb-2 uppercase text-xs border-b border-slate-700 pb-1"><i class="fas fa-users mr-1"></i> 3. Aliados e Trabalhadores</h4>
+                    <p class="text-xs leading-relaxed">Você pode possuir inúmeros aliados. Propriedades possuem <strong>Vagas</strong>. Ao inspecionar uma de suas propriedades na aba "Meu Império", você pode selecionar um de seus aliados e atribuí-lo a trabalhar lá, o que garantirá bônus ou a execução da tarefa.</p>
+                </div>
+
+                <div>
+                    <h4 class="text-amber-400 font-bold mb-2 uppercase text-xs border-b border-slate-700 pb-1"><i class="fas fa-warehouse mr-1"></i> 4. Cofre Central</h4>
+                    <p class="text-xs leading-relaxed">O <strong>Cofre Imperial</strong> tem espaço infinito. Você pode usar a aba Armazenamento para enviar itens da sua mochila para o cofre, poupando espaço. O botão <strong>Puxar Todas Produções</strong> coleta automaticamente os loots que estão em todas as suas propriedades (Armazém Local) e os centraliza no Cofre.</p>
+                </div>
+
             </div>
         </div>
     `;
@@ -618,15 +706,22 @@ function renderStorageVault(armazemGeral) {
     const panel = document.getElementById('rep-inspect-panel');
     if (!panel) return;
     
+    const showHelp = globalState.repUI.showHelp;
+    if (showHelp) {
+        panel.innerHTML = renderHelpPanel();
+        return;
+    }
+    
     const itemIds = Object.keys(armazemGeral).filter(id => typeof armazemGeral[id] === 'number' && armazemGeral[id] > 0);
 
     let vaultHtml = `
-        <div class="p-6 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center shrink-0">
+        <div class="p-6 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center shrink-0 relative">
+            <button onclick="window.toggleRepHelp()" class="absolute top-4 right-4 text-slate-500 hover:text-white cursor-pointer z-10"><i class="fas fa-question-circle text-xl"></i></button>
             <div>
                 <h3 class="font-cinzel text-xl text-sky-400 leading-tight mb-1"><i class="fas fa-warehouse mr-2"></i>Cofre Imperial</h3>
                 <p class="text-[9px] text-slate-500 uppercase font-black tracking-widest">Estoque Sem Limites</p>
             </div>
-            <div class="text-right">
+            <div class="text-right mr-6">
                 <i class="fas fa-infinity text-2xl text-slate-700"></i>
             </div>
         </div>
@@ -683,7 +778,7 @@ window.buyInstance = async function(templateId, cat, costRep, qtyInputId) {
 
     const tpl = (cat === 'buildings' ? globalState.cache.buildings.get(templateId) : globalState.cache.allies.get(templateId));
 
-    if (!confirm(`Comprar ${qty}x "${tpl.nome}"?\nCustará ${costRep * qty} Reputação e materiais correspondentes na mochila.`)) return;
+    if (!confirm(`Comprar ${qty}x "${tpl.nome}"?\nCustará ${costRep * qty} Reputação e os materiais físicos serão consumidos da sua mochila.`)) return;
 
     try {
         await runTransaction(db, async (t) => {
@@ -702,7 +797,7 @@ window.buyInstance = async function(templateId, cat, costRep, qtyInputId) {
                 const totalReq = req.quantidade * qty;
                 if ((mochila[req.itemId] || 0) < totalReq) {
                     const info = globalState.cache.itens.get(req.itemId);
-                    throw `Materiais insuficientes: falta ${totalReq}x ${info?.nome || req.itemId}.`;
+                    throw `Materiais insuficientes: falta ${totalReq}x ${info?.nome || req.itemId} na Mochila.`;
                 }
             }
             reqs.forEach(req => {
@@ -752,6 +847,7 @@ window.sellInstance = async function(category, idxStr) {
                     rec.estabelecimentos.forEach(est => {
                         if (est.trabalhadores) {
                             est.trabalhadores = est.trabalhadores.filter(wId => wId !== idx);
+                            // Corrige índices deslocados
                             est.trabalhadores = est.trabalhadores.map(wId => wId > idx ? wId - 1 : wId);
                         }
                     });
@@ -966,5 +1062,5 @@ window.collectAllToVault = async function() {
         });
         window.renderReputacaoTab();
         alert("Todos os itens locais foram enviados ao Cofre Imperial infinito.");
-    } catch(e) { alert(typeof e === 'string' ? e : "Erro ao recolher loots."); }
+    } catch(e) { alert(typeof e === 'string' ? e : "Erro logístico ao coletar."); }
 };
