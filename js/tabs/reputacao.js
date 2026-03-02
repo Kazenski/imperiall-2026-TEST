@@ -1,13 +1,25 @@
-import { db, doc, onSnapshot, updateDoc, runTransaction, increment, deleteField, writeBatch, getDoc } from '../core/firebase.js';
+import { db, doc, updateDoc, runTransaction, deleteField, writeBatch, getDoc } from '../core/firebase.js';
 import { globalState, PLACEHOLDER_IMAGE_URL, COINS } from '../core/state.js';
 
 const ID_PREDIO_ARMAZENAMENTO = '0fwxHnGjLBuNw2kTxGSs';
+
+// Função local de otimização de moedas (resolve o erro de import do calculos.js)
+function optimizeCoins(totalCopper) {
+    let remaining = totalCopper;
+    const nGold = Math.floor(remaining / COINS.GOLD.val);
+    remaining %= COINS.GOLD.val;
+    const nSilver = Math.floor(remaining / COINS.SILVER.val);
+    remaining %= COINS.SILVER.val;
+    const nBronze = remaining;
+    return { gold: nGold, silver: nSilver, bronze: nBronze };
+}
 
 // Instancia variáveis globais da interface de Armazém caso não existam
 if (!globalState.transferCart) globalState.transferCart = { toStorage: {}, toMochila: {} };
 if (!globalState.storageFilter) globalState.storageFilter = 'todos';
 
-export function renderRecursosReputacaoTab() {
+// NOME CORRIGIDO DE ACORDO COM O main.js
+export function renderReputacaoTab() {
     const container = document.getElementById('recursos-reputacao-content');
     if (!container) return;
 
@@ -209,6 +221,9 @@ export function renderRecursosReputacaoTab() {
     }
 }
 
+// Vincula a função de renderização no escopo global para as chamadas inline do HTML
+window.renderReputacaoTab = renderReputacaoTab;
+
 // --- RENDERS DAS SUB-ABAS ---
 
 function renderMyBuildings(container, buildings, allies) {
@@ -389,11 +404,234 @@ function renderResourceInventory(container, estoqueTemp, coletaFim) {
     container.innerHTML = html;
 }
 
-// --- FUNÇÕES UTILITÁRIAS GLOBAIS ---
+// =============================================================================
+// --- SISTEMA DE ARMAZENAMENTO CENTRAL (BAÚ DIVIDIDO) ---
+// =============================================================================
+
+window.updateStorageFilter = function(filterValue) {
+    globalState.storageFilter = filterValue;
+    window.switchRepSubTab('armazenamento');
+};
+
+window.addToStorageCart = function(sourceSide, itemId) {
+    const input = document.getElementById(`qty-${sourceSide}-${itemId}`);
+    const qtyToAdd = parseInt(input.value) || 0;
+    if (qtyToAdd <= 0) return;
+
+    if (sourceSide === 'mochila') {
+        globalState.transferCart.toStorage[itemId] = (globalState.transferCart.toStorage[itemId] || 0) + qtyToAdd;
+    } else {
+        globalState.transferCart.toMochila[itemId] = (globalState.transferCart.toMochila[itemId] || 0) + qtyToAdd;
+    }
+    window.switchRepSubTab('armazenamento');
+};
+
+window.removeFromStorageCart = function(targetKey, itemId) {
+    delete globalState.transferCart[targetKey][itemId];
+    window.switchRepSubTab('armazenamento');
+};
+
+window.clearStorageCart = function() {
+    globalState.transferCart = { toStorage: {}, toMochila: {} };
+    window.switchRepSubTab('armazenamento');
+};
+
+window.syncStorage = async function() {
+    const charId = globalState.selectedCharacterId;
+    const cart = globalState.transferCart;
+    
+    if (Object.keys(cart.toStorage).length === 0 && Object.keys(cart.toMochila).length === 0) return alert("Nada para sincronizar.");
+
+    try {
+        await runTransaction(db, async (t) => {
+            const charRef = doc(db, "rpg_fichas", charId);
+            const storageRef = doc(db, "rpg_armazenamentos", charId);
+            
+            const [charSnap, storageSnap] = await Promise.all([t.get(charRef), t.get(storageRef)]);
+            if (!charSnap.exists()) throw "Personagem não encontrado.";
+            
+            let mochila = charSnap.data().mochila || {};
+            let storageItens = storageSnap.exists() ? (storageSnap.data().itens || {}) : {};
+
+            for (let [id, qty] of Object.entries(cart.toStorage)) {
+                if (!mochila[id] || mochila[id] < qty) throw "Falta item na mochila.";
+                mochila[id] -= qty;
+                if (mochila[id] <= 0) delete mochila[id];
+                storageItens[id] = (storageItens[id] || 0) + qty;
+            }
+
+            for (let [id, qty] of Object.entries(cart.toMochila)) {
+                if (!storageItens[id] || storageItens[id] < qty) throw "Falta item no armazém.";
+                storageItens[id] -= qty;
+                if (storageItens[id] <= 0) delete storageItens[id];
+                mochila[id] = (mochila[id] || 0) + qty;
+            }
+
+            t.update(charRef, { mochila });
+            t.set(storageRef, { itens: storageItens }, { merge: true });
+        });
+
+        globalState.transferCart = { toStorage: {}, toMochila: {} };
+        alert("Transferência concluída!");
+        window.switchRepSubTab('armazenamento');
+    } catch(e) {
+        console.error(e);
+        alert("Erro na sincronização: " + e);
+    }
+};
+
+window.migrateTempToStorage = async function(charId, estoqueTemporario) {
+    if (!estoqueTemporario || Object.keys(estoqueTemporario).length === 0) return;
+    try {
+        const batch = writeBatch(db);
+        const charRef = doc(db, "rpg_fichas", charId);
+        const storageRef = doc(db, "rpg_armazenamentos", charId);
+        
+        batch.update(charRef, { "recursos.estoqueTemporario": deleteField() });
+        
+        const storageSnap = await getDoc(storageRef);
+        let storageItens = storageSnap.exists() ? (storageSnap.data().itens || {}) : {};
+        
+        for (let [itemId, qtd] of Object.entries(estoqueTemporario)) {
+            storageItens[itemId] = (storageItens[itemId] || 0) + qtd;
+        }
+        
+        batch.set(storageRef, { itens: storageItens }, { merge: true });
+        await batch.commit();
+    } catch (e) { console.error("Erro na migração:", e); }
+};
+
+window.renderStorageTab = function(container) {
+    if(!container) container = document.getElementById('rep-dynamic-content');
+    if(!container) return;
+
+    const charData = globalState.selectedCharacterData;
+    const mochila = charData.ficha.mochila || {};
+    const storage = globalState.currentStorage || {};
+    const cart = globalState.transferCart || { toStorage: {}, toMochila: {} };
+    const filter = globalState.storageFilter || 'todos';
+
+    let materiaisSet = new Set();
+    if (globalState.cache.receitas) {
+        globalState.cache.receitas.forEach(function(receita) {
+            if (receita.materiais && Array.isArray(receita.materiais)) {
+                receita.materiais.forEach(mat => materiaisSet.add(mat.itemId)); 
+            }
+        });
+    }
+
+    const processItems = (sourceMap, cartData) => {
+        let items = [];
+        for (let [id, qty] of Object.entries(sourceMap)) {
+            let info = globalState.cache.allItems.get(id) || globalState.cache.itens.get(id);
+            if (!info) continue;
+            
+            let availableQty = qty - (cartData[id] || 0);
+            if (availableQty <= 0) continue;
+
+            const tipoStr = (info.tipoItem || info.categoria || "").toLowerCase();
+            let isEquip = tipoStr.includes('arma') || tipoStr.includes('armadura') || tipoStr.includes('equipamento') || info.slot_equipavel_id;
+            let isConsumivel = tipoStr.includes('consumível') || tipoStr.includes('poção') || info.itemUsavel;
+            let isMaterial = materiaisSet.has(id) || tipoStr.includes('material') || tipoStr.includes('minério');
+
+            if (filter === 'equipamentos' && !isEquip) continue;
+            if (filter === 'consumiveis' && !isConsumivel) continue;
+            if (filter === 'materiais' && !isMaterial) continue;
+            if (filter === 'diversos' && (isEquip || isConsumivel || isMaterial)) continue;
+
+            items.push({ id, qtd: availableQty, nome: info.nome, img: info.imagemUrl || PLACEHOLDER_IMAGE_URL, rank: info.tierId || info.tier || "F" });
+        }
+        return items.sort((a,b) => a.nome.localeCompare(b.nome));
+    };
+
+    const mochilaItems = processItems(mochila, cart.toStorage);
+    const storageItems = processItems(storage, cart.toMochila);
+
+    const generateListHtml = (items, sideName) => {
+        if(items.length === 0) return `<div class="col-span-full py-10 text-center text-slate-500 italic">Vazio.</div>`;
+        return items.map(item => `
+            <div class="bg-slate-800 p-2 rounded border border-slate-700 flex flex-col justify-between group hover:border-amber-500 transition-colors">
+                <div class="flex items-start gap-2 mb-2">
+                    <img src="${item.img}" class="w-10 h-10 object-contain bg-slate-900 rounded border border-slate-600">
+                    <div class="flex-grow overflow-hidden">
+                        <div class="text-[10px] font-bold text-white truncate" title="${item.nome}">${item.nome}</div>
+                        <div class="text-[9px] text-slate-500">Rank ${item.rank}</div>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between bg-slate-900 rounded p-1">
+                    <span class="text-[10px] font-bold text-emerald-400">x${item.qtd}</span>
+                    <div class="flex gap-1">
+                        <input type="number" id="qty-${sideName}-${item.id}" value="1" min="1" max="${item.qtd}" class="w-12 bg-slate-950 border border-slate-700 rounded text-center text-[10px] text-white outline-none focus:border-sky-500">
+                        <button onclick="window.addToStorageCart('${sideName}', '${item.id}')" class="bg-sky-600 hover:bg-sky-500 text-white rounded px-2 py-1 text-[10px] shadow transition">Mover</button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    };
+
+    let cartHtml = '';
+    Object.entries(cart.toStorage).forEach(([id, qty]) => {
+        let info = globalState.cache.allItems.get(id) || globalState.cache.itens.get(id);
+        cartHtml += `<div onclick="window.removeFromStorageCart('toStorage', '${id}')" class="cursor-pointer bg-slate-800 border border-sky-500 text-sky-300 text-[10px] px-2 py-1 rounded flex items-center gap-2 hover:bg-red-900/50 hover:border-red-500 transition" title="Cancelar"><span>[Para Baú] ${info?.nome} <strong>x${qty}</strong></span> <i class="fas fa-times opacity-50"></i></div>`;
+    });
+    Object.entries(cart.toMochila).forEach(([id, qty]) => {
+        let info = globalState.cache.allItems.get(id) || globalState.cache.itens.get(id);
+        cartHtml += `<div onclick="window.removeFromStorageCart('toMochila', '${id}')" class="cursor-pointer bg-slate-800 border border-amber-500 text-amber-300 text-[10px] px-2 py-1 rounded flex items-center gap-2 hover:bg-red-900/50 hover:border-red-500 transition" title="Cancelar"><span>[Para Mochila] ${info?.nome} <strong>x${qty}</strong></span> <i class="fas fa-times opacity-50"></i></div>`;
+    });
+    if(!cartHtml) cartHtml = '<span class="text-[10px] text-slate-500 italic">Nenhum item pendente.</span>';
+
+    const hasPending = Object.keys(cart.toStorage).length > 0 || Object.keys(cart.toMochila).length > 0;
+
+    container.innerHTML = `
+        <div class="bg-slate-900/80 p-4 rounded-lg border border-emerald-900/50 shadow-2xl animate-fade-in flex flex-col min-h-[600px]">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-4">
+                <h3 class="font-cinzel text-emerald-400 text-xl"><i class="fas fa-warehouse mr-2"></i> Logística Central</h3>
+                <div class="flex gap-2">
+                    <button onclick="window.updateStorageFilter('todos')" class="px-3 py-1 rounded text-[10px] uppercase font-bold border transition ${filter === 'todos' ? 'bg-sky-600 text-white border-sky-500' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'}">Tudo</button>
+                    <button onclick="window.updateStorageFilter('equipamentos')" class="px-3 py-1 rounded text-[10px] uppercase font-bold border transition ${filter === 'equipamentos' ? 'bg-sky-600 text-white border-sky-500' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'}">Equip</button>
+                    <button onclick="window.updateStorageFilter('consumiveis')" class="px-3 py-1 rounded text-[10px] uppercase font-bold border transition ${filter === 'consumiveis' ? 'bg-sky-600 text-white border-sky-500' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'}">Consumível</button>
+                    <button onclick="window.updateStorageFilter('materiais')" class="px-3 py-1 rounded text-[10px] uppercase font-bold border transition ${filter === 'materiais' ? 'bg-sky-600 text-white border-sky-500' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'}">Material</button>
+                </div>
+            </div>
+
+            <div class="flex-grow grid grid-cols-1 lg:grid-cols-2 gap-6 relative">
+                <div class="flex flex-col border border-slate-700 rounded-lg overflow-hidden bg-slate-950">
+                    <div class="bg-slate-800 p-2 text-center text-xs font-bold text-amber-400 uppercase tracking-widest border-b border-slate-700">Mochila Pessoal</div>
+                    <div class="flex-grow p-3 overflow-y-auto custom-scroll h-[400px]">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">${generateListHtml(mochilaItems, 'mochila')}</div>
+                    </div>
+                </div>
+                <div class="flex flex-col border border-slate-700 rounded-lg overflow-hidden bg-slate-950">
+                    <div class="bg-slate-800 p-2 text-center text-xs font-bold text-sky-400 uppercase tracking-widest border-b border-slate-700">Armazém Central</div>
+                    <div class="flex-grow p-3 overflow-y-auto custom-scroll h-[400px]">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">${generateListHtml(storageItems, 'storage')}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 bg-slate-800 p-4 rounded-lg border border-slate-600 flex flex-col gap-3 shadow-inner">
+                <div class="flex flex-wrap gap-2 items-center">
+                    <span class="text-[10px] text-slate-400 uppercase font-bold mr-2"><i class="fas fa-clipboard-list mr-1"></i> Transferências:</span>
+                    ${cartHtml}
+                </div>
+                <div class="flex justify-end gap-4 mt-2 pt-3 border-t border-slate-700">
+                    <button onclick="window.clearStorageCart()" class="btn bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs py-2 px-6" ${!hasPending ? 'disabled' : ''}>Limpar Fila</button>
+                    <button onclick="window.syncStorage()" class="btn btn-green shadow-lg font-bold uppercase tracking-wider py-2 px-10 flex items-center gap-2" ${!hasPending ? 'disabled' : ''}>
+                        <i class="fas fa-sync-alt"></i> Sincronizar Tudo
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+};
+
+
+// --- FUNÇÕES UTILITÁRIAS GLOBAIS DA ABA ---
+
 window.switchRepSubTab = function(tabName) {
     if (!globalState.recursosUI) globalState.recursosUI = { abaAtiva: 'estabelecimentos' };
     globalState.recursosUI.abaAtiva = tabName;
-    renderRecursosReputacaoTab();
+    window.renderReputacaoTab();
 };
 
 window.deleteAsset = async function(uniqueId, type) {
@@ -571,224 +809,3 @@ window.confirmAssign = async function(aId, bId) {
         t.update(ref, { recursos: d.recursos });
     });
 }
-
-window.updateStorageFilter = function(filterValue) {
-    globalState.storageFilter = filterValue;
-    window.switchRepSubTab('armazenamento');
-};
-
-window.addToStorageCart = function(sourceSide, itemId) {
-    const input = document.getElementById(`qty-${sourceSide}-${itemId}`);
-    const qtyToAdd = parseInt(input.value) || 0;
-    if (qtyToAdd <= 0) return;
-
-    if (sourceSide === 'mochila') {
-        globalState.transferCart.toStorage[itemId] = (globalState.transferCart.toStorage[itemId] || 0) + qtyToAdd;
-    } else {
-        globalState.transferCart.toMochila[itemId] = (globalState.transferCart.toMochila[itemId] || 0) + qtyToAdd;
-    }
-    window.switchRepSubTab('armazenamento');
-};
-
-window.removeFromStorageCart = function(targetKey, itemId) {
-    delete globalState.transferCart[targetKey][itemId];
-    window.switchRepSubTab('armazenamento');
-};
-
-window.clearStorageCart = function() {
-    globalState.transferCart = { toStorage: {}, toMochila: {} };
-    window.switchRepSubTab('armazenamento');
-};
-
-// Efetua a transação de troca entre Mochila e Banco de dados do Armazém
-window.syncStorage = async function() {
-    const charId = globalState.selectedCharacterId;
-    const cart = globalState.transferCart;
-    
-    if (Object.keys(cart.toStorage).length === 0 && Object.keys(cart.toMochila).length === 0) return alert("Nada para sincronizar.");
-
-    try {
-        await runTransaction(db, async (t) => {
-            const charRef = doc(db, "rpg_fichas", charId);
-            const storageRef = doc(db, "rpg_armazenamentos", charId);
-            
-            const [charSnap, storageSnap] = await Promise.all([t.get(charRef), t.get(storageRef)]);
-            if (!charSnap.exists()) throw "Personagem não encontrado.";
-            
-            let mochila = charSnap.data().mochila || {};
-            let storageItens = storageSnap.exists() ? (storageSnap.data().itens || {}) : {};
-
-            for (let [id, qty] of Object.entries(cart.toStorage)) {
-                if (!mochila[id] || mochila[id] < qty) throw "Falta item na mochila.";
-                mochila[id] -= qty;
-                if (mochila[id] <= 0) delete mochila[id];
-                storageItens[id] = (storageItens[id] || 0) + qty;
-            }
-
-            for (let [id, qty] of Object.entries(cart.toMochila)) {
-                if (!storageItens[id] || storageItens[id] < qty) throw "Falta item no armazém.";
-                storageItens[id] -= qty;
-                if (storageItens[id] <= 0) delete storageItens[id];
-                mochila[id] = (mochila[id] || 0) + qty;
-            }
-
-            t.update(charRef, { mochila });
-            t.set(storageRef, { itens: storageItens }, { merge: true });
-        });
-
-        globalState.transferCart = { toStorage: {}, toMochila: {} };
-        alert("Transferência concluída!");
-        window.switchRepSubTab('armazenamento');
-    } catch(e) {
-        console.error(e);
-        alert("Erro na sincronização: " + e);
-    }
-};
-
-// Puxa automaticamente os itens gerados passivamente para o armazém (se o prédio existir)
-window.migrateTempToStorage = async function(charId, estoqueTemporario) {
-    if (!estoqueTemporario || Object.keys(estoqueTemporario).length === 0) return;
-    try {
-        const batch = writeBatch(db);
-        const charRef = doc(db, "rpg_fichas", charId);
-        const storageRef = doc(db, "rpg_armazenamentos", charId);
-        
-        batch.update(charRef, { "recursos.estoqueTemporario": deleteField() });
-        
-        const storageSnap = await getDoc(storageRef);
-        let storageItens = storageSnap.exists() ? (storageSnap.data().itens || {}) : {};
-        
-        for (let [itemId, qtd] of Object.entries(estoqueTemporario)) {
-            storageItens[itemId] = (storageItens[itemId] || 0) + qtd;
-        }
-        
-        batch.set(storageRef, { itens: storageItens }, { merge: true });
-        await batch.commit();
-    } catch (e) { console.error("Erro na migração:", e); }
-};
-
-// Desenha a aba inteira do Armazém Central
-window.renderStorageTab = function(container) {
-    if(!container) container = document.getElementById('rep-dynamic-content');
-    if(!container) return;
-
-    const charData = globalState.selectedCharacterData;
-    const mochila = charData.ficha.mochila || {};
-    const storage = globalState.currentStorage || {};
-    const cart = globalState.transferCart || { toStorage: {}, toMochila: {} };
-    const filter = globalState.storageFilter || 'todos';
-
-    // Determina o que é material consultando as receitas de craft
-    let materiaisSet = new Set();
-    if (globalState.cache.receitas) {
-        globalState.cache.receitas.forEach(function(receita) {
-            if (receita.materiais && Array.isArray(receita.materiais)) {
-                receita.materiais.forEach(mat => materiaisSet.add(mat.itemId)); 
-            }
-        });
-    }
-
-    const processItems = (sourceMap, cartData) => {
-        let items = [];
-        for (let [id, qty] of Object.entries(sourceMap)) {
-            let info = globalState.cache.allItems.get(id) || globalState.cache.itens.get(id);
-            if (!info) continue;
-            
-            let availableQty = qty - (cartData[id] || 0);
-            if (availableQty <= 0) continue;
-
-            const tipoStr = (info.tipoItem || info.categoria || "").toLowerCase();
-            let isEquip = tipoStr.includes('arma') || tipoStr.includes('armadura') || tipoStr.includes('equipamento') || info.slot_equipavel_id;
-            let isConsumivel = tipoStr.includes('consumível') || tipoStr.includes('poção') || info.itemUsavel;
-            let isMaterial = materiaisSet.has(id) || tipoStr.includes('material') || tipoStr.includes('minério');
-
-            if (filter === 'equipamentos' && !isEquip) continue;
-            if (filter === 'consumiveis' && !isConsumivel) continue;
-            if (filter === 'materiais' && !isMaterial) continue;
-            if (filter === 'diversos' && (isEquip || isConsumivel || isMaterial)) continue;
-
-            items.push({ id, qtd: availableQty, nome: info.nome, img: info.imagemUrl || PLACEHOLDER_IMAGE_URL, rank: info.tierId || info.tier || "F" });
-        }
-        return items.sort((a,b) => a.nome.localeCompare(b.nome));
-    };
-
-    const mochilaItems = processItems(mochila, cart.toStorage);
-    const storageItems = processItems(storage, cart.toMochila);
-
-    const generateListHtml = (items, sideName) => {
-        if(items.length === 0) return `<div class="col-span-full py-10 text-center text-slate-500 italic">Vazio.</div>`;
-        return items.map(item => `
-            <div class="bg-slate-800 p-2 rounded border border-slate-700 flex flex-col justify-between group hover:border-amber-500 transition-colors">
-                <div class="flex items-start gap-2 mb-2">
-                    <img src="${item.img}" class="w-10 h-10 object-contain bg-slate-900 rounded border border-slate-600">
-                    <div class="flex-grow overflow-hidden">
-                        <div class="text-[10px] font-bold text-white truncate" title="${item.nome}">${item.nome}</div>
-                        <div class="text-[9px] text-slate-500">Rank ${item.rank}</div>
-                    </div>
-                </div>
-                <div class="flex items-center justify-between bg-slate-900 rounded p-1">
-                    <span class="text-[10px] font-bold text-emerald-400">x${item.qtd}</span>
-                    <div class="flex gap-1">
-                        <input type="number" id="qty-${sideName}-${item.id}" value="1" min="1" max="${item.qtd}" class="w-12 bg-slate-950 border border-slate-700 rounded text-center text-[10px] text-white outline-none focus:border-sky-500">
-                        <button onclick="window.addToStorageCart('${sideName}', '${item.id}')" class="bg-sky-600 hover:bg-sky-500 text-white rounded px-2 py-1 text-[10px] shadow transition">Mover</button>
-                    </div>
-                </div>
-            </div>
-        `).join('');
-    };
-
-    let cartHtml = '';
-    Object.entries(cart.toStorage).forEach(([id, qty]) => {
-        let info = globalState.cache.allItems.get(id) || globalState.cache.itens.get(id);
-        cartHtml += `<div onclick="window.removeFromStorageCart('toStorage', '${id}')" class="cursor-pointer bg-slate-800 border border-sky-500 text-sky-300 text-[10px] px-2 py-1 rounded flex items-center gap-2 hover:bg-red-900/50 hover:border-red-500 transition" title="Cancelar"><span>[Para Baú] ${info?.nome} <strong>x${qty}</strong></span> <i class="fas fa-times opacity-50"></i></div>`;
-    });
-    Object.entries(cart.toMochila).forEach(([id, qty]) => {
-        let info = globalState.cache.allItems.get(id) || globalState.cache.itens.get(id);
-        cartHtml += `<div onclick="window.removeFromStorageCart('toMochila', '${id}')" class="cursor-pointer bg-slate-800 border border-amber-500 text-amber-300 text-[10px] px-2 py-1 rounded flex items-center gap-2 hover:bg-red-900/50 hover:border-red-500 transition" title="Cancelar"><span>[Para Mochila] ${info?.nome} <strong>x${qty}</strong></span> <i class="fas fa-times opacity-50"></i></div>`;
-    });
-    if(!cartHtml) cartHtml = '<span class="text-[10px] text-slate-500 italic">Nenhum item pendente.</span>';
-
-    const hasPending = Object.keys(cart.toStorage).length > 0 || Object.keys(cart.toMochila).length > 0;
-
-    container.innerHTML = `
-        <div class="bg-slate-900/80 p-4 rounded-lg border border-emerald-900/50 shadow-2xl animate-fade-in flex flex-col min-h-[600px]">
-            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-4">
-                <h3 class="font-cinzel text-emerald-400 text-xl"><i class="fas fa-warehouse mr-2"></i> Logística Central</h3>
-                <div class="flex gap-2">
-                    <button onclick="window.updateStorageFilter('todos')" class="px-3 py-1 rounded text-[10px] uppercase font-bold border transition ${filter === 'todos' ? 'bg-sky-600 text-white border-sky-500' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'}">Tudo</button>
-                    <button onclick="window.updateStorageFilter('equipamentos')" class="px-3 py-1 rounded text-[10px] uppercase font-bold border transition ${filter === 'equipamentos' ? 'bg-sky-600 text-white border-sky-500' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'}">Equip</button>
-                    <button onclick="window.updateStorageFilter('consumiveis')" class="px-3 py-1 rounded text-[10px] uppercase font-bold border transition ${filter === 'consumiveis' ? 'bg-sky-600 text-white border-sky-500' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'}">Consumível</button>
-                    <button onclick="window.updateStorageFilter('materiais')" class="px-3 py-1 rounded text-[10px] uppercase font-bold border transition ${filter === 'materiais' ? 'bg-sky-600 text-white border-sky-500' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'}">Material</button>
-                </div>
-            </div>
-
-            <div class="flex-grow grid grid-cols-1 lg:grid-cols-2 gap-6 relative">
-                <div class="flex flex-col border border-slate-700 rounded-lg overflow-hidden bg-slate-950">
-                    <div class="bg-slate-800 p-2 text-center text-xs font-bold text-amber-400 uppercase tracking-widest border-b border-slate-700">Mochila Pessoal</div>
-                    <div class="flex-grow p-3 overflow-y-auto custom-scroll h-[400px]">
-                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">${generateListHtml(mochilaItems, 'mochila')}</div>
-                    </div>
-                </div>
-                <div class="flex flex-col border border-slate-700 rounded-lg overflow-hidden bg-slate-950">
-                    <div class="bg-slate-800 p-2 text-center text-xs font-bold text-sky-400 uppercase tracking-widest border-b border-slate-700">Armazém Central</div>
-                    <div class="flex-grow p-3 overflow-y-auto custom-scroll h-[400px]">
-                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">${generateListHtml(storageItems, 'storage')}</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="mt-4 bg-slate-800 p-4 rounded-lg border border-slate-600 flex flex-col gap-3 shadow-inner">
-                <div class="flex flex-wrap gap-2 items-center">
-                    <span class="text-[10px] text-slate-400 uppercase font-bold mr-2"><i class="fas fa-clipboard-list mr-1"></i> Transferências:</span>
-                    ${cartHtml}
-                </div>
-                <div class="flex justify-end gap-4 mt-2 pt-3 border-t border-slate-700">
-                    <button onclick="window.clearStorageCart()" class="btn bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs py-2 px-6" ${!hasPending ? 'disabled' : ''}>Limpar Fila</button>
-                    <button onclick="window.syncStorage()" class="btn btn-green shadow-lg font-bold uppercase tracking-wider py-2 px-10 flex items-center gap-2" ${!hasPending ? 'disabled' : ''}>
-                        <i class="fas fa-sync-alt"></i> Sincronizar Tudo
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-};
