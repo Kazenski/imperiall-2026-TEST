@@ -71,41 +71,43 @@ window.showTab = function (tabId) {
     // --- ROTEAMENTO DAS ABAS ---
     
     // 1. Abas Globais (Não precisam de personagem selecionado)
+    // 1. Abas Globais (Não precisam de personagem selecionado)
     if (tabId === 'painel-fichas-content' || tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
         } else {
             renderPainelFichas();
         }
+        return; // Sai da função para não executar o "else" lá de baixo
     } 
-    else if (tabId === 'atualizacoes-novidades-content' || tabId === 'atualizacoes-novidades') {
-        if(target) target.innerHTML = ''; // Limpa antes de renderizar
+    
+    if (tabId === 'atualizacoes-novidades-content' || tabId === 'atualizacoes-novidades') {
+        if (target) target.innerHTML = ''; // Limpa qualquer vestígio de "Em Construção"
         renderAtualizacoesTab();
+        return; // Sai da função
     }
     
     // 2. Abas Específicas (Requerem um Personagem Selecionado)
-    else if (globalState.selectedCharacterId) {
-        if(tabId === 'rolagem-dados-content') renderRolagemDados();
-        else if(tabId === 'calculadora-combate-content') renderCalculadoraCombate();
-        else if(tabId === 'minhas-habilidades-content') { renderMinhasHabilidades(); if(window.renderSkillUsageLogs) window.renderSkillUsageLogs(); }
-        else if(tabId === 'mochila-content') renderMochila();
-        else if(tabId === 'itens-equipados-content') renderItensEquipados();
-        else if(tabId === 'calculadora-atributos-content') renderCalculadoraAtributos();
-        else if(tabId === 'constelacao-content') renderConstelacaoTab(); 
-        else if(tabId === 'crafting-content') renderCraftingTab();
-        else if(tabId === 'extracao-content') renderExtracaoTab();
-        else if(tabId === 'colecao-craft-content') renderCollectionTab();
-        else if(tabId === 'arma-espiritual-content') renderArmaEspiritualTab();
-        else if(tabId === 'meus-pets-content') renderPetsTab();
-        else if(tabId === 'recursos-reputacao-content') renderReputacaoTab();
-        else if(tabId === 'comercio-content') { if(globalState.commerce) globalState.commerce.sellableCache = null; renderComercioTab(); }
-        else if(tabId === 'mapa-movimento-content') { setTimeout(() => window.renderMapTab(), 100); }
-        else if(tabId === 'arena-combate-content') { if (window.arena && window.arena.init) window.arena.init(); }
+    if (globalState.selectedCharacterId) {
+        if(tabId === 'rolagem-dados-content') { renderRolagemDados(); return; }
+        if(tabId === 'calculadora-combate-content') { renderCalculadoraCombate(); return; }
+        if(tabId === 'minhas-habilidades-content') { renderMinhasHabilidades(); if(window.renderSkillUsageLogs) window.renderSkillUsageLogs(); return; }
+        if(tabId === 'mochila-content') { renderMochila(); return; }
+        if(tabId === 'itens-equipados-content') { renderItensEquipados(); return; }
+        if(tabId === 'calculadora-atributos-content') { renderCalculadoraAtributos(); return; }
+        if(tabId === 'constelacao-content') { renderConstelacaoTab(); return; }
+        if(tabId === 'crafting-content') { renderCraftingTab(); return; }
+        if(tabId === 'extracao-content') { renderExtracaoTab(); return; }
+        if(tabId === 'colecao-craft-content') { renderCollectionTab(); return; }
+        if(tabId === 'arma-espiritual-content') { renderArmaEspiritualTab(); return; }
+        if(tabId === 'meus-pets-content') { renderPetsTab(); return; }
+        if(tabId === 'recursos-reputacao-content') { renderReputacaoTab(); return; }
+        if(tabId === 'comercio-content') { if(globalState.commerce) globalState.commerce.sellableCache = null; renderComercioTab(); return; }
+        if(tabId === 'mapa-movimento-content') { setTimeout(() => window.renderMapTab(), 100); return; }
+        if(tabId === 'arena-combate-content') { if (window.arena && window.arena.init) window.arena.init(); return; }
         
-        // 3. Fallback: Se a aba existe mas não tem código programado ainda
-        else {
-            renderPaginaEmConstrucao(target);
-        }
+        // 3. Fallback: Se a aba existe mas não tem código programado (ex: "O Mundo")
+        renderPaginaEmConstrucao(target);
     } 
     
     // 4. Fallback: Se tentou acessar aba específica sem personagem
