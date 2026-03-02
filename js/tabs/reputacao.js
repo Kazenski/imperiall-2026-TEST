@@ -3,7 +3,7 @@ import { globalState, PLACEHOLDER_IMAGE_URL } from '../core/state.js';
 import { calculateReputationUsage, calculateReputationDetails } from '../core/calculos.js';
 import { escapeHTML } from '../core/utils.js';
 
-const COLET_COOLDOWN_MS = 10 * 60 * 1000; // 10 minutos (padrão do sistema)
+const COLET_COOLDOWN_MS = 10 * 60 * 1000; // 10 minutos para demonstração (pode ajustar)
 
 // --- GESTÃO DE ESTADO DA INTERFACE ---
 window.switchRepTab = function(tabName) {
@@ -26,18 +26,23 @@ window.switchRepInnerTab = function(tabName) {
     window.renderReputacaoTab();
 };
 
-// --- CÁLCULO DE CAPACIDADE DO ARMAZÉM ---
-function calculateStorageCapacity(ficha) {
-    let armazemCap = 50; // Base
-    const mochilaForCap = ficha.mochila || {};
-    Object.entries(mochilaForCap).forEach(([id, qty]) => {
-        const tpl = globalState.cache.itens.get(id);
-        if (tpl && (tpl.tipoItem === 'Armazenamento' || tpl.categoria === 'Armazenamento' || tpl.slot_equipavel_id === 'bau')) {
-            armazemCap += (Number(tpl.bonusCapacidadeMochila) || 0) * qty;
-        }
-    });
-    return armazemCap;
-}
+// Leitores de Inputs
+window.transferWithInput = function(from, to, itemId, inputId) {
+    const inputEl = document.getElementById(inputId);
+    if (!inputEl) return;
+    let val = parseInt(inputEl.value);
+    if (isNaN(val) || val <= 0) return alert("Insira um valor numérico válido.");
+    window.transferGlobalStorage(from, to, itemId, val);
+};
+
+window.withdrawLocalWithInput = function(templateId, itemId, inputId) {
+    const inputEl = document.getElementById(inputId);
+    if (!inputEl) return;
+    let val = parseInt(inputEl.value);
+    if (isNaN(val) || val <= 0) return alert("Insira um valor numérico válido.");
+    window.withdrawLocalBuildingItem(templateId, itemId, val);
+};
+
 
 // --- RENDERIZADOR PRINCIPAL ---
 export async function renderReputacaoTab() {
@@ -61,17 +66,14 @@ export async function renderReputacaoTab() {
         const ficha = charData.ficha;
         const repUsage = calculateReputationUsage(ficha);
         const repDetails = calculateReputationDetails(ficha);
-        const maxStorage = calculateStorageCapacity(ficha);
 
-        // EXTRAÇÃO SEGURA DO ID DO ARMAZÉM (Evita o erro "indexOf" de undefined)
+        // EXTRAÇÃO SEGURA DO ID DO ARMAZÉM
         let storageId = String(charId); 
         if (ficha.recursos && typeof ficha.recursos.armazemGeral === 'string' && ficha.recursos.armazemGeral.trim() !== '') {
             storageId = ficha.recursos.armazemGeral.trim();
         }
 
         let armazemGeral = {};
-        
-        // BUSCA O ARMAZÉM GERAL NA COLEÇÃO rpg_armazenamentos APENAS SE O ID FOR VÁLIDO
         if (storageId && storageId !== "undefined" && storageId !== "null") {
             try {
                 const storageRef = doc(db, "rpg_armazenamentos", storageId);
@@ -84,6 +86,9 @@ export async function renderReputacaoTab() {
                 console.error("Erro ao carregar coleção rpg_armazenamentos:", e);
             }
         }
+
+        let totalGuardado = 0;
+        Object.values(armazemGeral).forEach(v => { if (typeof v === 'number') totalGuardado += v; });
 
         // Define a área da esquerda baseada na aba ativa
         let leftContentHtml = '';
@@ -129,8 +134,8 @@ export async function renderReputacaoTab() {
                                 <strong class="text-lg text-white font-cinzel">${(ficha.recursos?.aliados || []).length}</strong>
                             </div>
                             <div class="flex flex-col justify-center">
-                                <span class="text-[8px] text-slate-500 uppercase font-black">Carga Max</span>
-                                <strong class="text-lg text-sky-400 font-cinzel">${maxStorage}</strong>
+                                <span class="text-[8px] text-slate-500 uppercase font-black" title="Armazém Infinito">Itens Cofre</span>
+                                <strong class="text-lg text-sky-400 font-cinzel">${totalGuardado} <i class="fas fa-infinity text-[10px] ml-1 opacity-50"></i></strong>
                             </div>
                         </div>
                     </div>
@@ -151,8 +156,7 @@ export async function renderReputacaoTab() {
                 </div>
 
                 <div class="w-80 md:w-96 shrink-0 flex flex-col h-full relative">
-                    <div class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col h-full relative overflow-hidden" id="rep-inspect-panel">
-                        </div>
+                    <div class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col h-full relative overflow-hidden" id="rep-inspect-panel"></div>
                 </div>
 
             </div>
@@ -160,7 +164,7 @@ export async function renderReputacaoTab() {
 
         if (activeTab === 'storage') {
             renderStorageMochila(ficha);
-            renderStorageVault(armazemGeral, maxStorage);
+            renderStorageVault(armazemGeral);
         } else {
             renderRepGrid(ficha);
             renderRepRightPanel(ficha, repUsage);
@@ -171,7 +175,7 @@ export async function renderReputacaoTab() {
     }
 }
 
-// 3. RENDERIZADORES DE GRID E INSPETOR (Para Estabelecimentos e Aliados)
+// 3. RENDERIZA GRID DE CATEGORIAS (Estabelecimentos / Aliados)
 function renderRepGrid(ficha) {
     const grid = document.getElementById('rep-grid-container');
     if (!grid) return;
@@ -207,6 +211,7 @@ function renderRepGrid(ficha) {
     });
 }
 
+// 4. PAINEL DE INSPEÇÃO COM VALIDAÇÃO RIGOROSA
 function renderRepRightPanel(ficha, repUsage) {
     const panel = document.getElementById('rep-inspect-panel');
     if (!panel) return;
@@ -217,7 +222,7 @@ function renderRepRightPanel(ficha, repUsage) {
 
     if (!selectedId) {
         panel.innerHTML = `
-            <div class="absolute top-4 right-4 text-slate-500 hover:text-white cursor-help z-10" title="Manual: Adquirir estabelecimentos consome Influência e exige Materiais Físicos. Após a compra, basta ter os itens de consumo na mochila para poder Iniciar o Ciclo de Produção e gerar loots.">
+            <div class="absolute top-4 right-4 text-slate-500 hover:text-white cursor-help z-10" title="Manual: Adquirir estabelecimentos consome Influência e exige Materiais Físicos. Após a compra, basta ter os itens de consumo na mochila para poder Iniciar a Produção e gerar loots.">
                 <i class="fas fa-question-circle text-xl"></i>
             </div>
             <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 opacity-40 p-10 text-center">
@@ -235,14 +240,14 @@ function renderRepRightPanel(ficha, repUsage) {
     const bData = myBuildings.find(b => b.templateId === selectedId);
     const isOwned = activeTab === 'buildings' ? !!bData : !!(ficha.recursos?.aliados || []).find(a => a.templateId === selectedId);
 
-    // VALIDAÇÃO DE CUSTOS (Reputação + Itens Físicos da Mochila)
+    // VALIDAÇÃO DE CUSTOS 
     let canAffordRep = repUsage.available >= (tpl.reputacaoCusto || tpl.reputacaoCustoBase || 0);
     let canAffordMats = true;
     let purchaseMatsHtml = '';
 
     const buyRequirements = tpl.custoMateriais || tpl.requisitos || [];
     if (buyRequirements.length > 0) {
-        purchaseMatsHtml = `<div class="mt-4"><h4 class="text-[9px] uppercase font-black text-amber-500 mb-2 border-b border-amber-500/20 pb-1">Materiais Necessários p/ Adquirir:</h4><div class="grid grid-cols-2 gap-2">`;
+        purchaseMatsHtml = `<div class="mt-4"><h4 class="text-[9px] uppercase font-black text-amber-500 mb-2 border-b border-amber-500/20 pb-1">Materiais para Aquisição Única:</h4><div class="grid grid-cols-2 gap-2">`;
         buyRequirements.forEach(req => {
             const itemReq = globalState.cache.itens.get(req.itemId);
             const has = (ficha.mochila || {})[req.itemId] || 0;
@@ -257,28 +262,30 @@ function renderRepRightPanel(ficha, repUsage) {
         purchaseMatsHtml += `</div></div>`;
     }
 
-    // PRODUÇÃO E CONSUMO POR CICLO (Visualização nítida)
+    // PRODUÇÃO E CONSUMO POR HORA (Conforme Solicitado)
     let opsBox = '';
     if ((tpl.producao?.length || 0) > 0 || (tpl.consumo?.length || 0) > 0) {
         opsBox = `<div class="space-y-4 mt-2">`;
+        
         if (tpl.consumo?.length > 0) {
-            opsBox += `<div><h4 class="text-[9px] uppercase font-black text-red-500 mb-2 border-b border-red-900/20 pb-1">Materiais Consumidos p/ Ciclo:</h4>`;
+            opsBox += `<div><h4 class="text-[9px] uppercase font-black text-red-500 mb-2 border-b border-red-900/30 pb-1"><i class="fas fa-fire mr-1"></i> Recursos Necessários (por hora):</h4>`;
             tpl.consumo.forEach(c => {
                 const item = globalState.cache.itens.get(c.itemId);
-                opsBox += `<div class="flex justify-between items-center text-[10px] bg-red-900/10 p-1.5 rounded mb-1 border border-red-900/20" title="${item?.nome}">
-                    <span class="flex items-center gap-2 truncate"><img src="${item?.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-4 h-4 rounded"> ${item?.nome}</span>
-                    <span class="font-bold text-red-500">-${c.quantidade || c.quantidadeBase} / ciclo</span>
+                opsBox += `<div class="flex justify-between items-center text-[10px] bg-red-950 p-2 rounded mb-1 border border-red-900/50" title="${item?.nome}">
+                    <span class="flex items-center gap-2 font-bold text-slate-300 truncate"><img src="${item?.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-5 h-5 rounded"> ${item?.nome}</span>
+                    <span class="font-black text-red-500 bg-red-900/20 px-2 py-0.5 rounded">-${c.quantidade || c.quantidadeBase}</span>
                 </div>`;
             });
             opsBox += `</div>`;
         }
+        
         if (tpl.producao?.length > 0) {
-            opsBox += `<div><h4 class="text-[9px] uppercase font-black text-emerald-500 mb-2 border-b border-emerald-900/20 pb-1">Loots Gerados p/ Ciclo:</h4>`;
+            opsBox += `<div><h4 class="text-[9px] uppercase font-black text-emerald-500 mb-2 border-b border-emerald-900/30 pb-1"><i class="fas fa-box-open mr-1"></i> Recursos Gerados (por hora):</h4>`;
             tpl.producao.forEach(p => {
                 const item = globalState.cache.itens.get(p.itemId);
-                opsBox += `<div class="flex justify-between items-center text-[10px] bg-emerald-900/10 p-1.5 rounded mb-1 border border-emerald-900/20" title="${item?.nome}">
-                    <span class="flex items-center gap-2 truncate"><img src="${item?.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-4 h-4 rounded"> ${item?.nome}</span>
-                    <span class="font-bold text-emerald-400">+${p.quantidade || p.quantidadeBase} / ciclo</span>
+                opsBox += `<div class="flex justify-between items-center text-[10px] bg-emerald-950 p-2 rounded mb-1 border border-emerald-900/50" title="${item?.nome}">
+                    <span class="flex items-center gap-2 font-bold text-slate-300 truncate"><img src="${item?.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-5 h-5 rounded"> ${item?.nome}</span>
+                    <span class="font-black text-emerald-400 bg-emerald-900/20 px-2 py-0.5 rounded">+${p.quantidade || p.quantidadeBase}</span>
                 </div>`;
             });
             opsBox += `</div>`;
@@ -292,22 +299,21 @@ function renderRepRightPanel(ficha, repUsage) {
         const armazem = bData.armazem || {};
         const armazemIds = Object.keys(armazem);
         if (armazemIds.length === 0) {
-            dynamicBody = `<div class="flex flex-col items-center justify-center py-16 opacity-30 italic text-slate-500 text-xs"><i class="fas fa-box-open text-4xl mb-2"></i> Sem loots locais para coletar.</div>`;
+            dynamicBody = `<div class="flex flex-col items-center justify-center py-16 opacity-30 italic text-slate-500 text-xs"><i class="fas fa-box-open text-4xl mb-2"></i> Sem loots gerados para coletar.</div>`;
         } else {
             dynamicBody = `<div class="grid grid-cols-2 gap-3">`;
             armazemIds.forEach(id => {
                 const it = globalState.cache.itens.get(id);
                 dynamicBody += `
-                    <div class="bg-slate-900 border border-slate-700 rounded-lg p-2 flex flex-col items-center group relative overflow-hidden">
+                    <div class="bg-slate-900 border border-slate-700 rounded-lg p-2 flex flex-col items-center">
                         <img src="${it?.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-10 h-10 object-cover rounded bg-black mb-1">
-                        <div class="text-[8px] text-slate-400 font-bold truncate w-full text-center uppercase">${it?.nome}</div>
-                        <div class="text-xs text-amber-500 font-black">x${armazem[id]}</div>
-                        <div class="absolute inset-0 bg-sky-900/95 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center rounded-lg transition-opacity gap-1">
-                            <span class="text-[8px] text-sky-300 font-bold uppercase mb-1">Puxar p/ Mochila</span>
-                            <div class="flex gap-1 w-full px-2">
-                                <button onclick="window.withdrawLocalBuildingItem('${selectedId}', '${id}', 1)" class="flex-1 bg-sky-600 hover:bg-sky-500 text-white text-[9px] font-bold py-1 rounded shadow">< 1</button>
-                                <button onclick="window.withdrawLocalBuildingItem('${selectedId}', '${id}', 'all')" class="flex-1 bg-sky-600 hover:bg-sky-500 text-white text-[9px] font-bold py-1 rounded shadow"><< Tudo</button>
-                            </div>
+                        <span class="text-[9px] text-slate-300 font-bold truncate w-full text-center uppercase">${it?.nome}</span>
+                        <span class="text-xs text-amber-500 font-black mb-2">Qtd: ${armazem[id]}</span>
+                        
+                        <div class="flex w-full gap-1 items-center">
+                            <input type="number" id="loc_wit_${id}" value="1" min="1" max="${armazem[id]}" class="w-10 bg-slate-800 text-white text-center text-[10px] rounded border border-slate-600 outline-none p-1">
+                            <button onclick="window.withdrawLocalWithInput('${selectedId}', '${id}', 'loc_wit_${id}')" class="flex-1 bg-sky-600 hover:bg-sky-500 text-white text-[9px] font-bold py-1.5 rounded">Sacar</button>
+                            <button onclick="window.withdrawLocalBuildingItem('${selectedId}', '${id}', 'all')" class="bg-sky-700 hover:bg-sky-500 text-white text-[9px] font-bold py-1.5 px-2 rounded">All</button>
                         </div>
                     </div>`;
             });
@@ -334,7 +340,7 @@ function renderRepRightPanel(ficha, repUsage) {
 
     panel.innerHTML = `
         <div class="flex flex-col h-full animate-fade-in">
-            <div class="absolute top-4 right-4 text-slate-500 hover:text-white cursor-help z-10" title="Manual Imperial: Adquira propriedades pagando Reputação e Materiais. Em 'Produção', veja os custos para operar. Clique em 'Iniciar Ciclo' para gerar loot, que ficará no 'Armazém' aguardando o seu saque.">
+            <div class="absolute top-4 right-4 text-slate-500 hover:text-white cursor-help z-10" title="Estabelecimentos geram recursos por hora caso tenha as manutenções pagas.">
                 <i class="fas fa-question-circle text-xl"></i>
             </div>
 
@@ -349,10 +355,10 @@ function renderRepRightPanel(ficha, repUsage) {
             ${activeTab === 'buildings' && isOwned ? `
             <div class="flex p-2 bg-slate-950 border-b border-slate-700 shrink-0 gap-2">
                 <button onclick="window.switchRepInnerTab('details')" class="flex-1 py-1.5 text-[9px] uppercase font-black rounded-lg transition-colors ${innerTab === 'details' ? 'bg-slate-800 text-amber-500 border border-amber-500/30 shadow-md' : 'text-slate-500 hover:bg-slate-900'}">
-                    <i class="fas fa-industry mr-1"></i> Produção
+                    <i class="fas fa-industry mr-1"></i> Info / Produção
                 </button>
                 <button onclick="window.switchRepInnerTab('inventory')" class="flex-1 py-1.5 text-[9px] uppercase font-black rounded-lg transition-colors relative ${innerTab === 'inventory' ? 'bg-slate-800 text-sky-400 border border-sky-400/30 shadow-md' : 'text-slate-500 hover:bg-slate-900'}">
-                    <i class="fas fa-box-open mr-1"></i> Estoque Local 
+                    <i class="fas fa-box-open mr-1"></i> Armazém Local 
                     ${Object.keys(bData.armazem || {}).length > 0 ? '<span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse shadow"></span>' : ''}
                 </button>
             </div>` : ''}
@@ -366,10 +372,10 @@ function renderRepRightPanel(ficha, repUsage) {
                     ? `<div class="flex flex-col gap-2">
                         ${(activeTab === 'buildings' && (Date.now() - (bData.lastCollect || 0)) >= COLET_COOLDOWN_MS) ? 
                             `<button onclick="window.collectBuilding('${selectedId}')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl text-[11px] uppercase shadow-lg transition-transform hover:scale-[1.02] animate-pulse">
-                                <i class="fas fa-hammer mr-2 text-sm"></i> Iniciar Ciclo de Produção
+                                <i class="fas fa-hammer mr-2 text-sm"></i> Simular 1 Hora de Produção
                              </button>` : ''}
                         <button onclick="window.sellBuilding('${selectedId}', '${activeTab}')" class="w-full bg-red-900/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/50 py-2.5 rounded-lg text-[10px] font-black uppercase transition-all">
-                            <i class="fas fa-times-circle mr-1 text-sm"></i> ${activeTab === 'allies' ? 'Dispensar Aliado' : 'Vender Propriedade'}
+                            <i class="fas fa-times-circle mr-1 text-sm"></i> ${activeTab === 'allies' ? 'Dispensar Aliado' : 'Destruir Propriedade'}
                         </button>
                        </div>`
                     : `<button onclick="window.buyRepItem('${selectedId}', '${activeTab}', ${tpl.reputacaoCusto || tpl.reputacaoCustoBase || 0})" 
@@ -383,7 +389,7 @@ function renderRepRightPanel(ficha, repUsage) {
     `;
 }
 
-// 5. RENDERIZADORES DO ARMAZÉM GLOBAL (rpg_armazenamentos)
+// 5. RENDERIZADORES DO ARMAZÉM GLOBAL (rpg_armazenamentos) - Layout em Cards
 function renderStorageMochila(ficha) {
     const container = document.getElementById('storage-mochila-container');
     if (!container) return;
@@ -391,31 +397,29 @@ function renderStorageMochila(ficha) {
     const itemIds = Object.keys(mochila).filter(id => mochila[id] > 0);
 
     let html = `
-        <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-700">
+        <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-700">
             <h3 class="text-amber-400 font-cinzel font-bold text-lg"><i class="fas fa-briefcase mr-2"></i> Sua Mochila</h3>
-            <span class="text-[10px] font-mono text-slate-500">Itens em Mãos</span>
+            <span class="text-[10px] font-mono text-slate-500">Enviar para o Cofre</span>
         </div>
-        <div class="space-y-2">
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
     `;
 
     if (itemIds.length === 0) {
-        html += `<p class="text-slate-500 italic text-center py-10 text-xs">A sua mochila está vazia.</p>`;
+        html += `<div class="col-span-full text-slate-500 italic text-center py-10 text-xs">A sua mochila está vazia.</div>`;
     } else {
         itemIds.forEach(id => {
             const item = globalState.cache.itens.get(id);
             if (!item) return;
             html += `
-                <div class="flex justify-between items-center bg-slate-900 p-2 rounded-lg border border-slate-800 hover:border-amber-500 transition-colors">
-                    <div class="flex items-center gap-3">
-                        <img src="${item.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-8 h-8 rounded bg-black object-cover border border-slate-700">
-                        <div class="flex flex-col">
-                            <span class="text-[10px] text-slate-300 font-bold uppercase truncate max-w-[120px] sm:max-w-xs">${item.nome}</span>
-                            <span class="text-amber-500 font-mono text-[9px] font-bold">Em mãos: ${mochila[id]}</span>
-                        </div>
-                    </div>
-                    <div class="flex gap-1 shrink-0">
-                        <button onclick="window.transferGlobalStorage('mochila', 'armazem', '${id}', 1)" class="bg-slate-800 hover:bg-sky-600 text-sky-400 hover:text-white px-2.5 py-1.5 rounded text-[9px] font-black transition-colors shadow" title="Guardar 1 item no cofre">1 <i class="fas fa-angle-right ml-1"></i></button>
-                        <button onclick="window.transferGlobalStorage('mochila', 'armazem', '${id}', 'all')" class="bg-slate-800 hover:bg-sky-600 text-sky-400 hover:text-white px-2.5 py-1.5 rounded text-[9px] font-black transition-colors shadow" title="Guardar todos no cofre">All <i class="fas fa-angle-double-right ml-1"></i></button>
+                <div class="bg-slate-900 border border-slate-700 rounded-lg p-2 flex flex-col items-center">
+                    <img src="${item.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-10 h-10 object-cover rounded bg-black mb-1 border border-slate-800">
+                    <span class="text-[9px] text-slate-300 font-bold truncate w-full text-center uppercase">${item.nome}</span>
+                    <span class="text-xs text-amber-500 font-black mb-2">Qtd: ${mochila[id]}</span>
+                    
+                    <div class="flex w-full gap-1 items-center">
+                        <input type="number" id="dep_${id}" value="1" min="1" max="${mochila[id]}" class="w-10 bg-slate-800 text-white text-center text-[10px] rounded border border-slate-600 outline-none p-1">
+                        <button onclick="window.transferWithInput('mochila', 'armazem', '${id}', 'dep_${id}')" class="flex-1 bg-sky-600 hover:bg-sky-500 text-white text-[9px] font-bold py-1.5 rounded">Guardar</button>
+                        <button onclick="window.transferGlobalStorage('mochila', 'armazem', '${id}', 'all')" class="bg-sky-700 hover:bg-sky-500 text-white text-[9px] font-bold py-1.5 px-2 rounded">All</button>
                     </div>
                 </div>
             `;
@@ -425,51 +429,46 @@ function renderStorageMochila(ficha) {
     container.innerHTML = html;
 }
 
-function renderStorageVault(armazemGeral, maxStorage) {
+function renderStorageVault(armazemGeral) {
     const panel = document.getElementById('rep-inspect-panel');
     if (!panel) return;
     
-    // Tratamento de segurança, ignora campos não numéricos que possam vir do BD
     const itemIds = Object.keys(armazemGeral).filter(id => typeof armazemGeral[id] === 'number' && armazemGeral[id] > 0);
-    let currentOccupied = 0;
-    itemIds.forEach(id => currentOccupied += armazemGeral[id]);
 
     let vaultHtml = `
-        <div class="absolute top-4 right-4 text-slate-500 hover:text-white cursor-help z-10" title="Cofre Central: Utilize as setas para mover itens da sua Mochila para o Armazém Imperial. O botão verde recolhe automaticamente todos os loots gerados pelas propriedades locais.">
+        <div class="absolute top-4 right-4 text-slate-500 hover:text-white cursor-help z-10" title="Cofre Central sem limites. Utilize os inputs para sacar a quantidade exata de volta para a sua Mochila.">
             <i class="fas fa-question-circle text-xl"></i>
         </div>
 
         <div class="p-6 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center shrink-0">
             <div>
-                <h3 class="font-cinzel text-xl text-sky-400 leading-tight mb-1"><i class="fas fa-warehouse mr-2"></i>Armazém Imperial</h3>
+                <h3 class="font-cinzel text-xl text-sky-400 leading-tight mb-1"><i class="fas fa-warehouse mr-2"></i>Cofre Infinito</h3>
                 <p class="text-[9px] text-slate-500 uppercase font-black tracking-widest">Estoque Central do Personagem</p>
             </div>
             <div class="text-right">
-                <span class="text-[9px] text-slate-400 uppercase font-bold">Capacidade Máx</span>
-                <div class="text-lg font-mono ${currentOccupied > maxStorage ? 'text-red-400' : 'text-sky-400'} font-bold">${currentOccupied} <span class="text-xs text-slate-500">/ ${maxStorage}</span></div>
+                <i class="fas fa-infinity text-2xl text-slate-700"></i>
             </div>
         </div>
-        <div class="flex-1 overflow-y-auto custom-scroll p-4 bg-slate-900/20 space-y-2">
+        <div class="flex-1 overflow-y-auto custom-scroll p-4 bg-slate-900/20">
+            <div class="grid grid-cols-2 sm:grid-cols-2 gap-3">
     `;
 
     if (itemIds.length === 0) {
-        vaultHtml += `<div class="flex flex-col items-center justify-center h-full text-slate-500 opacity-40"><i class="fas fa-box-open text-5xl mb-3"></i><p class="text-xs uppercase font-bold tracking-widest">Cofre Vazio</p></div>`;
+        vaultHtml += `<div class="col-span-full flex flex-col items-center justify-center h-full text-slate-500 opacity-40 py-10"><i class="fas fa-box-open text-5xl mb-3"></i><p class="text-xs uppercase font-bold tracking-widest">Cofre Vazio</p></div>`;
     } else {
         itemIds.forEach(id => {
             const item = globalState.cache.itens.get(id);
             if (!item) return;
             vaultHtml += `
-                <div class="flex justify-between items-center bg-slate-950 p-2 rounded-lg border border-slate-800 hover:border-sky-500 transition-colors">
-                    <div class="flex gap-1 shrink-0">
-                        <button onclick="window.transferGlobalStorage('armazem', 'mochila', '${id}', 'all')" class="bg-slate-800 hover:bg-emerald-600 text-emerald-400 hover:text-white px-2.5 py-1.5 rounded text-[9px] font-black transition-colors shadow" title="Puxar tudo para a mochila"><i class="fas fa-angle-double-left mr-1"></i> All</button>
-                        <button onclick="window.transferGlobalStorage('armazem', 'mochila', '${id}', 1)" class="bg-slate-800 hover:bg-emerald-600 text-emerald-400 hover:text-white px-2.5 py-1.5 rounded text-[9px] font-black transition-colors shadow" title="Puxar 1 para a mochila"><i class="fas fa-angle-left mr-1"></i> 1</button>
-                    </div>
-                    <div class="flex items-center gap-3 text-right">
-                        <div class="flex flex-col">
-                            <span class="text-[10px] text-slate-300 font-bold uppercase truncate max-w-[120px] sm:max-w-[150px]">${item.nome}</span>
-                            <span class="text-sky-400 font-mono text-[9px] font-bold">Guardado: ${armazemGeral[id]}</span>
-                        </div>
-                        <img src="${item.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-8 h-8 rounded bg-black object-cover border border-slate-700">
+                <div class="bg-slate-950 border border-slate-800 rounded-lg p-2 flex flex-col items-center shadow-inner">
+                    <img src="${item.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-10 h-10 object-cover rounded bg-black mb-1 border border-slate-700">
+                    <span class="text-[9px] text-slate-300 font-bold truncate w-full text-center uppercase">${item.nome}</span>
+                    <span class="text-xs text-sky-400 font-black mb-2">Cofre: ${armazemGeral[id]}</span>
+                    
+                    <div class="flex w-full gap-1 items-center">
+                        <input type="number" id="wit_${id}" value="1" min="1" max="${armazemGeral[id]}" class="w-10 bg-slate-800 text-white text-center text-[10px] rounded border border-slate-600 outline-none p-1">
+                        <button onclick="window.transferWithInput('armazem', 'mochila', '${id}', 'wit_${id}')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-bold py-1.5 rounded">Sacar</button>
+                        <button onclick="window.transferGlobalStorage('armazem', 'mochila', '${id}', 'all')" class="bg-emerald-700 hover:bg-emerald-500 text-white text-[9px] font-bold py-1.5 px-2 rounded">All</button>
                     </div>
                 </div>
             `;
@@ -477,10 +476,11 @@ function renderStorageVault(armazemGeral, maxStorage) {
     }
 
     vaultHtml += `
+            </div>
         </div>
         <div class="p-4 bg-slate-900 border-t border-slate-700 shadow-[0_-10px_20px_rgba(0,0,0,0.3)]">
-            <button onclick="window.collectAllToVault()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3.5 rounded-xl text-[10px] uppercase tracking-widest transition-all shadow-lg hover:scale-[1.02]">
-                <i class="fas fa-truck-loading mr-2 text-sm"></i> Recolher Todas Produções Locais p/ Cofre
+            <button onclick="window.collectAllToVault()" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-black py-3.5 rounded-xl text-[10px] uppercase tracking-widest transition-all shadow-lg hover:scale-[1.02]">
+                <i class="fas fa-truck-loading mr-2 text-sm"></i> Puxar Todas Produções Locais p/ Cofre
             </button>
         </div>
     `;
@@ -512,7 +512,6 @@ window.buyRepItem = async function(templateId, type, costRep) {
             const mochila = d.mochila || {};
             const reqs = tpl.custoMateriais || tpl.requisitos || [];
             
-            // Valida materiais da mochila
             for (let req of reqs) {
                 if ((mochila[req.itemId] || 0) < req.quantidade) {
                     const info = globalState.cache.itens.get(req.itemId);
@@ -520,7 +519,6 @@ window.buyRepItem = async function(templateId, type, costRep) {
                 }
             }
 
-            // Consome materiais
             reqs.forEach(req => {
                 mochila[req.itemId] -= req.quantidade;
                 if (mochila[req.itemId] <= 0) delete mochila[req.itemId];
@@ -536,7 +534,6 @@ window.buyRepItem = async function(templateId, type, costRep) {
                 list.push({ templateId: templateId, active: true });
                 recursos.aliados = list;
             } else if (type === 'storage') {
-                // Expansões de carga viram itens de posse
                 mochila[templateId] = (mochila[templateId] || 0) + 1;
             }
 
@@ -562,18 +559,15 @@ window.collectBuilding = async function(templateId) {
             const mochila = d.mochila || {};
             const consumos = tpl.consumo || [];
             
-            // Valida Manutenção na mochila
             for (let c of consumos) {
-                if ((mochila[c.itemId] || 0) < (c.quantidade || c.quantidadeBase)) throw "Falta de recursos de manutenção na mochila para iniciar o ciclo de operação.";
+                if ((mochila[c.itemId] || 0) < (c.quantidade || c.quantidadeBase)) throw "Falta de recursos de manutenção na mochila para gerar a produção por hora.";
             }
 
-            // Consome Manutenção
             consumos.forEach(c => {
                 mochila[c.itemId] -= (c.quantidade || c.quantidadeBase);
                 if (mochila[c.itemId] <= 0) delete mochila[c.itemId];
             });
 
-            // Gera Loots no Armazém Local da Propriedade
             const armazem = b.armazem || {};
             (tpl.producao || []).forEach(p => {
                 armazem[p.itemId] = (armazem[p.itemId] || 0) + (p.quantidade || p.quantidadeBase);
@@ -584,7 +578,7 @@ window.collectBuilding = async function(templateId) {
             t.update(ref, { "recursos.estabelecimentos": estabs, mochila });
         });
         window.renderReputacaoTab();
-        alert("Ciclo de produção concluído com sucesso!");
+        alert("Produção gerada com sucesso! Itens no armazém da propriedade.");
     } catch (e) { alert(e); }
 };
 
@@ -635,7 +629,7 @@ window.withdrawLocalBuildingItem = async function(templateId, itemId, amountRaw)
     } catch (e) { alert("Erro ao sacar loot local."); }
 };
 
-// --- SINCRONIZAÇÃO DIRETA COM COLEÇÃO rpg_armazenamentos ---
+// Sincronização infinita com rpg_armazenamentos
 window.transferGlobalStorage = async function(from, to, itemId, amountRaw) {
     const charId = globalState.selectedCharacterId;
     if(!charId) return alert("Personagem não selecionado.");
@@ -646,7 +640,6 @@ window.transferGlobalStorage = async function(from, to, itemId, amountRaw) {
             const fichaSnap = await t.get(refFicha);
             const d = fichaSnap.data();
             
-            // Garantia de fallback segura via string
             let storageId = String(charId);
             if (d.recursos && typeof d.recursos.armazemGeral === 'string' && d.recursos.armazemGeral.trim() !== '') {
                 storageId = d.recursos.armazemGeral.trim();
@@ -669,17 +662,8 @@ window.transferGlobalStorage = async function(from, to, itemId, amountRaw) {
             
             const amount = amountRaw === 'all' ? available : Math.min(amountRaw, available);
 
-            // Validação de Capacidade se estiver enviando para o Cofre
-            if (to === 'armazem') {
-                const maxCap = calculateStorageCapacity(d);
-                let currentOcc = 0;
-                Object.values(actualArmazem).forEach(v => { if (typeof v === 'number') currentOcc += v; });
-                if (currentOcc + amount > maxCap) {
-                    throw `Espaço insuficiente no Armazém Imperial. (Máx: ${maxCap})`;
-                }
-            }
-            
-            // Transferência
+            // Sem validação de limite de capacidade pois agora é infinito.
+
             sourceObj[itemId] -= amount;
             if (sourceObj[itemId] <= 0) delete sourceObj[itemId];
             destObj[itemId] = (destObj[itemId] || 0) + amount;
@@ -705,7 +689,6 @@ window.collectAllToVault = async function() {
             const recursos = d.recursos || {};
             const estabs = recursos.estabelecimentos || [];
             
-            // Garantia de fallback segura
             let storageId = String(charId);
             if (recursos && typeof recursos.armazemGeral === 'string' && recursos.armazemGeral.trim() !== '') {
                 storageId = recursos.armazemGeral.trim();
@@ -719,25 +702,17 @@ window.collectAllToVault = async function() {
             let actualArmazem = isNested ? storageData.itens : storageData;
 
             let collectedSomething = false;
-            
-            const maxCap = calculateStorageCapacity(d);
-            let currentOcc = 0;
-            Object.values(actualArmazem).forEach(v => { if (typeof v === 'number') currentOcc += v; });
 
             estabs.forEach(b => {
                 const localVault = b.armazem || {};
                 for (let [itemId, qty] of Object.entries(localVault)) {
-                    if (currentOcc + qty > maxCap) {
-                        throw `Espaço insuficiente no Armazém Central para recolher todos os itens!`;
-                    }
                     actualArmazem[itemId] = (actualArmazem[itemId] || 0) + qty;
-                    currentOcc += qty;
                     collectedSomething = true;
                 }
                 b.armazem = {}; 
             });
             
-            if (!collectedSomething) throw "Não existem produções prontas nas suas propriedades locais.";
+            if (!collectedSomething) throw "Não existem produções prontas nas propriedades.";
             
             if (isNested) storageData.itens = actualArmazem; else storageData = actualArmazem;
 
@@ -746,6 +721,6 @@ window.collectAllToVault = async function() {
             t.set(storageRef, storageData, { merge: true });
         });
         window.renderReputacaoTab();
-        alert("Excelente Gestão Imperial! Todos os itens foram centralizados no seu Cofre.");
-    } catch(e) { alert(typeof e === 'string' ? e : "Erro logístico ao coletar."); }
+        alert("Todos os itens locais foram enviados ao Cofre Imperial infinito.");
+    } catch(e) { alert(typeof e === 'string' ? e : "Erro ao recolher loots."); }
 };
