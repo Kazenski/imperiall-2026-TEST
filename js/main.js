@@ -93,7 +93,13 @@ window.showTab = function(tabId) {
         } else {
             renderPainelFichas();
         }
-    } else if (globalState.selectedCharacterId) {
+    } 
+    // ---> COLOQUE A ABA DE ATUALIZAÇÕES AQUI (Visível para todos, com ou sem personagem) <---
+    else if (tabId === 'atualizacoes-novidades' || tabId === 'atualizacoes-novidades-content') {
+        renderAtualizacoesTab();
+    } 
+    // ---> DAQUI PARA BAIXO, SÓ ABRE SE TIVER PERSONAGEM SELECIONADO <---
+    else if (globalState.selectedCharacterId) {
         if(tabId === 'rolagem-dados') renderRolagemDados();
         else if(tabId === 'calculadora-combate') renderCalculadoraCombate();
         else if(tabId === 'minhas-habilidades') { renderMinhasHabilidades(); if(window.renderSkillUsageLogs) window.renderSkillUsageLogs(); }
@@ -110,8 +116,9 @@ window.showTab = function(tabId) {
         else if(tabId === 'comercio') { if(globalState.commerce) globalState.commerce.sellableCache = null; renderComercioTab(); }
         else if(tabId === 'mapa-movimento') { setTimeout(() => window.renderMapTab(), 100); }
         else if(tabId === 'arena-combate') { if (window.arena && window.arena.init) window.arena.init(); }
-        else if(tabId === 'atualizacoes-novidades-content') renderAtualizacoesTab();
-    } else {
+    } 
+    // ---> SE NÃO TIVER PERSONAGEM SELECIONADO E TENTAR ABRIR O RESTO <---
+    else {
         if (target) target.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500"><p>Selecione um personagem na barra lateral para acessar.</p></div>';
     }
 };
