@@ -55,67 +55,80 @@ window.renderBlankPage = function(title) {
 };
 
 // --- FUNÇÃO GLOBAL PARA EXIBIR UMA DAS 16 ABAS ---
-window.showTab = function (tabId) {
-    // 1. Esconde todas as abas ativas
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.add('hidden');
-        tab.classList.remove('flex', 'flex-col', 'active');
+window.showTab = function(tabId) {
+    // 1. Esconde todas as abas e ARRANCA a classe 'active'
+    document.querySelectorAll('.tab-content').forEach(c => {
+        c.classList.add('hidden');
+        c.classList.remove('active'); 
     });
+    
+    const defaultView = document.getElementById('default-view');
+    if (defaultView) defaultView.classList.add('hidden');
 
     // 2. Prepara o container alvo
-    const target = document.getElementById(tabId);
-    if (!target) return; // Se a div não existir no HTML, aborta.
+    const target = document.getElementById(`${tabId.replace('-content', '')}-content`) || document.getElementById(tabId);
+    if (!target) return;
 
     target.classList.remove('hidden');
-    target.classList.add('flex', 'flex-col', 'active');
+    target.classList.add('active', 'h-full'); 
+
+    // 3. Atualiza a cor visual na barra de ícones (Coluna 2)
+    document.querySelectorAll('#sub-menu-bar button').forEach(btn => {
+        if (btn.dataset.tabId) {
+            if (btn.dataset.tabId === tabId.replace('-content', '')) {
+                btn.classList.add('bg-slate-800', 'border-amber-500');
+                btn.classList.remove('border-transparent');
+                btn.querySelector('i')?.classList.replace('text-slate-400', 'text-amber-500');
+            } else {
+                btn.classList.remove('bg-slate-800', 'border-amber-500');
+                btn.classList.add('border-transparent');
+                btn.querySelector('i')?.classList.replace('text-amber-500', 'text-slate-400');
+            }
+        }
+    });
 
     // --- ROTEAMENTO DAS ABAS ---
-    
-    // ABA: PAINEL DE FICHAS
-    if (tabId === 'painel-fichas-content' || tabId === 'painel-fichas') {
+
+    // Aba de Novidades (Livre para todos, sem personagem)
+    if (tabId === 'atualizacoes-novidades-content' || tabId === 'atualizacoes-novidades') {
+        target.innerHTML = ''; // Limpa o container
+        if (typeof renderAtualizacoesTab === 'function') renderAtualizacoesTab();
+        return; // Sai imediatamente!
+    }
+
+    if (tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
         } else {
             renderPainelFichas();
         }
-        return; // <- O RETURN É A MÁGICA QUE IMPEDE A MENSAGEM DE CONSTRUÇÃO DE APARECER JUNTO!
-    } 
-    
-    // ABA: NOVIDADES (Livre para todos)
-    if (tabId === 'atualizacoes-novidades-content' || tabId === 'atualizacoes-novidades') {
-        target.innerHTML = ''; // Esvazia o container completamente primeiro
-        if (typeof renderAtualizacoesTab === 'function') {
-            renderAtualizacoesTab();
-        }
-        return; 
-    }
-    
-    // ABAS ESPECÍFICAS (Requerem um Personagem Selecionado)
-    if (globalState.selectedCharacterId) {
-        if(tabId === 'rolagem-dados-content') { renderRolagemDados(); return; }
-        if(tabId === 'calculadora-combate-content') { renderCalculadoraCombate(); return; }
-        if(tabId === 'minhas-habilidades-content') { renderMinhasHabilidades(); if(window.renderSkillUsageLogs) window.renderSkillUsageLogs(); return; }
-        if(tabId === 'mochila-content') { renderMochila(); return; }
-        if(tabId === 'itens-equipados-content') { renderItensEquipados(); return; }
-        if(tabId === 'calculadora-atributos-content') { renderCalculadoraAtributos(); return; }
-        if(tabId === 'constelacao-content') { renderConstelacaoTab(); return; }
-        if(tabId === 'crafting-content') { renderCraftingTab(); return; }
-        if(tabId === 'extracao-content') { renderExtracaoTab(); return; }
-        if(tabId === 'colecao-craft-content') { renderCollectionTab(); return; }
-        if(tabId === 'arma-espiritual-content') { renderArmaEspiritualTab(); return; }
-        if(tabId === 'meus-pets-content') { renderPetsTab(); return; }
-        if(tabId === 'recursos-reputacao-content') { renderReputacaoTab(); return; }
-        if(tabId === 'comercio-content') { if(globalState.commerce) globalState.commerce.sellableCache = null; renderComercioTab(); return; }
-        if(tabId === 'mapa-movimento-content') { setTimeout(() => window.renderMapTab(), 100); return; }
-        if(tabId === 'arena-combate-content') { if (window.arena && window.arena.init) window.arena.init(); return; }
-        
-        // SE CHEGOU AQUI: O botão existe, mas a página não tem código ainda.
-        renderPaginaEmConstrucao(target);
         return;
     } 
     
-    // SE CHEGOU AQUI: O jogador tentou abrir uma aba de personagem sem selecionar um.
-    target.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500"><p>Selecione um personagem na barra lateral para acessar.</p></div>';
+    // Abas que requerem personagem
+    if (globalState.selectedCharacterId) {
+        if(tabId === 'rolagem-dados') { renderRolagemDados(); return; }
+        if(tabId === 'calculadora-combate') { renderCalculadoraCombate(); return; }
+        if(tabId === 'minhas-habilidades') { renderMinhasHabilidades(); if(window.renderSkillUsageLogs) window.renderSkillUsageLogs(); return; }
+        if(tabId === 'mochila') { renderMochila(); return; }
+        if(tabId === 'itens-equipados') { renderItensEquipados(); return; }
+        if(tabId === 'calculadora-atributos') { renderCalculadoraAtributos(); return; }
+        if(tabId === 'constelacao') { renderConstelacaoTab(); return; }
+        if(tabId === 'crafting') { renderCraftingTab(); return; }
+        if(tabId === 'extracao') { renderExtracaoTab(); return; }
+        if(tabId === 'colecao-craft') { renderCollectionTab(); return; }
+        if(tabId === 'arma-espiritual') { renderArmaEspiritualTab(); return; }
+        if(tabId === 'meus-pets') { renderPetsTab(); return; }
+        if(tabId === 'recursos-reputacao') { renderReputacaoTab(); return; }
+        if(tabId === 'comercio') { if(globalState.commerce) globalState.commerce.sellableCache = null; renderComercioTab(); return; }
+        if(tabId === 'mapa-movimento') { setTimeout(() => window.renderMapTab(), 100); return; }
+        if(tabId === 'arena-combate') { if (window.arena && window.arena.init) window.arena.init(); return; }
+        
+        // Se chegou aqui, a aba não tem função e exibe o "Página em construção"
+        window.renderBlankPage('Em Construção');
+    } else {
+        if (target) target.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500"><p>Selecione um personagem na barra lateral para acessar.</p></div>';
+    }
 };
 
 // --- AUTENTICAÇÃO E LOGIN ---
@@ -159,8 +172,7 @@ const MASTER_ARCHITECTURE = {
         { id: 'blank', icon: 'fa-images', label: 'Galeria de Imagens', render: () => window.renderBlankPage('Galeria de Imagens') }
     ],
     'Atualizações': [
-        { id: 'blank', icon: 'fa-bullhorn', label: 'Novidades', render: () => window.renderBlankPage('Novidades') }
-    ]
+        { id: 'atualizacoes-novidades', icon: 'fa-bullhorn', label: 'Novidades', render: () => window.showTab('atualizacoes-novidades-content') }    ]
 };
 
 // --- AS 16 ABAS DA FICHA ---
