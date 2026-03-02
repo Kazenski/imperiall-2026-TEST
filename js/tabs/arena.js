@@ -1407,6 +1407,33 @@ window.arena = {
     },
 
     // --- FUNÇÕES MATEMÁTICAS UTILITÁRIAS ---
+    
+    getReachableHexes: function(sq, sr, range) {
+        const visited = new Set([`${sq},${sr}`]); 
+        const fringes = [[{q:sq, r:sr}]];
+        
+        for (let k = 1; k <= range; k++) {
+            fringes.push([]);
+            for (const h of fringes[k-1]) {
+                // Direções para os 6 lados do hexágono
+                const dirs = [{q:1, r:0}, {q:1, r:-1}, {q:0, r:-1}, {q:-1, r:0}, {q:-1, r:1}, {q:0, r:1}];
+                
+                dirs.forEach(d => {
+                    const nQ = h.q + d.q;
+                    const nR = h.r + d.r;
+                    const nK = `${nQ},${nR}`;
+                    
+                    // Se não tiver muro (obstáculo) na posição e não foi visitado ainda
+                    if (!window.arena.data.obstaculos?.[nK] && !visited.has(nK)) { 
+                        visited.add(nK); 
+                        fringes[k].push({q: nQ, r: nR}); 
+                    }
+                });
+            }
+        }
+        return visited;
+    },
+
     hexToPixel: function(q, r) { 
         return { 
             x: HEX_SIZE * (Math.sqrt(3) * q + Math.sqrt(3)/2 * r) + 60, 
