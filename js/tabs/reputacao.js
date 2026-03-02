@@ -7,8 +7,6 @@ const ID_PREDIO_ARMAZENAMENTO = '0fwxHnGjLBuNw2kTxGSs';
 if (!globalState.transferCart) globalState.transferCart = { toStorage: {}, toMochila: {} };
 if (!globalState.storageFilter) globalState.storageFilter = 'todos';
 
-const ID_PREDIO_ARMAZENAMENTO = '0fwxHnGjLBuNw2kTxGSs';
-
 export function renderRecursosReputacaoTab() {
     const container = document.getElementById('recursos-reputacao-content');
     if (!container) return;
