@@ -608,9 +608,11 @@ window.arena = {
         let statIcon = statName === "DEF" ? "🛡️" : (statName === "EVA" ? "🏃" : "⚔️");
         const hungerWarn = isDebuffed ? ` <span class="text-[10px] text-red-500" title="Debuff de Fome Ativo!"><i class="fas fa-drumstick-bite"></i></span>` : '';
 
+        // Identifica QUEM foi atingido na área
         const hitTokensIds = [];
         const hitTokensNames = [];
         Object.entries(window.arena.data.tokens).forEach(([tid, tok]) => {
+            // Se a distância entre o alvo clicado e o token for menor ou igual ao Raio, acertou!
             if (window.arena.hexDistance(targetQ, targetR, tok.q, tok.r) <= skill.radius) {
                 hitTokensIds.push(tid);
                 hitTokensNames.push(tok.name);
@@ -636,26 +638,25 @@ window.arena = {
         try {
             const sessionRef = doc(db, "rpg_sessions", window.arena.sessionDocId);
             let cascadeUpdates = null;
-            let cascadeTotal = null; // Guarda o valor total (Base + Extra + Escudo)
             
-            // Consome o MP aplicando a lógica de cascata
+            // Deduz o MP do conjurador
             if (myTokenId && charId && charData) {
                 const cascade = calculateStatCascade(charData.ficha || charData, 'mp', -Math.abs(costToDeduct));
                 cascadeUpdates = cascade.updates;
-                cascadeTotal = cascade.total; // <- O Segredo está aqui
             }
 
             const newLogEntry = { text: logMsg, timestamp: Date.now(), type: 'attack' };
-            const sessionUpdates = { combat_log: arrayUnion(newLogEntry) };
+            const sessionUpdates = {
+                combat_log: arrayUnion(newLogEntry),
+                [`arena_state.auras.${auraId}`]: newAura // Registra a Aura no Firebase
+            };
 
-            // Aplica a dedução de MP no Token da Arena (Visual em Tempo Real)
-            if (myTokenId && cascadeUpdates !== null) {
-                sessionUpdates[`arena_state.tokens.${myTokenId}.mp`] = cascadeTotal;
+            if (myTokenId && cascadeUpdates) {
+                sessionUpdates[`arena_state.tokens.${myTokenId}.mp`] = cascadeUpdates.mpPersonagemBase || 0;
             }
 
             await updateDoc(sessionRef, sessionUpdates);
 
-            // Atualiza a Ficha Raiz do Jogador
             if (cascadeUpdates && charId) {
                 try {
                     await updateDoc(doc(db, "rpg_fichas", charId), cascadeUpdates);
@@ -664,8 +665,15 @@ window.arena = {
                 }
             }
 
-            window.arena.showFloatingText(`-${costToDeduct} MP`, myTokenId, '#60a5fa');
-            window.arena.showFloatingText(`HIT! ${totalDano}`, targetTokenId, '#ef4444');
+            // Exibe a dedução de MP no seu personagem
+            if (myTokenId) {
+                window.arena.showFloatingText(`-${costToDeduct} MP`, myTokenId, '#60a5fa');
+            }
+            
+            // Exibe os números de DANO apenas nos personagens que estavam na área
+            if (hitTokensIds.length > 0) {
+                hitTokensIds.forEach(id => window.arena.showFloatingText(`HIT! ${totalDano}`, id, '#ef4444'));
+            }
 
             window.arena.turnActions.action = true;
             window.arena.updateActionHUD();
