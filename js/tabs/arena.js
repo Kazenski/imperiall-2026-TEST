@@ -3,6 +3,7 @@ import { globalState, PLACEHOLDER_IMAGE_URL } from '../core/state.js';
 import { escapeHTML } from '../core/utils.js';
 import { calculateStatCascade, getFomeDebuffMultiplier } from '../core/calculos.js';
 
+// --- CONFIGURAÇÕES TÉCNICAS DO GRID ---
 const IMG_PLACEHOLDER_BASE64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E";
 const HEX_SIZE = 17;
 const HEX_WIDTH = Math.sqrt(3) * HEX_SIZE;
@@ -29,7 +30,7 @@ window.arena = {
         return (Math.abs(q1 - q2) + Math.abs(q1 + r1 - q2 - r2) + Math.abs(r1 - r2)) / 2;
     },
     
-    // --- INICIALIZAÇÃO ---
+    // --- INICIALIZAÇÃO E SINCRONIZAÇÃO ---
     init: function() {
         if (this.unsub) { 
             this.unsub(); 
@@ -39,208 +40,83 @@ window.arena = {
         const activeSessionId = globalState.activeSessionId;
         if (!activeSessionId || activeSessionId === 'world') {
             this.showError("Selecione uma Sessão de Jogo no topo da página para carregar a Arena.");
+            const layers = ['arena-layer-grid', 'arena-layer-tokens', 'arena-layer-map', 'arena-layer-auras', 'arena-layer-preview'];
+            layers.forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.innerHTML = '';
+            });
             return;
         }
 
         this.sessionDocId = activeSessionId;
+        this.renderLayout(); 
         this.gridRendered = false;
-        this.data = null;
-        this.selectedTokenId = null;
-        
-        // Injeta a interface completa antes de fazer qualquer outra coisa
-        this.renderLayout();
 
         const svg = document.getElementById('arena-svg');
         if (svg && !this.eventsAttached) {
             svg.addEventListener('mousedown', e => {
                 if(e.target.closest('#arena-ctx-menu')) return;
                 if (e.target.tagName !== 'image' && !e.target.closest('.token')) {
-                    this.drag.active = true;
-                    this.drag.startX = e.clientX - this.drag.panX;
-                    this.drag.startY = e.clientY - this.drag.panY;
+                    window.arena.drag.active = true;
+                    window.arena.drag.startX = e.clientX - window.arena.drag.panX;
+                    window.arena.drag.startY = e.clientY - window.arena.drag.panY;
                     svg.style.cursor = 'grabbing';
                 }
             });
             window.addEventListener('mousemove', e => {
-                if (this.drag.active) {
+                if (window.arena.drag.active) {
                     e.preventDefault();
-                    this.drag.panX = e.clientX - this.drag.startX;
-                    this.drag.panY = e.clientY - this.drag.startY;
-                    this.updateTransform();
+                    window.arena.drag.panX = e.clientX - window.arena.drag.startX;
+                    window.arena.drag.panY = e.clientY - window.arena.drag.startY;
+                    window.arena.updateTransform();
                 }
-                if (this.targeting) {
-                    const pt = this.getSVGPoint(e);
-                    const hex = this.pixelToHex(pt.x, pt.y);
-                    this.renderAoEPreview(hex.q, hex.r);
+                if (window.arena.targeting) {
+                    const pt = window.arena.getSVGPoint(e);
+                    const hex = window.arena.pixelToHex(pt.x, pt.y);
+                    window.arena.renderAoEPreview(hex.q, hex.r);
                 }
             });
             window.addEventListener('mouseup', () => {
-                this.drag.active = false;
+                window.arena.drag.active = false;
                 if(svg) svg.style.cursor = 'grab';
             });
             this.eventsAttached = true;
         }
 
-        // Listener do Firebase (Usa arrow function para manter o 'this')
         this.unsub = onSnapshot(doc(db, "rpg_sessions", this.sessionDocId), (snap) => {
-            if (!snap.exists()) return this.showError("Sessão não encontrada.");
+            if (!snap.exists()) return window.arena.showError("Sessão não encontrada.");
             
             const sessionData = snap.data();
             const arenaState = sessionData.arena_state || { 
                 rodada: 1, turnoIndex: 0, tokens: {}, obstaculos: {}, auras: {}, ordemIniciativa: [], freeMovement: false 
             };
 
-            if (this.data && this.data.turnoIndex !== arenaState.turnoIndex) {
-                this.resetLocalActions();
+            if (window.arena.data && window.arena.data.turnoIndex !== arenaState.turnoIndex) {
+                window.arena.resetLocalActions();
             }
             
-            if (this.data && this.data.mapaUrl !== arenaState.mapaUrl) {
-                this.gridRendered = false;
+            if (window.arena.data && window.arena.data.mapaUrl !== arenaState.mapaUrl) {
+                window.arena.gridRendered = false;
             }
             
-            this.data = arenaState;
-            this.checkMasterRole(sessionData);
-            this.renderCombatLog(sessionData.combat_log);
-            this.updateFreeMoveButton();
+            window.arena.data = arenaState;
+            window.arena.checkMasterRole(sessionData);
+            window.arena.renderCombatLog(sessionData.combat_log);
+            window.arena.updateFreeMoveButton();
 
-            // Renderiza Grid e Obstáculos
-            if (!this.gridRendered) this.renderGrid();
-            else this.updateObstacles(); 
+            if (!window.arena.gridRendered) window.arena.renderGrid();
+            else window.arena.updateObstacles(); 
             
-            // Renderiza Tokens, Auras e HUD
-            this.renderAuras();
-            this.renderTokens();
-            this.renderTurnOrder();
-            this.updateActionHUD();
+            window.arena.renderAuras();
+            window.arena.renderTokens();
+            window.arena.renderTurnOrder();
+            window.arena.updateActionHUD();
             
-            // Renderiza Lista de Spawn se for Mestre
-            if (this.isMaster) this.renderSpawnList();
+            if (window.arena.isMaster) window.arena.renderSpawnList();
             
             const msg = document.getElementById('arena-overlay-msg');
             if(msg) msg.remove();
         });
-    },
-
-    renderLayout: function() {
-        const container = document.getElementById('arena-combate-content');
-        if (!container) return;
-
-        container.innerHTML = `
-            <div class="bg-slate-950 p-2 rounded border border-slate-800 mb-2">
-                <div class="flex justify-between items-center mb-2">
-                    <div>
-                        <h2 class="text-amber-500 font-cinzel font-bold text-lg m-0 inline-block mr-2"><i class="fas fa-chess-board"></i> Arena Tática</h2>
-                        <span id="arena-status-msg" class="text-[10px] uppercase font-bold"></span>
-                    </div>
-                    <div class="flex gap-2 items-center">
-                        <span id="arena-round-display" class="bg-slate-800 px-3 py-1 rounded text-xs border border-slate-700 font-bold text-white">Rodada 1</span>
-                        <div id="player-action-hud" class="hidden flex gap-2">
-                            <button id="btn-act-move" class="action-btn" onclick="window.arena.toggleAction('movement')" title="Mover"><i class="fas fa-walking"></i></button>
-                            <button id="btn-act-main" class="action-btn" onclick="window.arena.toggleAction('action')" title="Ação"><i class="fas fa-fist-raised"></i></button>
-                            <button id="btn-act-free" class="action-btn" onclick="window.arena.toggleAction('free')" title="Livre"><i class="fas fa-comment"></i></button>
-                            <button class="action-btn bg-red-900/30 border-red-800 text-red-400" onclick="window.arena.endTurn()"><i class="fas fa-hourglass-end"></i></button>
-                        </div>
-                    </div>
-                </div>
-                <div id="arena-turn-list" class="turn-order-strip custom-scroll relative z-10 min-h-[70px]"></div>
-                <div id="arena-skill-tray" class="hidden p-2 bg-slate-900 border-t border-slate-700 rounded-b-lg">
-                    <div class="flex justify-between items-center mb-2">
-                        <span id="arena-skill-instruction" class="text-[10px] text-amber-400 font-bold uppercase animate-pulse"></span>
-                        <button onclick="window.arena.cancelTargeting()" class="text-red-400 text-xs px-2 py-1 rounded bg-red-900/20 border border-red-900">Cancelar</button>
-                    </div>
-                    <div id="arena-skill-list" class="flex gap-4 overflow-x-auto pb-2 min-h-[60px]"></div>
-                </div>
-            </div>
-
-            <div class="hex-grid-container relative" id="arena-viewport" style="height: 600px; overflow: hidden; background: #000;">
-                <svg id="arena-svg" width="100%" height="100%" style="overflow: visible; transition: transform 0.1s ease-out; cursor: grab;">
-                    <g id="arena-layer-map"></g>
-                    <g id="arena-layer-grid"></g>
-                    <g id="arena-layer-preview"></g> 
-                    <g id="arena-layer-auras"></g>
-                    <g id="arena-layer-tokens"></g>
-                </svg>
-                <div class="absolute bottom-4 right-4 flex flex-col gap-2 pointer-events-auto">
-                    <button onclick="window.arena.zoom(1.1)" class="w-8 h-8 rounded bg-slate-800 text-white font-bold border border-slate-600 shadow">+</button>
-                    <button onclick="window.arena.zoom(0.9)" class="w-8 h-8 rounded bg-slate-800 text-white font-bold border border-slate-600 shadow">-</button>
-                </div>
-            </div>
-
-            <div id="arena-combat-log" class="mt-2 h-32 overflow-y-auto font-mono text-[10px] bg-slate-950/80 p-2 rounded border border-slate-700 custom-scroll shadow-inner"></div>
-
-            <div id="arena-gm-panel" class="hidden mt-4 bg-slate-900/90 rounded-xl border border-amber-600/30 shadow-2xl overflow-hidden">
-                <div class="p-3 border-b border-slate-700 bg-slate-800 flex flex-wrap gap-2 items-center justify-between">
-                    <div class="flex gap-2">
-                        <button onclick="window.arena.setTool('select')" class="btn bg-blue-900/40 text-blue-200 text-[10px] uppercase font-bold border border-blue-700">Seleção</button>
-                        <button onclick="window.arena.setTool('wall_hard')" class="btn bg-red-900/40 text-red-200 text-[10px] uppercase font-bold border border-red-700">Muro</button>
-                        <button onclick="window.arena.setTool('wall_soft')" class="btn bg-orange-900/40 text-orange-200 text-[10px] uppercase font-bold border border-orange-700">Transp.</button>
-                        <button onclick="window.arena.setTool('erase')" class="btn bg-slate-700 text-slate-300 text-[10px] uppercase font-bold">Borracha</button>
-                        <button id="btn-arena-freemove" onclick="window.arena.toggleFreeMode()" class="btn bg-slate-700 text-slate-300 text-[10px] uppercase font-bold border border-slate-500 transition-all ml-2">Modo Livre</button>
-                    </div>
-                    <div class="flex gap-2 items-center">
-                        <button onclick="window.arena.clearArena()" class="btn bg-red-600 text-white text-[10px] font-bold uppercase">Limpar Tudo</button>
-                        <div class="w-px h-6 bg-slate-600 mx-1"></div>
-                        <button onclick="window.arena.nextTurn()" class="btn bg-emerald-600 text-white text-[10px] font-bold uppercase">Próx. Turno</button>
-                    </div>
-                </div>
-                <div class="p-3 border-b border-slate-700 bg-slate-800/50 flex gap-2 items-center justify-between w-full">
-                    <span id="arena-tool-display" class="text-[10px] text-amber-500 font-mono font-bold uppercase">Ferramenta: SELECIONAR</span>
-                    <div class="flex items-center gap-2 border border-slate-700 p-1 rounded bg-slate-900/50">
-                        <input type="text" id="arena-map-url" class="text-[10px] bg-slate-950 border-slate-700 w-32 rounded px-2 py-1 text-slate-300" placeholder="URL direta...">
-                        <button onclick="window.arena.updateMap()" class="btn btn-secondary py-1 px-2 text-[10px]">URL</button>
-                        <div class="w-px h-4 bg-slate-600 mx-1"></div>
-                        <input type="file" id="arena-map-upload" accept="image/*" class="hidden" onchange="window.arena.uploadMap(this)">
-                        <label for="arena-map-upload" class="btn btn-primary py-1 px-2 text-[10px] cursor-pointer flex items-center gap-1 m-0 shadow-lg transition hover:scale-105"><i class="fas fa-upload"></i> Upar</label>
-                    </div>
-                </div>
-                <div class="p-4 bg-slate-900 border-t border-slate-700">
-                    <div class="flex justify-between items-center mb-3">
-                        <span class="text-xs text-slate-400 font-bold uppercase">Spawn Rápido</span>
-                        <input type="text" id="arena-spawn-filter" placeholder="Buscar..." class="text-xs bg-slate-800 border border-slate-700 w-48 rounded px-2 py-1 outline-none focus:border-amber-500" onkeyup="window.arena.renderSpawnList()">
-                    </div>
-                    <div class="grid grid-cols-3 gap-3">
-                        <div class="bg-slate-950/50 rounded border border-slate-800 overflow-hidden">
-                            <div class="text-[9px] uppercase font-bold text-emerald-400 p-2 bg-emerald-900/20 text-center border-b border-emerald-900/30">Jogadores</div>
-                            <div id="spawn-list-players" class="spawn-list-container p-2 custom-scroll" style="height: 180px; overflow-y: auto;"></div>
-                        </div>
-                        <div class="bg-slate-950/50 rounded border border-slate-800 overflow-hidden">
-                            <div class="text-[9px] uppercase font-bold text-sky-400 p-2 bg-blue-900/20 text-center border-b border-blue-900/30">NPCs</div>
-                            <div id="spawn-list-npcs" class="spawn-list-container p-2 custom-scroll" style="height: 180px; overflow-y: auto;"></div>
-                        </div>
-                        <div class="bg-slate-950/50 rounded border border-slate-800 overflow-hidden">
-                            <div class="text-[9px] uppercase font-bold text-rose-400 p-2 bg-red-900/20 text-center border-b border-red-900/30">Monstros</div>
-                            <div id="spawn-list-monsters" class="spawn-list-container p-2 custom-scroll" style="height: 180px; overflow-y: auto;"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="arena-ctx-menu" class="fixed z-[9999] hidden bg-slate-900 border-2 border-amber-500 rounded shadow-2xl min-w-[220px] overflow-hidden"></div>
-
-            <div id="arena-attack-modal" class="fixed inset-0 z-[10000] bg-black/80 hidden items-center justify-center backdrop-blur-sm">
-                <div class="bg-slate-900 border-2 border-amber-500 rounded-xl p-6 max-w-sm w-full shadow-2xl transform transition-all">
-                    <h3 class="text-xl font-cinzel text-white text-center mb-4">Confirmar Ação</h3>
-                    <div class="bg-slate-800 p-4 rounded mb-6 text-center border border-slate-700">
-                        <div class="text-xs text-slate-400 uppercase mb-1">Habilidade</div>
-                        <div id="modal-skill-name" class="text-amber-400 font-bold text-lg mb-2">---</div>
-                        <div class="text-xs text-slate-400 uppercase mb-1">Alvo</div>
-                        <div id="modal-target-name" class="text-red-400 font-bold text-lg mb-2">---</div>
-                        <div class="mt-2 text-xs bg-blue-900/30 text-blue-300 py-1 px-2 rounded inline-block border border-blue-800">
-                            Custo: <span id="modal-skill-cost">0</span> MP
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <button onclick="window.arena.closeAttackModal()" class="btn bg-slate-700 hover:bg-slate-600 text-slate-300">Cancelar</button>
-                        <button id="btn-confirm-attack" class="btn bg-red-600 hover:bg-red-500 text-white font-bold shadow-[0_0_15px_rgba(220,38,38,0.5)] animate-pulse">ATACAR!</button>
-                    </div>
-                </div>
-            </div>
-        `;
-    },
-
-    showError: function(text) {
-        const container = document.getElementById('arena-viewport');
-        if(container) container.innerHTML = `<div id="arena-overlay-msg" class="absolute inset-0 flex items-center justify-center bg-slate-900/90 z-50 text-amber-500 font-cinzel text-xl font-bold p-10 text-center">${text}</div>`;
     },
 
     renderCombatLog: function(logs = []) {
@@ -271,6 +147,11 @@ window.arena = {
             btnFree.className = "btn bg-slate-700 hover:bg-slate-600 text-slate-300 text-[10px] uppercase font-bold border border-slate-500 transition-all ml-2";
             btnFree.innerHTML = '<i class="fas fa-lock mr-1"></i> Modo Livre (OFF)';
         }
+    },
+    
+    showError: function(text) {
+        const container = document.getElementById('arena-viewport');
+        if(container) container.innerHTML = `<div id="arena-overlay-msg" class="absolute inset-0 flex items-center justify-center bg-slate-900/90 z-50 text-amber-500 font-cinzel text-xl font-bold p-10 text-center">${text}</div>`;
     },
 
     resetLocalActions: function() {
@@ -318,19 +199,17 @@ window.arena = {
     clearArena: async function() {
         if(!confirm("TEM CERTEZA? Isso removerá TODOS os tokens e muros desta sessão.")) return;
         await updateDoc(doc(db, "rpg_sessions", this.sessionDocId), {
-            arena_state: {
-                tokens: {},
-                obstaculos: {},
-                auras: {},
-                ordemIniciativa: [],
-                rodada: 1,
-                turnoIndex: 0,
-                mapaUrl: this.data.mapaUrl || "" 
-            }
+            "arena_state.tokens": {},
+            "arena_state.obstaculos": {},
+            "arena_state.auras": {},
+            "arena_state.ordemIniciativa": [],
+            "arena_state.rodada": 1,
+            "arena_state.turnoIndex": 0,
+            "arena_state.mapaUrl": this.data.mapaUrl || "" 
         });
     },
 
-    // --- ATUALIZAÇÃO DE STATUS (CASCATA) ---
+    // --- ATUALIZAÇÃO DE STATUS EM CASCATA ---
     modStat: async function(tokenId, field, multiplier, inputId) {
         const input = document.getElementById(inputId);
         if (!input) return;
@@ -746,7 +625,7 @@ window.arena = {
         }
     },
 
-    // --- MOVIMENTAÇÃO ---
+    // --- MOVIMENTAÇÃO E TURNOS ---
     handleHexClick: async function(q, r) {
         const sessionRef = doc(db, "rpg_sessions", this.sessionDocId);
 
@@ -918,34 +797,34 @@ window.arena = {
         gridLayer.innerHTML = '';
         mapLayer.innerHTML = '';
 
-        if (window.arena.data && window.arena.data.mapaUrl) {
+        if (this.data.mapaUrl) {
             const width = (GRID_COLS + 0.5) * HEX_WIDTH;
             const height = (GRID_ROWS * 1.5 * HEX_SIZE) + HEX_SIZE;
-            mapLayer.innerHTML = `<image href="${window.arena.data.mapaUrl}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="none" style="opacity: 0.6;" />`;
+            mapLayer.innerHTML = `<image href="${this.data.mapaUrl}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="none" style="opacity: 0.6;" />`;
         }
 
         for (let r = 0; r < GRID_ROWS; r++) {
             for (let q = 0; q < GRID_COLS; q++) {
                 const qAxial = q - Math.floor(r / 2);
-                const pos = window.arena.hexToPixel(qAxial, r);
+                const pos = this.hexToPixel(qAxial, r);
                 
                 const hex = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-                hex.setAttribute("points", window.arena.getHexPoints(pos.x, pos.y));
+                hex.setAttribute("points", this.getHexPoints(pos.x, pos.y));
                 hex.setAttribute("class", "hex");
                 hex.dataset.q = qAxial;
                 hex.dataset.r = r;
                 
-                hex.onclick = () => window.arena.handleHexClick(qAxial, r);
+                hex.onclick = () => this.handleHexClick(qAxial, r);
                 hex.onmouseenter = () => {
-                    if (window.arena.targeting) window.arena.renderAoEPreview(qAxial, r);
+                    if (this.targeting) this.renderAoEPreview(qAxial, r);
                 };
                 
                 gridLayer.appendChild(hex);
             }
         }
-        window.arena.gridRendered = true;
-        window.arena.updateObstacles();
-        window.arena.renderAuras(); 
+        this.gridRendered = true;
+        this.updateObstacles();
+        this.renderAuras(); 
     },
 
     renderAoEPreview: function(q, r) {
@@ -953,7 +832,7 @@ window.arena = {
         if (!previewLayer) return;
         previewLayer.innerHTML = '';
         
-        const skill = window.arena.targeting;
+        const skill = this.targeting;
         if (!skill) return;
         
         const hexEl = document.querySelector(`.hex[data-q="${q}"][data-r="${r}"]`);
@@ -963,13 +842,15 @@ window.arena = {
             for (let tq = 0; tq < GRID_COLS; tq++) {
                 const tqAxial = tq - Math.floor(tr / 2);
                 
-                if (window.arena.hexDistance(q, r, tqAxial, tr) <= skill.radius) {
-                    const pos = window.arena.hexToPixel(tqAxial, tr);
+                if (this.hexDistance(q, r, tqAxial, tr) <= skill.radius) {
+                    const pos = this.hexToPixel(tqAxial, tr);
                     const ghost = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-                    ghost.setAttribute("points", window.arena.getHexPoints(pos.x, pos.y));
+                    ghost.setAttribute("points", this.getHexPoints(pos.x, pos.y));
                     ghost.setAttribute("fill", skill.color);
                     ghost.setAttribute("fill-opacity", "0.4");
                     ghost.setAttribute("stroke", "#ffffff");
+                    ghost.setAttribute("stroke-dasharray", "4");
+                    ghost.setAttribute("stroke-width", "2");
                     ghost.style.pointerEvents = "none";
                     previewLayer.appendChild(ghost);
                 }
@@ -982,21 +863,22 @@ window.arena = {
         if (!aurasLayer) return;
         aurasLayer.innerHTML = '';
 
-        const auras = window.arena.data?.auras || {};
+        const auras = this.data.auras || {};
         
         Object.values(auras).forEach(aura => {
             for (let r = 0; r < GRID_ROWS; r++) {
                 for (let q = 0; q < GRID_COLS; q++) {
                     const qAxial = q - Math.floor(r / 2);
                     
-                    if (window.arena.hexDistance(aura.q, aura.r, qAxial, r) <= aura.radius) {
-                        const pos = window.arena.hexToPixel(qAxial, r);
+                    if (this.hexDistance(aura.q, aura.r, qAxial, r) <= aura.radius) {
+                        const pos = this.hexToPixel(qAxial, r);
                         const hex = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-                        hex.setAttribute("points", window.arena.getHexPoints(pos.x, pos.y));
+                        hex.setAttribute("points", this.getHexPoints(pos.x, pos.y));
                         hex.setAttribute("fill", aura.color);
                         hex.setAttribute("fill-opacity", "0.2"); 
                         hex.setAttribute("stroke", aura.color);
                         hex.setAttribute("stroke-opacity", "0.2");
+                        hex.setAttribute("stroke-width", "2");
                         hex.style.pointerEvents = "none";
                         aurasLayer.appendChild(hex);
                     }
@@ -1033,8 +915,6 @@ window.arena = {
                     const cached = globalState.cache?.all_personagens?.get(t.originId) || globalState.cache?.players?.get(t.originId);
                     if(cached) {
                         const baseMove = parseInt(cached.movimentoPersonagemBase || 5);
-                        // Chama window pq não importamos a calculateWeightStats diretamente se ela estiver fora do escopo, 
-                        // mas para evitar erros vamos garantir q existe. Usualmente 5 é fallback.
                         let penalty = 0;
                         if(window.calculateWeightStats) {
                             penalty = window.calculateWeightStats(cached, cached.levelPersonagemBase || 1).penalty;
@@ -1243,17 +1123,14 @@ window.arena = {
         if(listNPCs) listNPCs.innerHTML = '';
         if(listMonsters) listMonsters.innerHTML = '';
 
-        // Lista de Jogadores
-        if(globalState.cache.players || globalState.cache.personagens) {
-            const playersMap = globalState.cache.players || globalState.cache.personagens;
-            playersMap.forEach((p, id) => {
+        if(globalState.cache.players) {
+            globalState.cache.players.forEach((p, id) => {
                 if ((p.nome || "").toLowerCase().includes(filter)) {
-                    window.arena.createSpawnItem(listPlayers, p.nome || "Sem Nome", id, 'player', p.imageUrls?.imagem1 || p.imagemUrl, p.hpPersonagemBase, p.mpPersonagemBase, p.movimentoPersonagemBase || 5, 'rpg_fichas');
+                    this.createSpawnItem(listPlayers, p.nome || "Sem Nome", id, 'player', p.imageUrls?.imagem1 || p.imagemUrl, p.hpPersonagemBase, p.mpPersonagemBase, p.movimentoPersonagemBase || p.explorix || 5, 'rpg_fichas');
                 }
             });
         }
         
-        // Lista de NPCs e Monstros
         if(globalState.cache.mobs) {
             globalState.cache.mobs.forEach((m, id) => {
                 if ((m.nome || "").toLowerCase().includes(filter)) {
@@ -1263,7 +1140,7 @@ window.arena = {
                     const hp = m.hpPersonagemBase || m.hpMaxPersonagemBase || 10;
                     const mp = m.mpPersonagemBase || m.mpMaxPersonagemBase || 10;
                     const move = m.explorixMovimento || m.movimentoPersonagemBase || 5; 
-                    window.arena.createSpawnItem(targetList, m.nome || "Mob", id, type, m.imageUrls?.imagem1 || m.imagemUrl, hp, mp, move, m.collection);
+                    this.createSpawnItem(targetList, m.nome || "Mob", id, type, m.imageUrls?.imagem1 || m.imagemUrl, hp, mp, move, m.collection);
                 }
             });
         }
@@ -1274,13 +1151,13 @@ window.arena = {
         const div = document.createElement('div');
         div.className = "flex items-center gap-2 bg-slate-900 p-1 rounded hover:bg-slate-800 cursor-pointer border border-transparent hover:border-amber-500/30";
         div.innerHTML = `<img src="${img||IMG_PLACEHOLDER_BASE64}" class="w-6 h-6 rounded bg-black object-cover"><span class="text-[10px] truncate text-slate-300">${escapeHTML(name)}</span>`;
-        div.onclick = () => window.arena.prepareSpawn(id, name, img, hp, mp, move, type, col);
+        div.onclick = () => this.prepareSpawn(id, name, img, hp, mp, move, type, col);
         container.appendChild(div);
     },
 
     prepareSpawn: function(id, name, img, hp, mp, move, type, collection) {
-        window.arena.tool = 'spawn';
-        window.arena.spawnTarget = { id, collection, data: { name, img, hp, hpMax: hp, mp, mpMax: mp, movimento: move, type, visivel: (type === 'player') } };
+        this.tool = 'spawn';
+        this.spawnTarget = { id, collection, data: { name, img, hp, hpMax: hp, mp, mpMax: mp, movimento: move, type, visivel: (type === 'player') } };
         const display = document.getElementById('arena-tool-display');
         if(display) display.textContent = `Spawn: ${name}`; 
         document.body.style.cursor = 'copy';
@@ -1450,42 +1327,55 @@ window.arena = {
         }
     },
 
-    getReachableHexes: function(sq, sr, range) {
-        const visited = new Set([`${sq},${sr}`]); 
-        const fringes = [[{q:sq, r:sr}]];
-        
-        for (let k = 1; k <= range; k++) {
-            fringes.push([]);
-            for (const h of fringes[k-1]) {
-                const dirs = [{q:1, r:0}, {q:1, r:-1}, {q:0, r:-1}, {q:-1, r:0}, {q:-1, r:1}, {q:0, r:1}];
-                
-                dirs.forEach(d => {
-                    const nQ = h.q + d.q;
-                    const nR = h.r + d.r;
-                    const nK = `${nQ},${nR}`;
-                    if (!this.data.obstaculos?.[nK] && !visited.has(nK)) { 
-                        visited.add(nK); 
-                        fringes[k].push({q: nQ, r: nR}); 
-                    }
-                });
-            }
-        }
-        return visited;
+    // --- FUNÇÕES MATEMÁTICAS UTILITÁRIAS ---
+    hexToPixel: function(q, r) { 
+        return { 
+            x: HEX_SIZE * (Math.sqrt(3) * q + Math.sqrt(3)/2 * r) + 60, 
+            y: HEX_SIZE * (3/2 * r) + 60 
+        }; 
+    },
+    getHexPoints: function(x, y) {
+        let p = ""; 
+        for(let i=0; i<6; i++) { 
+            const rad = Math.PI/180*(60*i-30); 
+            p+=`${x+(HEX_SIZE-1)*Math.cos(rad)},${y+(HEX_SIZE-1)*Math.sin(rad)} `; 
+        } 
+        return p;
+    },
+    pixelToHex: function(x, y) {
+        let q = (Math.sqrt(3)/3 * (x - 60) - 1/3 * (y - 60)) / HEX_SIZE;
+        let r = (2/3 * (y - 60)) / HEX_SIZE;
+        return window.arena.hexRound(q, r);
+    },
+    hexRound: function(q, r) {
+        let rq = Math.round(q), rr = Math.round(r), rs = Math.round(-q - r);
+        let q_diff = Math.abs(rq - q), r_diff = Math.abs(rr - r), s_diff = Math.abs(rs - (-q - r));
+        if (q_diff > r_diff && q_diff > s_diff) rq = -rr - rs;
+        else if (r_diff > s_diff) rr = -rq - rs;
+        return { q: rq, r: rr };
+    },
+    getSVGPoint: function(e) {
+        const svg = document.getElementById('arena-svg');
+        if(!svg) return {x:0, y:0};
+        const pt = svg.createSVGPoint();
+        pt.x = e.clientX; pt.y = e.clientY;
+        return pt.matrixTransform(svg.getScreenCTM().inverse());
+    },
+    updateTransform: function() { 
+        const svg = document.getElementById('arena-svg');
+        if(svg) svg.style.transform = `translate(${window.arena.drag.panX}px, ${window.arena.drag.panY}px) scale(${window.arena.scale})`; 
+    },
+    zoom: function(f) { 
+        window.arena.scale *= f; 
+        window.arena.updateTransform(); 
+    },
+    setTool: function(t) { 
+        window.arena.tool = t; 
+        const d = document.getElementById('arena-tool-display'); 
+        if(d) d.textContent = `Ferramenta: ${t.toUpperCase()}`; 
     },
 
-    showFloatingText: function(text, tokenId, color) {
-        const t = this.data.tokens[tokenId];
-        if(!t) return;
-        const pos = this.hexToPixel(t.q, t.r);
-        const div = document.createElement('div');
-        div.className = `absolute pointer-events-none font-bold text-lg animate-float-up z-[500]`;
-        div.style.left = `${pos.x}px`; div.style.top = `${pos.y - 20}px`;
-        div.style.color = color; div.textContent = text;
-        document.getElementById('arena-viewport').appendChild(div);
-        setTimeout(() => div.remove(), 2000);
-    },
-
-    // --- HTML INJECTOR ---
+    // --- HTML INJECTOR DO LAYOUT PRINCIPAL ---
     renderLayout: function() {
         const container = document.getElementById('arena-combate-content');
         if (!container) return;
@@ -1601,53 +1491,5 @@ window.arena = {
                 </div>
             </div>
         `;
-    }
-
-    // --- FUNÇÕES UTILITÁRIAS E MATEMÁTICAS ---
-    hexToPixel: function(q, r) { 
-        return { 
-            x: HEX_SIZE * (Math.sqrt(3) * q + Math.sqrt(3)/2 * r) + 60, 
-            y: HEX_SIZE * (3/2 * r) + 60 
-        }; 
-    },
-    getHexPoints: function(x, y) {
-        let p = ""; 
-        for(let i=0; i<6; i++) { 
-            const rad = Math.PI/180*(60*i-30); 
-            p+=`${x+(HEX_SIZE-1)*Math.cos(rad)},${y+(HEX_SIZE-1)*Math.sin(rad)} `; 
-        } 
-        return p;
-    },
-    pixelToHex: function(x, y) {
-        let q = (Math.sqrt(3)/3 * (x - 60) - 1/3 * (y - 60)) / HEX_SIZE;
-        let r = (2/3 * (y - 60)) / HEX_SIZE;
-        return window.arena.hexRound(q, r);
-    },
-    hexRound: function(q, r) {
-        let rq = Math.round(q), rr = Math.round(r), rs = Math.round(-q - r);
-        let q_diff = Math.abs(rq - q), r_diff = Math.abs(rr - r), s_diff = Math.abs(rs - (-q - r));
-        if (q_diff > r_diff && q_diff > s_diff) rq = -rr - rs;
-        else if (r_diff > s_diff) rr = -rq - rs;
-        return { q: rq, r: rr };
-    },
-    getSVGPoint: function(e) {
-        const svg = document.getElementById('arena-svg');
-        if(!svg) return {x:0, y:0};
-        const pt = svg.createSVGPoint();
-        pt.x = e.clientX; pt.y = e.clientY;
-        return pt.matrixTransform(svg.getScreenCTM().inverse());
-    },
-    updateTransform: function() { 
-        const svg = document.getElementById('arena-svg');
-        if(svg) svg.style.transform = `translate(${window.arena.drag.panX}px, ${window.arena.drag.panY}px) scale(${window.arena.scale})`; 
-    },
-    zoom: function(f) { 
-        window.arena.scale *= f; 
-        window.arena.updateTransform(); 
-    },
-    setTool: function(t) { 
-        window.arena.tool = t; 
-        const d = document.getElementById('arena-tool-display'); 
-        if(d) d.textContent = `Ferramenta: ${t.toUpperCase()}`; 
     }
 };
