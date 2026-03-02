@@ -4,17 +4,20 @@ import { escapeHTML, optimizeCoins, getRankWeight } from '../core/utils.js';
 import { getWallet } from '../core/calculos.js';
 
 // Função utilitária para buscar as imagens das moedas e resolver o erro "getCoinImg is not defined"
-window.getCoinImg = function(coinId) {
-    const item = globalState.cache.itens?.get(coinId) || 
-                 globalState.cache.allItems?.get(coinId) || 
-                 globalState.cache.itemConfig?.get(coinId);
-                 
-    return item?.imagemUrl || item?.imageUrl || PLACEHOLDER_IMAGE_URL;
+window.getCoinImg = function(itemId) {
+    let item = globalState.cache.allItems?.get(itemId) || 
+               globalState.cache.itens?.get(itemId) || 
+               globalState.cache.itemConfig?.get(itemId);
+    
+    // Fallback: garante que mesmo se o item vier, procure a URL ou retorne o placeholder
+    if (item && (item.imagemUrl || item.imageUrl)) {
+        return item.imagemUrl || item.imageUrl;
+    }
+    return PLACEHOLDER_IMAGE_URL;
 };
 
-// Aliás local para uso nas templates string
-function getCoinImg(coinId) {
-    return window.getCoinImg(coinId);
+function getCoinImg(itemId) {
+    return window.getCoinImg(itemId);
 }
 
 // Inicializa o estado de comércio para evitar erros
