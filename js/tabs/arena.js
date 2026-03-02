@@ -256,7 +256,7 @@ window.arena = {
             
             if (fichaData) {
                 const cascade = calculateStatCascade(fichaData.ficha || fichaData, field, change);
-                newTotal = cascade.total;
+                newTotal = cascade.total; // Pegamos o Total exato da cascata para a Arena
                 cascadeUpdates = cascade.updates;
                 charIdToUpdate = charId;
             }
@@ -267,6 +267,7 @@ window.arena = {
         }
 
         try {
+            // Atualiza a arena com o Total real e a Ficha com os fracionados (Escudo/Extra/Base)
             await updateDoc(sessionRef, { [`arena_state.tokens.${tokenId}.${field}`]: newTotal });
             
             if (cascadeUpdates && charIdToUpdate) {
@@ -514,26 +515,25 @@ window.arena = {
         try {
             const sessionRef = doc(db, "rpg_sessions", window.arena.sessionDocId);
             let cascadeUpdates = null;
-            let cascadeTotal = null; // Guarda o valor total (Base + Extra + Escudo)
+            let cascadeTotalMp = null;
             
-            // Consome o MP aplicando a lógica de cascata
+            // Aplica a cascata no MP do Conjurador
             if (myTokenId && charId && charData) {
                 const cascade = calculateStatCascade(charData.ficha || charData, 'mp', -Math.abs(costToDeduct));
                 cascadeUpdates = cascade.updates;
-                cascadeTotal = cascade.total; // <- O Segredo está aqui
+                cascadeTotalMp = cascade.total; // Captura o total de MP que sobrou
             }
 
             const newLogEntry = { text: logMsg, timestamp: Date.now(), type: 'attack' };
             const sessionUpdates = { combat_log: arrayUnion(newLogEntry) };
 
-            // Aplica a dedução de MP no Token da Arena (Visual em Tempo Real)
-            if (myTokenId && cascadeUpdates !== null) {
-                sessionUpdates[`arena_state.tokens.${myTokenId}.mp`] = cascadeTotal;
+            // Salva o Total Exato de MP de volta no Token
+            if (myTokenId && cascadeTotalMp !== null) {
+                sessionUpdates[`arena_state.tokens.${myTokenId}.mp`] = cascadeTotalMp;
             }
 
             await updateDoc(sessionRef, sessionUpdates);
 
-            // Atualiza a Ficha Raiz do Jogador
             if (cascadeUpdates && charId) {
                 try {
                     await updateDoc(doc(db, "rpg_fichas", charId), cascadeUpdates);
@@ -608,11 +608,9 @@ window.arena = {
         let statIcon = statName === "DEF" ? "🛡️" : (statName === "EVA" ? "🏃" : "⚔️");
         const hungerWarn = isDebuffed ? ` <span class="text-[10px] text-red-500" title="Debuff de Fome Ativo!"><i class="fas fa-drumstick-bite"></i></span>` : '';
 
-        // Identifica QUEM foi atingido na área
         const hitTokensIds = [];
         const hitTokensNames = [];
         Object.entries(window.arena.data.tokens).forEach(([tid, tok]) => {
-            // Se a distância entre o alvo clicado e o token for menor ou igual ao Raio, acertou!
             if (window.arena.hexDistance(targetQ, targetR, tok.q, tok.r) <= skill.radius) {
                 hitTokensIds.push(tid);
                 hitTokensNames.push(tok.name);
@@ -638,21 +636,22 @@ window.arena = {
         try {
             const sessionRef = doc(db, "rpg_sessions", window.arena.sessionDocId);
             let cascadeUpdates = null;
+            let cascadeTotalMp = null;
             
-            // Deduz o MP do conjurador
             if (myTokenId && charId && charData) {
                 const cascade = calculateStatCascade(charData.ficha || charData, 'mp', -Math.abs(costToDeduct));
                 cascadeUpdates = cascade.updates;
+                cascadeTotalMp = cascade.total;
             }
 
             const newLogEntry = { text: logMsg, timestamp: Date.now(), type: 'attack' };
             const sessionUpdates = {
                 combat_log: arrayUnion(newLogEntry),
-                [`arena_state.auras.${auraId}`]: newAura // Registra a Aura no Firebase
+                [`arena_state.auras.${auraId}`]: newAura
             };
 
-            if (myTokenId && cascadeUpdates) {
-                sessionUpdates[`arena_state.tokens.${myTokenId}.mp`] = cascadeUpdates.mpPersonagemBase || 0;
+            if (myTokenId && cascadeTotalMp !== null) {
+                sessionUpdates[`arena_state.tokens.${myTokenId}.mp`] = cascadeTotalMp;
             }
 
             await updateDoc(sessionRef, sessionUpdates);
@@ -665,15 +664,8 @@ window.arena = {
                 }
             }
 
-            // Exibe a dedução de MP no seu personagem
-            if (myTokenId) {
-                window.arena.showFloatingText(`-${costToDeduct} MP`, myTokenId, '#60a5fa');
-            }
-            
-            // Exibe os números de DANO apenas nos personagens que estavam na área
-            if (hitTokensIds.length > 0) {
-                hitTokensIds.forEach(id => window.arena.showFloatingText(`HIT! ${totalDano}`, id, '#ef4444'));
-            }
+            window.arena.showFloatingText(`-${costToDeduct} MP`, myTokenId, '#60a5fa');
+            hitTokensIds.forEach(id => window.arena.showFloatingText(`HIT! ${totalDano}`, id, '#ef4444'));
 
             window.arena.turnActions.action = true;
             window.arena.updateActionHUD();
@@ -975,6 +967,7 @@ window.arena = {
         let reachableSet = new Set();
         const activeAuras = window.arena.data.auras || {}; 
 
+        // Calcula a área de movimento se for o turno do personagem
         if (window.arena.selectedTokenId && window.arena.data.tokens[window.arena.selectedTokenId]) {
             const t = window.arena.data.tokens[window.arena.selectedTokenId];
             if (!window.arena.isMaster || window.arena.targeting) { 
@@ -999,6 +992,7 @@ window.arena = {
 
         const isTargeting = !!window.arena.targeting;
 
+        // Desenha os hexágonos verdes do chão
         const hexes = document.querySelectorAll('#arena-layer-grid .hex');
         hexes.forEach(hex => {
             const key = `${hex.dataset.q},${hex.dataset.r}`;
@@ -1011,19 +1005,23 @@ window.arena = {
             if(obs) hex.classList.add(`wall-${obs}`);
         });
 
+        // Monta os Tokens
         Object.entries(window.arena.data.tokens || {}).forEach(([id, t]) => {
             if (!window.arena.isMaster && !t.visivel) return;
 
             let maxHP = Number(t.hpMax) || 10;
             let maxMP = Number(t.mpMax) || 10;
-            let currentHP = Number(t.hp);
-            let currentMP = Number(t.mp);
+            
+            // A MÁGICA DO TEMPO REAL ACONTECE AQUI: Lemos direto da Sessão (que é Live)
+            let currentHP = t.hp !== undefined ? Number(t.hp) : maxHP;
+            let currentMP = t.mp !== undefined ? Number(t.mp) : maxMP;
             let imgUrl = t.img;
 
+            // Busca os Máximos do Cache para garantir que a barra esteja na proporção correta
             if (t.originId && globalState.cache) {
                 let cached = null;
-                if (t.originCollection === 'rpg_fichas' && globalState.cache.players) {
-                    cached = globalState.cache.players.get(t.originId) || globalState.cache.all_personagens.get(t.originId);
+                if (t.originCollection === 'rpg_fichas' && (globalState.cache.players || globalState.cache.all_personagens)) {
+                    cached = globalState.cache.players?.get(t.originId) || globalState.cache.all_personagens?.get(t.originId);
                     
                     if (cached) {
                         const attrs = cached.atributosBasePersonagem || {};
@@ -1034,16 +1032,21 @@ window.arena = {
                         const mpShieldMax = Number(attrs.defesaMagicaNativaTotal) || 0;
                         const mpExtraMax = Number(attrs.pontosMPExtraTotal) || 0;
                         maxMP = (Number(cached.mpMaxPersonagemBase) || 1) + mpShieldMax + mpExtraMax;
-
-                        const hpShieldAtual = cached.hpShieldAtual !== undefined ? Number(cached.hpShieldAtual) : hpShieldMax;
-                        const hpExtraAtual = cached.hpExtraAtual !== undefined ? Number(cached.hpExtraAtual) : hpExtraMax;
-                        const hpBaseAtual = cached.hpPersonagemBase !== undefined ? Number(cached.hpPersonagemBase) : (Number(cached.hpMaxPersonagemBase) || 1);
-                        currentHP = Math.max(0, hpBaseAtual + hpShieldAtual + hpExtraAtual);
-
-                        const mpShieldAtual = cached.mpShieldAtual !== undefined ? Number(cached.mpShieldAtual) : mpShieldMax;
-                        const mpExtraAtual = cached.mpExtraAtual !== undefined ? Number(cached.mpExtraAtual) : mpExtraMax;
-                        const mpBaseAtual = cached.mpPersonagemBase !== undefined ? Number(cached.mpPersonagemBase) : (Number(cached.mpMaxPersonagemBase) || 1);
-                        currentMP = Math.max(0, mpBaseAtual + mpShieldAtual + mpExtraAtual);
+                        
+                        // Fallback: Se a sessão corrompeu ou o token é novo, recalcula o atual pelo cache
+                        if (t.hp === undefined) {
+                            const hpShieldAtual = cached.hpShieldAtual !== undefined ? Number(cached.hpShieldAtual) : hpShieldMax;
+                            const hpExtraAtual = cached.hpExtraAtual !== undefined ? Number(cached.hpExtraAtual) : hpExtraMax;
+                            const hpBaseAtual = cached.hpPersonagemBase !== undefined ? Number(cached.hpPersonagemBase) : (Number(cached.hpMaxPersonagemBase) || 1);
+                            currentHP = Math.max(0, hpBaseAtual + hpShieldAtual + hpExtraAtual);
+                        }
+                        
+                        if (t.mp === undefined) {
+                            const mpShieldAtual = cached.mpShieldAtual !== undefined ? Number(cached.mpShieldAtual) : mpShieldMax;
+                            const mpExtraAtual = cached.mpExtraAtual !== undefined ? Number(cached.mpExtraAtual) : mpExtraMax;
+                            const mpBaseAtual = cached.mpPersonagemBase !== undefined ? Number(cached.mpPersonagemBase) : (Number(cached.mpMaxPersonagemBase) || 1);
+                            currentMP = Math.max(0, mpBaseAtual + mpShieldAtual + mpExtraAtual);
+                        }
                     }
                 } else if (globalState.cache.mobs) {
                     cached = globalState.cache.mobs.get(t.originId);
@@ -1063,6 +1066,7 @@ window.arena = {
             if (isNaN(currentHP)) currentHP = maxHP;
             if (isNaN(currentMP)) currentMP = maxMP;
 
+            // Atualiza os menus de contexto abertos
             const dispHp = document.getElementById(`ctx-disp-hp-${id}`);
             const dispMp = document.getElementById(`ctx-disp-mp-${id}`);
             if (dispHp) dispHp.textContent = currentHP;
@@ -1118,17 +1122,10 @@ window.arena = {
 
             group.onclick = (e) => { 
                 e.stopPropagation(); 
-                
                 if (window.arena.targeting) {
-                    // Se a magia tiver Raio > 0 (Em Área), atinge o chão onde o token está
-                    if (window.arena.targeting.radius > 0) {
-                        window.arena.executeAreaSkill(t.q, t.r);
-                    } else {
-                        // Se a magia for Alvo Único, abre o Modal de Confirmação!
-                        window.arena.requestAttack(id); 
-                    }
+                    if (window.arena.targeting.radius > 0) window.arena.executeAreaSkill(t.q, t.r);
+                    else window.arena.requestAttack(id);
                 } else {
-                    // Seleciona o token para visualizar movimento
                     window.arena.selectedTokenId = (window.arena.selectedTokenId === id) ? null : id; 
                     window.arena.renderTokens(); 
                 }
