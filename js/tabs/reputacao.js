@@ -1,4 +1,4 @@
-import { db, doc, updateDoc, runTransaction, deleteField, writeBatch, getDoc } from '../core/firebase.js';
+import { db, doc, onSnapshot, updateDoc, runTransaction, increment, deleteField, writeBatch, getDoc } from '../core/firebase.js';
 import { globalState, PLACEHOLDER_IMAGE_URL, COINS } from '../core/state.js';
 
 const ID_PREDIO_ARMAZENAMENTO = '0fwxHnGjLBuNw2kTxGSs';
