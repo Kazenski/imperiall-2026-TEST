@@ -3,11 +3,16 @@ import { globalState, COINS, PLACEHOLDER_IMAGE_URL } from '../core/state.js';
 import { escapeHTML, optimizeCoins, getRankWeight } from '../core/utils.js';
 import { getWallet } from '../core/calculos.js';
 
+// Função utilitária para buscar as imagens das moedas e resolver o erro "getCoinImg is not defined"
 window.getCoinImg = function(coinId) {
-    const item = globalState.cache.itens.get(coinId) || globalState.cache.allItems?.get(coinId);
-    return item ? (item.imagemUrl || PLACEHOLDER_IMAGE_URL) : PLACEHOLDER_IMAGE_URL;
+    const item = globalState.cache.itens?.get(coinId) || 
+                 globalState.cache.allItems?.get(coinId) || 
+                 globalState.cache.itemConfig?.get(coinId);
+                 
+    return item?.imagemUrl || item?.imageUrl || PLACEHOLDER_IMAGE_URL;
 };
 
+// Aliás local para uso nas templates string
 function getCoinImg(coinId) {
     return window.getCoinImg(coinId);
 }
@@ -286,7 +291,9 @@ export function renderComercioTab(isLoading = false) {
                     const totalCost = (item.precoCompra || 0) * myQty;
                     const canBuy = wallet.total >= totalCost && item.estoqueAtual >= myQty;
                     
-                    const itemImgSafe = item.imagemUrl || PLACEHOLDER_IMAGE_URL;
+                    // Busca a imagem no cache caso não venha salva na loja
+                    const cacheInfo = globalState.cache.itens?.get(item.id) || globalState.cache.allItems?.get(item.id) || globalState.cache.itemConfig?.get(item.id);
+                    const itemImgSafe = item.imagemUrl || cacheInfo?.imagemUrl || cacheInfo?.imageUrl || PLACEHOLDER_IMAGE_URL;
                     const itemNameSafe = escapeHTML(item.nome);
 
                     html += `
@@ -346,7 +353,8 @@ export function renderComercioTab(isLoading = false) {
                 if (coinIds.includes(itemId) || mochila[itemId] <= 0) return;
 
                 const config = globalState.cache.itemConfig ? globalState.cache.itemConfig.get(itemId) : null;
-                const baseItem = globalState.cache.itens ? globalState.cache.itens.get(itemId) : null;
+                // Amplia a busca para allItems
+                const baseItem = globalState.cache.itens?.get(itemId) || globalState.cache.allItems?.get(itemId);
                 if (!config && !baseItem) return;
 
                 const itemTierStr = (config ? config.tierId : null) || (baseItem ? baseItem.tier : null) || "F";
@@ -355,10 +363,13 @@ export function renderComercioTab(isLoading = false) {
                 if (itemTierStr.toUpperCase() === shopRankLetter.toUpperCase()) {
                     const precoItem = Number(config?.basePrice || baseItem?.precoBase || 0);
                     if (precoItem > 0) {
+                        // Resgata a imagem com fallback
+                        const safeImg = config?.imagemUrl || baseItem?.imagemUrl || baseItem?.imageUrl || PLACEHOLDER_IMAGE_URL;
+
                         itemsToShow.push({
                             id: itemId,
                             nome: (config ? config.nome : null) || (baseItem ? baseItem.nome : "Item sem nome"),
-                            imagemUrl: (config ? config.imagemUrl : null) || (baseItem ? baseItem.imagemUrl : PLACEHOLDER_IMAGE_URL),
+                            imagemUrl: safeImg,
                             basePrice: precoItem,
                             tierId: itemTierStr,
                             maxQty: mochila[itemId]
@@ -609,7 +620,8 @@ window.executeSellBatch = async function(totalValueCP) {
                 if ((serverMochila[itemId] || 0) < qty) throw "Você não possui essa quantidade no servidor.";
                 
                 const config = globalState.cache.itemConfig ? globalState.cache.itemConfig.get(itemId) : null;
-                const baseItem = globalState.cache.itens ? globalState.cache.itens.get(itemId) : null;
+                // Amplia a busca para allItems aqui também
+                const baseItem = globalState.cache.itens?.get(itemId) || globalState.cache.allItems?.get(itemId);
                 const basePrice = Number(config?.basePrice || baseItem?.precoBase || 0);
                 const sellPrice = Math.floor(basePrice * 0.50);
                 
@@ -622,9 +634,12 @@ window.executeSellBatch = async function(totalValueCP) {
                     serverEstoque[itemId].estoqueAtual += qty;
                 } else {
                     const itemTierStr = (config ? config.tierId : null) || (baseItem ? baseItem.tier : null) || "F";
+                    // Fallback da imagem na hora de salvar o estoque novo
+                    const safeImg = config?.imagemUrl || baseItem?.imagemUrl || baseItem?.imageUrl || PLACEHOLDER_IMAGE_URL;
+
                     serverEstoque[itemId] = {
                         nome: (config ? config.nome : null) || (baseItem ? baseItem.nome : "Item sem nome"),
-                        imagemUrl: (config ? config.imagemUrl : null) || (baseItem ? baseItem.imagemUrl : PLACEHOLDER_IMAGE_URL),
+                        imagemUrl: safeImg,
                         estoqueAtual: qty,
                         estoqueMaximo: qty,
                         precoCompra: basePrice,
