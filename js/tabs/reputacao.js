@@ -1,9 +1,9 @@
-import { db, doc, getDoc, setDoc, updateDoc, runTransaction, deleteField } from '../core/firebase.js';
+import { db, doc, getDoc, setDoc, updateDoc, runTransaction } from '../core/firebase.js';
 import { globalState, PLACEHOLDER_IMAGE_URL } from '../core/state.js';
 import { calculateReputationUsage, calculateReputationDetails } from '../core/calculos.js';
 import { escapeHTML } from '../core/utils.js';
 
-const COLET_COOLDOWN_MS = 10 * 60 * 1000; // 10 minutos para demonstração (pode ajustar)
+const COLET_COOLDOWN_MS = 10 * 60 * 1000; // 10 minutos (padrão do sistema)
 
 // --- GESTÃO DE ESTADO DA INTERFACE ---
 window.switchRepTab = function(tabName) {
@@ -26,7 +26,7 @@ window.switchRepInnerTab = function(tabName) {
     window.renderReputacaoTab();
 };
 
-// Leitores de Inputs
+// Funções de leitura dos inputs de sacar/depositar
 window.transferWithInput = function(from, to, itemId, inputId) {
     const inputEl = document.getElementById(inputId);
     if (!inputEl) return;
@@ -44,123 +44,122 @@ window.withdrawLocalWithInput = function(templateId, itemId, inputId) {
 };
 
 
-// --- RENDERIZADOR PRINCIPAL ---
-export async function renderReputacaoTab() {
+// --- RENDERIZADOR PRINCIPAL (EXPORTADO CORRETAMENTE PARA O MAIN.JS) ---
+export function renderReputacaoTab() {
+    // Vincula a função ao window imediatamente para evitar erros de onclick
+    window.renderReputacaoTab = renderReputacaoTab;
+
     const container = document.getElementById('recursos-reputacao-content');
     if (!container) return;
 
-    window.renderReputacaoTab = renderReputacaoTab;
+    const charId = globalState.selectedCharacterId;
+    const charData = globalState.selectedCharacterData;
+    
+    if (!charId || !charData || !charData.ficha) {
+        container.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500 italic">Selecione um personagem primeiro na barra lateral.</div>';
+        return;
+    }
 
-    try {
-        const charId = globalState.selectedCharacterId;
-        const charData = globalState.selectedCharacterData;
-        
-        if (!charId || !charData || !charData.ficha) {
-            container.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500 italic">Selecione um personagem primeiro na barra lateral.</div>';
-            return;
-        }
+    if (!globalState.repUI) globalState.repUI = { tab: 'buildings', selectedId: null, innerTab: 'details' };
+    const activeTab = globalState.repUI.tab;
+    
+    const ficha = charData.ficha;
+    const repUsage = calculateReputationUsage(ficha);
+    const repDetails = calculateReputationDetails(ficha);
 
-        if (!globalState.repUI) globalState.repUI = { tab: 'buildings', selectedId: null, innerTab: 'details' };
-        const activeTab = globalState.repUI.tab;
-        
-        const ficha = charData.ficha;
-        const repUsage = calculateReputationUsage(ficha);
-        const repDetails = calculateReputationDetails(ficha);
+    // Lida com o carregamento assíncrono do Armazém sem quebrar a exportação síncrona
+    let storageId = String(charId); 
+    if (ficha.recursos && typeof ficha.recursos.armazemGeral === 'string' && ficha.recursos.armazemGeral.trim() !== '') {
+        storageId = ficha.recursos.armazemGeral.trim();
+    }
 
-        // EXTRAÇÃO SEGURA DO ID DO ARMAZÉM
-        let storageId = String(charId); 
-        if (ficha.recursos && typeof ficha.recursos.armazemGeral === 'string' && ficha.recursos.armazemGeral.trim() !== '') {
-            storageId = ficha.recursos.armazemGeral.trim();
-        }
+    // Primeiro desenha a estrutura básica
+    let leftContentHtml = '';
+    if (activeTab === 'storage') {
+        leftContentHtml = `<div id="storage-mochila-container" class="flex-1 overflow-y-auto custom-scroll bg-slate-950/50 border border-slate-700 rounded-xl p-4 shadow-inner">Carregando Mochila...</div>`;
+    } else {
+        leftContentHtml = `<div id="rep-grid-container" class="flex-1 overflow-y-auto custom-scroll bg-slate-950/50 border border-slate-700 rounded-xl p-4 shadow-inner grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 content-start"></div>`;
+    }
 
+    container.innerHTML = `
+        <div id="rep-layout-wrapper" class="flex w-full h-full gap-6 animate-fade-in pb-4">
+            
+            <div class="flex-1 flex flex-col min-w-0 h-full">
+                
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4 shrink-0">
+                    <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-700 flex justify-between items-center shadow-lg relative overflow-hidden">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-full bg-slate-950 border-2 border-amber-500 flex items-center justify-center text-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.3)]">
+                                <i class="fas fa-crown text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-[10px] font-black text-amber-500 uppercase tracking-widest leading-none">Influência Total</h3>
+                                <div class="flex gap-3 mt-1.5">
+                                    <span class="text-[9px] text-slate-400 font-mono" title="Nível + Profissões"><i class="fas fa-arrow-up text-emerald-500"></i> ${repDetails.level + repDetails.profissoes}</span>
+                                    <span class="text-[9px] text-slate-400 font-mono" title="Enciclopédia"><i class="fas fa-book text-sky-500"></i> ${repUsage.colecao}</span>
+                                    ${repDetails.gmBonus ? `<span class="text-[9px] text-slate-400 font-mono" title="Bônus GM"><i class="fas fa-gift text-purple-500"></i> ${repDetails.gmBonus}</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-right border-l border-slate-800 pl-4">
+                            <div class="text-2xl font-cinzel text-amber-400 leading-none">${repUsage.total}</div>
+                            <div class="text-[10px] ${repUsage.available >= 0 ? 'text-emerald-400' : 'text-red-400'} font-bold mt-1">Livre: ${repUsage.available}</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700 grid grid-cols-3 gap-2 text-center shadow-inner">
+                        <div class="flex flex-col justify-center border-r border-slate-700">
+                            <span class="text-[8px] text-slate-500 uppercase font-black">Propriedades</span>
+                            <strong class="text-lg text-white font-cinzel">${(ficha.recursos?.estabelecimentos || []).length}</strong>
+                        </div>
+                        <div class="flex flex-col justify-center border-r border-slate-700">
+                            <span class="text-[8px] text-slate-500 uppercase font-black">Aliados</span>
+                            <strong class="text-lg text-white font-cinzel">${(ficha.recursos?.aliados || []).length}</strong>
+                        </div>
+                        <div class="flex flex-col justify-center" id="dash-storage-count">
+                            <span class="text-[8px] text-slate-500 uppercase font-black" title="Armazém Infinito">Itens Cofre</span>
+                            <strong class="text-lg text-sky-400 font-cinzel">...</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 mb-4 shrink-0 bg-slate-900/50 p-1 rounded-xl border border-slate-800">
+                    <button onclick="window.switchRepTab('buildings')" class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black transition-all ${activeTab === 'buildings' ? 'bg-amber-600 text-black shadow-lg' : 'text-slate-500 hover:bg-slate-800'}">
+                        <i class="fas fa-store mr-1"></i> Estabelecimentos
+                    </button>
+                    <button onclick="window.switchRepTab('allies')" class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black transition-all ${activeTab === 'allies' ? 'bg-sky-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'}">
+                        <i class="fas fa-users mr-1"></i> Aliados
+                    </button>
+                    <button onclick="window.switchRepTab('storage')" class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black transition-all ${activeTab === 'storage' ? 'bg-sky-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'}">
+                        <i class="fas fa-boxes mr-1"></i> Armazenamento
+                    </button>
+                </div>
+
+                ${leftContentHtml}
+            </div>
+
+            <div class="w-80 md:w-96 shrink-0 flex flex-col h-full relative">
+                <div class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col h-full relative overflow-hidden" id="rep-inspect-panel">
+                    <div class="absolute inset-0 flex items-center justify-center text-slate-500"><i class="fas fa-spinner fa-spin text-3xl"></i></div>
+                </div>
+            </div>
+
+        </div>
+    `;
+
+    // Carrega os dados assíncronos do Armazém sem bloquear a renderização síncrona
+    getDoc(doc(db, "rpg_armazenamentos", storageId)).then(storageSnap => {
         let armazemGeral = {};
-        if (storageId && storageId !== "undefined" && storageId !== "null") {
-            try {
-                const storageRef = doc(db, "rpg_armazenamentos", storageId);
-                const storageSnap = await getDoc(storageRef);
-                if (storageSnap.exists()) {
-                    const snapData = storageSnap.data();
-                    armazemGeral = snapData.itens !== undefined ? snapData.itens : snapData;
-                }
-            } catch (e) {
-                console.error("Erro ao carregar coleção rpg_armazenamentos:", e);
-            }
+        if (storageSnap.exists()) {
+            const snapData = storageSnap.data();
+            armazemGeral = snapData.itens !== undefined ? snapData.itens : snapData;
         }
 
         let totalGuardado = 0;
         Object.values(armazemGeral).forEach(v => { if (typeof v === 'number') totalGuardado += v; });
-
-        // Define a área da esquerda baseada na aba ativa
-        let leftContentHtml = '';
-        if (activeTab === 'storage') {
-            leftContentHtml = `<div id="storage-mochila-container" class="flex-1 overflow-y-auto custom-scroll bg-slate-950/50 border border-slate-700 rounded-xl p-4 shadow-inner"></div>`;
-        } else {
-            leftContentHtml = `<div id="rep-grid-container" class="flex-1 overflow-y-auto custom-scroll bg-slate-950/50 border border-slate-700 rounded-xl p-4 shadow-inner grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 content-start"></div>`;
-        }
-
-        container.innerHTML = `
-            <div id="rep-layout-wrapper" class="flex w-full h-full gap-6 animate-fade-in pb-4">
-                
-                <div class="flex-1 flex flex-col min-w-0 h-full">
-                    
-                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4 shrink-0">
-                        <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-700 flex justify-between items-center shadow-lg relative overflow-hidden">
-                            <div class="flex items-center gap-4">
-                                <div class="w-12 h-12 rounded-full bg-slate-950 border-2 border-amber-500 flex items-center justify-center text-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.3)]">
-                                    <i class="fas fa-crown text-xl"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-[10px] font-black text-amber-500 uppercase tracking-widest leading-none">Influência Total</h3>
-                                    <div class="flex gap-3 mt-1.5">
-                                        <span class="text-[9px] text-slate-400 font-mono" title="Nível + Profissões"><i class="fas fa-arrow-up text-emerald-500"></i> ${repDetails.level + repDetails.profissoes}</span>
-                                        <span class="text-[9px] text-slate-400 font-mono" title="Enciclopédia"><i class="fas fa-book text-sky-500"></i> ${repUsage.colecao}</span>
-                                        ${repDetails.gmBonus ? `<span class="text-[9px] text-slate-400 font-mono" title="Bônus GM"><i class="fas fa-gift text-purple-500"></i> ${repDetails.gmBonus}</span>` : ''}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="text-right border-l border-slate-800 pl-4">
-                                <div class="text-2xl font-cinzel text-amber-400 leading-none">${repUsage.total}</div>
-                                <div class="text-[10px] ${repUsage.available >= 0 ? 'text-emerald-400' : 'text-red-400'} font-bold mt-1">Livre: ${repUsage.available}</div>
-                            </div>
-                        </div>
-
-                        <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700 grid grid-cols-3 gap-2 text-center shadow-inner">
-                            <div class="flex flex-col justify-center border-r border-slate-700">
-                                <span class="text-[8px] text-slate-500 uppercase font-black">Propriedades</span>
-                                <strong class="text-lg text-white font-cinzel">${(ficha.recursos?.estabelecimentos || []).length}</strong>
-                            </div>
-                            <div class="flex flex-col justify-center border-r border-slate-700">
-                                <span class="text-[8px] text-slate-500 uppercase font-black">Aliados</span>
-                                <strong class="text-lg text-white font-cinzel">${(ficha.recursos?.aliados || []).length}</strong>
-                            </div>
-                            <div class="flex flex-col justify-center">
-                                <span class="text-[8px] text-slate-500 uppercase font-black" title="Armazém Infinito">Itens Cofre</span>
-                                <strong class="text-lg text-sky-400 font-cinzel">${totalGuardado} <i class="fas fa-infinity text-[10px] ml-1 opacity-50"></i></strong>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex gap-2 mb-4 shrink-0 bg-slate-900/50 p-1 rounded-xl border border-slate-800">
-                        <button onclick="window.switchRepTab('buildings')" class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black transition-all ${activeTab === 'buildings' ? 'bg-amber-600 text-black shadow-lg' : 'text-slate-500 hover:bg-slate-800'}">
-                            <i class="fas fa-store mr-1"></i> Estabelecimentos
-                        </button>
-                        <button onclick="window.switchRepTab('allies')" class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black transition-all ${activeTab === 'allies' ? 'bg-sky-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'}">
-                            <i class="fas fa-users mr-1"></i> Aliados
-                        </button>
-                        <button onclick="window.switchRepTab('storage')" class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black transition-all ${activeTab === 'storage' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'}">
-                            <i class="fas fa-boxes mr-1"></i> Armazenamento
-                        </button>
-                    </div>
-
-                    ${leftContentHtml}
-                </div>
-
-                <div class="w-80 md:w-96 shrink-0 flex flex-col h-full relative">
-                    <div class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col h-full relative overflow-hidden" id="rep-inspect-panel"></div>
-                </div>
-
-            </div>
-        `;
+        
+        const countEl = document.getElementById('dash-storage-count');
+        if (countEl) countEl.innerHTML = `<span class="text-[8px] text-slate-500 uppercase font-black" title="Armazém Infinito">Itens Cofre</span><strong class="text-lg text-sky-400 font-cinzel">${totalGuardado} <i class="fas fa-infinity text-[10px] ml-1 opacity-50"></i></strong>`;
 
         if (activeTab === 'storage') {
             renderStorageMochila(ficha);
@@ -169,16 +168,20 @@ export async function renderReputacaoTab() {
             renderRepGrid(ficha);
             renderRepRightPanel(ficha, repUsage);
         }
-
-    } catch (error) {
-        console.error("Erro Fatal na Aba Reputação:", error);
-    }
+    }).catch(e => {
+        console.error("Erro ao carregar coleção rpg_armazenamentos:", e);
+        if (activeTab !== 'storage') {
+            renderRepGrid(ficha);
+            renderRepRightPanel(ficha, repUsage);
+        }
+    });
 }
 
 // 3. RENDERIZA GRID DE CATEGORIAS (Estabelecimentos / Aliados)
 function renderRepGrid(ficha) {
     const grid = document.getElementById('rep-grid-container');
     if (!grid) return;
+    grid.innerHTML = '';
     
     const activeTab = globalState.repUI.tab;
     const selectedId = globalState.repUI.selectedId;
@@ -211,7 +214,7 @@ function renderRepGrid(ficha) {
     });
 }
 
-// 4. PAINEL DE INSPEÇÃO COM VALIDAÇÃO RIGOROSA
+// 4. PAINEL DE INSPEÇÃO (Estabelecimentos e Aliados)
 function renderRepRightPanel(ficha, repUsage) {
     const panel = document.getElementById('rep-inspect-panel');
     if (!panel) return;
@@ -340,7 +343,7 @@ function renderRepRightPanel(ficha, repUsage) {
 
     panel.innerHTML = `
         <div class="flex flex-col h-full animate-fade-in">
-            <div class="absolute top-4 right-4 text-slate-500 hover:text-white cursor-help z-10" title="Estabelecimentos geram recursos por hora caso tenha as manutenções pagas.">
+            <div class="absolute top-4 right-4 text-slate-500 hover:text-white cursor-help z-10" title="Estabelecimentos geram recursos por hora caso tenha as manutenções pagas na mochila.">
                 <i class="fas fa-question-circle text-xl"></i>
             </div>
 
@@ -512,6 +515,7 @@ window.buyRepItem = async function(templateId, type, costRep) {
             const mochila = d.mochila || {};
             const reqs = tpl.custoMateriais || tpl.requisitos || [];
             
+            // Valida materiais da mochila
             for (let req of reqs) {
                 if ((mochila[req.itemId] || 0) < req.quantidade) {
                     const info = globalState.cache.itens.get(req.itemId);
@@ -519,6 +523,7 @@ window.buyRepItem = async function(templateId, type, costRep) {
                 }
             }
 
+            // Consome materiais
             reqs.forEach(req => {
                 mochila[req.itemId] -= req.quantidade;
                 if (mochila[req.itemId] <= 0) delete mochila[req.itemId];
@@ -534,6 +539,7 @@ window.buyRepItem = async function(templateId, type, costRep) {
                 list.push({ templateId: templateId, active: true });
                 recursos.aliados = list;
             } else if (type === 'storage') {
+                // Expansões de carga viram itens de posse
                 mochila[templateId] = (mochila[templateId] || 0) + 1;
             }
 
@@ -559,15 +565,18 @@ window.collectBuilding = async function(templateId) {
             const mochila = d.mochila || {};
             const consumos = tpl.consumo || [];
             
+            // Valida Manutenção na mochila
             for (let c of consumos) {
                 if ((mochila[c.itemId] || 0) < (c.quantidade || c.quantidadeBase)) throw "Falta de recursos de manutenção na mochila para gerar a produção por hora.";
             }
 
+            // Consome Manutenção
             consumos.forEach(c => {
                 mochila[c.itemId] -= (c.quantidade || c.quantidadeBase);
                 if (mochila[c.itemId] <= 0) delete mochila[c.itemId];
             });
 
+            // Gera Loots no Armazém Local
             const armazem = b.armazem || {};
             (tpl.producao || []).forEach(p => {
                 armazem[p.itemId] = (armazem[p.itemId] || 0) + (p.quantidade || p.quantidadeBase);
@@ -629,7 +638,7 @@ window.withdrawLocalBuildingItem = async function(templateId, itemId, amountRaw)
     } catch (e) { alert("Erro ao sacar loot local."); }
 };
 
-// Sincronização infinita com rpg_armazenamentos
+// Sincronização com rpg_armazenamentos
 window.transferGlobalStorage = async function(from, to, itemId, amountRaw) {
     const charId = globalState.selectedCharacterId;
     if(!charId) return alert("Personagem não selecionado.");
@@ -661,8 +670,6 @@ window.transferGlobalStorage = async function(from, to, itemId, amountRaw) {
             if (available <= 0) return;
             
             const amount = amountRaw === 'all' ? available : Math.min(amountRaw, available);
-
-            // Sem validação de limite de capacidade pois agora é infinito.
 
             sourceObj[itemId] -= amount;
             if (sourceObj[itemId] <= 0) delete sourceObj[itemId];
