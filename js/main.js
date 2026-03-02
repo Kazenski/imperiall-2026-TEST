@@ -21,7 +21,7 @@ import { renderReputacaoTab } from './tabs/reputacao.js';
 import { renderComercioTab } from './tabs/comercio.js';
 import { renderMapaTab } from './tabs/mapa.js';
 import './tabs/arena.js';
-import { renderAtualizacoesTab } from './tabs/atualizacoes.js';
+import { renderAtualizacoesTab } from './atualizacoes/atualizacoes.js';
 
 const dom = {};
 document.querySelectorAll('[id]').forEach(el => dom[el.id.replace(/-/g, '_')] = el);
