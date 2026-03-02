@@ -239,4 +239,4 @@ function renderizarLocais(revealedIds) {
 function limparInstanciaMapa() {
     if (sessionUnsubscribe) { sessionUnsubscribe(); sessionUnsubscribe = null; }
     if (mapInstance) { mapInstance.remove(); mapInstance = null; }
-} 
+}  
