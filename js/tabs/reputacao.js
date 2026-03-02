@@ -47,9 +47,11 @@ export async function renderReputacaoTab() {
     window.renderReputacaoTab = renderReputacaoTab;
 
     try {
+        const charId = globalState.selectedCharacterId;
         const charData = globalState.selectedCharacterData;
-        if (!charData || !charData.ficha) {
-            container.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500 italic">Selecione um personagem primeiro.</div>';
+        
+        if (!charId || !charData || !charData.ficha) {
+            container.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500 italic">Selecione um personagem primeiro na barra lateral.</div>';
             return;
         }
 
@@ -61,22 +63,29 @@ export async function renderReputacaoTab() {
         const repDetails = calculateReputationDetails(ficha);
         const maxStorage = calculateStorageCapacity(ficha);
 
-        // CORREÇÃO: Usando globalState.selectedCharacterId ao invés de charData.id
-        const storageId = (ficha.recursos && typeof ficha.recursos.armazemGeral === 'string') ? ficha.recursos.armazemGeral : globalState.selectedCharacterId;
-        
+        // EXTRAÇÃO SEGURA DO ID DO ARMAZÉM (Evita o erro "indexOf" de undefined)
+        let storageId = String(charId); 
+        if (ficha.recursos && typeof ficha.recursos.armazemGeral === 'string' && ficha.recursos.armazemGeral.trim() !== '') {
+            storageId = ficha.recursos.armazemGeral.trim();
+        }
+
         let armazemGeral = {};
-        try {
-            if (storageId) {
-                const storageSnap = await getDoc(doc(db, "rpg_armazenamentos", storageId));
+        
+        // BUSCA O ARMAZÉM GERAL NA COLEÇÃO rpg_armazenamentos APENAS SE O ID FOR VÁLIDO
+        if (storageId && storageId !== "undefined" && storageId !== "null") {
+            try {
+                const storageRef = doc(db, "rpg_armazenamentos", storageId);
+                const storageSnap = await getDoc(storageRef);
                 if (storageSnap.exists()) {
                     const snapData = storageSnap.data();
                     armazemGeral = snapData.itens !== undefined ? snapData.itens : snapData;
                 }
+            } catch (e) {
+                console.error("Erro ao carregar coleção rpg_armazenamentos:", e);
             }
-        } catch (e) {
-            console.error("Erro ao carregar coleção rpg_armazenamentos:", e);
         }
 
+        // Define a área da esquerda baseada na aba ativa
         let leftContentHtml = '';
         if (activeTab === 'storage') {
             leftContentHtml = `<div id="storage-mochila-container" class="flex-1 overflow-y-auto custom-scroll bg-slate-950/50 border border-slate-700 rounded-xl p-4 shadow-inner"></div>`;
@@ -142,7 +151,8 @@ export async function renderReputacaoTab() {
                 </div>
 
                 <div class="w-80 md:w-96 shrink-0 flex flex-col h-full relative">
-                    <div class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col h-full relative overflow-hidden" id="rep-inspect-panel"></div>
+                    <div class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col h-full relative overflow-hidden" id="rep-inspect-panel">
+                        </div>
                 </div>
 
             </div>
@@ -161,6 +171,7 @@ export async function renderReputacaoTab() {
     }
 }
 
+// 3. RENDERIZADORES DE GRID E INSPETOR (Para Estabelecimentos e Aliados)
 function renderRepGrid(ficha) {
     const grid = document.getElementById('rep-grid-container');
     if (!grid) return;
@@ -224,7 +235,7 @@ function renderRepRightPanel(ficha, repUsage) {
     const bData = myBuildings.find(b => b.templateId === selectedId);
     const isOwned = activeTab === 'buildings' ? !!bData : !!(ficha.recursos?.aliados || []).find(a => a.templateId === selectedId);
 
-    // VALIDAÇÃO DE CUSTOS 
+    // VALIDAÇÃO DE CUSTOS (Reputação + Itens Físicos da Mochila)
     let canAffordRep = repUsage.available >= (tpl.reputacaoCusto || tpl.reputacaoCustoBase || 0);
     let canAffordMats = true;
     let purchaseMatsHtml = '';
@@ -246,7 +257,7 @@ function renderRepRightPanel(ficha, repUsage) {
         purchaseMatsHtml += `</div></div>`;
     }
 
-    // PRODUÇÃO E CONSUMO POR CICLO
+    // PRODUÇÃO E CONSUMO POR CICLO (Visualização nítida)
     let opsBox = '';
     if ((tpl.producao?.length || 0) > 0 || (tpl.consumo?.length || 0) > 0) {
         opsBox = `<div class="space-y-4 mt-2">`;
@@ -275,6 +286,7 @@ function renderRepRightPanel(ficha, repUsage) {
         opsBox += `</div>`;
     }
 
+    // CONTEÚDO DINÂMICO (Abas Internas: Dados vs Inventário do Prédio)
     let dynamicBody = '';
     if (activeTab === 'buildings' && isOwned && innerTab === 'inventory') {
         const armazem = bData.armazem || {};
@@ -322,6 +334,10 @@ function renderRepRightPanel(ficha, repUsage) {
 
     panel.innerHTML = `
         <div class="flex flex-col h-full animate-fade-in">
+            <div class="absolute top-4 right-4 text-slate-500 hover:text-white cursor-help z-10" title="Manual Imperial: Adquira propriedades pagando Reputação e Materiais. Em 'Produção', veja os custos para operar. Clique em 'Iniciar Ciclo' para gerar loot, que ficará no 'Armazém' aguardando o seu saque.">
+                <i class="fas fa-question-circle text-xl"></i>
+            </div>
+
             <div class="p-8 border-b border-slate-700 bg-slate-900/50 flex flex-col items-center shrink-0">
                 <div class="w-32 h-32 rounded-2xl bg-black border-2 ${isOwned ? 'border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.2)]' : 'border-slate-600'} overflow-hidden mb-4 transition-transform hover:scale-105">
                     <img src="${tpl.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-full h-full object-cover">
@@ -367,6 +383,7 @@ function renderRepRightPanel(ficha, repUsage) {
     `;
 }
 
+// 5. RENDERIZADORES DO ARMAZÉM GLOBAL (rpg_armazenamentos)
 function renderStorageMochila(ficha) {
     const container = document.getElementById('storage-mochila-container');
     if (!container) return;
@@ -412,6 +429,7 @@ function renderStorageVault(armazemGeral, maxStorage) {
     const panel = document.getElementById('rep-inspect-panel');
     if (!panel) return;
     
+    // Tratamento de segurança, ignora campos não numéricos que possam vir do BD
     const itemIds = Object.keys(armazemGeral).filter(id => typeof armazemGeral[id] === 'number' && armazemGeral[id] > 0);
     let currentOccupied = 0;
     itemIds.forEach(id => currentOccupied += armazemGeral[id]);
@@ -470,9 +488,12 @@ function renderStorageVault(armazemGeral, maxStorage) {
     panel.innerHTML = vaultHtml;
 }
 
-// --- LÓGICA DO FIREBASE E TRANSAÇÕES ---
+// --- LÓGICA DO FIREBASE E TRANSAÇÕES MULTI-COLEÇÃO ---
+
 window.buyRepItem = async function(templateId, type, costRep) {
     const charId = globalState.selectedCharacterId;
+    if(!charId) return alert("Personagem não selecionado.");
+
     const tpl = (type === 'buildings' ? globalState.cache.buildings.get(templateId) : 
                 (type === 'allies' ? globalState.cache.allies.get(templateId) : 
                 globalState.cache.itens.get(templateId)));
@@ -491,6 +512,7 @@ window.buyRepItem = async function(templateId, type, costRep) {
             const mochila = d.mochila || {};
             const reqs = tpl.custoMateriais || tpl.requisitos || [];
             
+            // Valida materiais da mochila
             for (let req of reqs) {
                 if ((mochila[req.itemId] || 0) < req.quantidade) {
                     const info = globalState.cache.itens.get(req.itemId);
@@ -498,6 +520,7 @@ window.buyRepItem = async function(templateId, type, costRep) {
                 }
             }
 
+            // Consome materiais
             reqs.forEach(req => {
                 mochila[req.itemId] -= req.quantidade;
                 if (mochila[req.itemId] <= 0) delete mochila[req.itemId];
@@ -513,6 +536,7 @@ window.buyRepItem = async function(templateId, type, costRep) {
                 list.push({ templateId: templateId, active: true });
                 recursos.aliados = list;
             } else if (type === 'storage') {
+                // Expansões de carga viram itens de posse
                 mochila[templateId] = (mochila[templateId] || 0) + 1;
             }
 
@@ -524,6 +548,8 @@ window.buyRepItem = async function(templateId, type, costRep) {
 
 window.collectBuilding = async function(templateId) {
     const charId = globalState.selectedCharacterId;
+    if(!charId) return;
+
     try {
         await runTransaction(db, async (t) => {
             const ref = doc(db, "rpg_fichas", charId);
@@ -536,15 +562,18 @@ window.collectBuilding = async function(templateId) {
             const mochila = d.mochila || {};
             const consumos = tpl.consumo || [];
             
+            // Valida Manutenção na mochila
             for (let c of consumos) {
                 if ((mochila[c.itemId] || 0) < (c.quantidade || c.quantidadeBase)) throw "Falta de recursos de manutenção na mochila para iniciar o ciclo de operação.";
             }
 
+            // Consome Manutenção
             consumos.forEach(c => {
                 mochila[c.itemId] -= (c.quantidade || c.quantidadeBase);
                 if (mochila[c.itemId] <= 0) delete mochila[c.itemId];
             });
 
+            // Gera Loots no Armazém Local da Propriedade
             const armazem = b.armazem || {};
             (tpl.producao || []).forEach(p => {
                 armazem[p.itemId] = (armazem[p.itemId] || 0) + (p.quantidade || p.quantidadeBase);
@@ -562,6 +591,8 @@ window.collectBuilding = async function(templateId) {
 window.sellBuilding = async function(templateId, type) {
     if (!confirm("Confirmar remoção? Loots não sacados do armazém local serão perdidos e a influência será liberada.")) return;
     const charId = globalState.selectedCharacterId;
+    if(!charId) return;
+
     try {
         await runTransaction(db, async (t) => {
             const ref = doc(db, "rpg_fichas", charId);
@@ -578,6 +609,8 @@ window.sellBuilding = async function(templateId, type) {
 
 window.withdrawLocalBuildingItem = async function(templateId, itemId, amountRaw) {
     const charId = globalState.selectedCharacterId;
+    if(!charId) return;
+
     try {
         await runTransaction(db, async (t) => {
             const ref = doc(db, "rpg_fichas", charId);
@@ -602,16 +635,23 @@ window.withdrawLocalBuildingItem = async function(templateId, itemId, amountRaw)
     } catch (e) { alert("Erro ao sacar loot local."); }
 };
 
-// Sincronização direta com rpg_armazenamentos
+// --- SINCRONIZAÇÃO DIRETA COM COLEÇÃO rpg_armazenamentos ---
 window.transferGlobalStorage = async function(from, to, itemId, amountRaw) {
     const charId = globalState.selectedCharacterId;
+    if(!charId) return alert("Personagem não selecionado.");
+
     try {
         await runTransaction(db, async (t) => {
             const refFicha = doc(db, "rpg_fichas", charId);
             const fichaSnap = await t.get(refFicha);
             const d = fichaSnap.data();
             
-            const storageId = (d.recursos && typeof d.recursos.armazemGeral === 'string') ? d.recursos.armazemGeral : charId;
+            // Garantia de fallback segura via string
+            let storageId = String(charId);
+            if (d.recursos && typeof d.recursos.armazemGeral === 'string' && d.recursos.armazemGeral.trim() !== '') {
+                storageId = d.recursos.armazemGeral.trim();
+            }
+
             const storageRef = doc(db, "rpg_armazenamentos", storageId);
             const storageSnap = await t.get(storageRef);
             
@@ -629,6 +669,7 @@ window.transferGlobalStorage = async function(from, to, itemId, amountRaw) {
             
             const amount = amountRaw === 'all' ? available : Math.min(amountRaw, available);
 
+            // Validação de Capacidade se estiver enviando para o Cofre
             if (to === 'armazem') {
                 const maxCap = calculateStorageCapacity(d);
                 let currentOcc = 0;
@@ -638,6 +679,7 @@ window.transferGlobalStorage = async function(from, to, itemId, amountRaw) {
                 }
             }
             
+            // Transferência
             sourceObj[itemId] -= amount;
             if (sourceObj[itemId] <= 0) delete sourceObj[itemId];
             destObj[itemId] = (destObj[itemId] || 0) + amount;
@@ -653,6 +695,8 @@ window.transferGlobalStorage = async function(from, to, itemId, amountRaw) {
 
 window.collectAllToVault = async function() {
     const charId = globalState.selectedCharacterId;
+    if(!charId) return alert("Personagem não selecionado.");
+
     try {
         await runTransaction(db, async (t) => {
             const refFicha = doc(db, "rpg_fichas", charId);
@@ -661,7 +705,12 @@ window.collectAllToVault = async function() {
             const recursos = d.recursos || {};
             const estabs = recursos.estabelecimentos || [];
             
-            const storageId = (typeof recursos.armazemGeral === 'string') ? recursos.armazemGeral : charId;
+            // Garantia de fallback segura
+            let storageId = String(charId);
+            if (recursos && typeof recursos.armazemGeral === 'string' && recursos.armazemGeral.trim() !== '') {
+                storageId = recursos.armazemGeral.trim();
+            }
+
             const storageRef = doc(db, "rpg_armazenamentos", storageId);
             const storageSnap = await t.get(storageRef);
             
@@ -679,7 +728,7 @@ window.collectAllToVault = async function() {
                 const localVault = b.armazem || {};
                 for (let [itemId, qty] of Object.entries(localVault)) {
                     if (currentOcc + qty > maxCap) {
-                        throw `Espaço insuficiente no Armazém Central para recolher todos os itens! Aumente a sua capacidade comprando expansões.`;
+                        throw `Espaço insuficiente no Armazém Central para recolher todos os itens!`;
                     }
                     actualArmazem[itemId] = (actualArmazem[itemId] || 0) + qty;
                     currentOcc += qty;
