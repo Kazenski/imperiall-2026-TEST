@@ -1095,9 +1095,17 @@ window.arena = {
 
             group.onclick = (e) => { 
                 e.stopPropagation(); 
+                
                 if (window.arena.targeting) {
-                    window.arena.executeAreaSkill(t.q, t.r);
+                    // Se a magia tiver Raio > 0 (Em Área), atinge o chão onde o token está
+                    if (window.arena.targeting.radius > 0) {
+                        window.arena.executeAreaSkill(t.q, t.r);
+                    } else {
+                        // Se a magia for Alvo Único, abre o Modal de Confirmação!
+                        window.arena.requestAttack(id); 
+                    }
                 } else {
+                    // Seleciona o token para visualizar movimento
                     window.arena.selectedTokenId = (window.arena.selectedTokenId === id) ? null : id; 
                     window.arena.renderTokens(); 
                 }
@@ -1415,7 +1423,6 @@ window.arena = {
         for (let k = 1; k <= range; k++) {
             fringes.push([]);
             for (const h of fringes[k-1]) {
-                // Direções para os 6 lados do hexágono
                 const dirs = [{q:1, r:0}, {q:1, r:-1}, {q:0, r:-1}, {q:-1, r:0}, {q:-1, r:1}, {q:0, r:1}];
                 
                 dirs.forEach(d => {
@@ -1423,7 +1430,7 @@ window.arena = {
                     const nR = h.r + d.r;
                     const nK = `${nQ},${nR}`;
                     
-                    // Se não tiver muro (obstáculo) na posição e não foi visitado ainda
+                    // Só adiciona se não houver um muro (obstáculo) na coordenada
                     if (!window.arena.data.obstaculos?.[nK] && !visited.has(nK)) { 
                         visited.add(nK); 
                         fringes[k].push({q: nQ, r: nR}); 
@@ -1434,12 +1441,17 @@ window.arena = {
         return visited;
     },
 
+    hexDistance: function(q1, r1, q2, r2) {
+        return (Math.abs(q1 - q2) + Math.abs(q1 + r1 - q2 - r2) + Math.abs(r1 - r2)) / 2;
+    },
+
     hexToPixel: function(q, r) { 
         return { 
             x: HEX_SIZE * (Math.sqrt(3) * q + Math.sqrt(3)/2 * r) + 60, 
             y: HEX_SIZE * (3/2 * r) + 60 
         }; 
     },
+
     getHexPoints: function(x, y) {
         let p = ""; 
         for(let i=0; i<6; i++) { 
@@ -1448,11 +1460,13 @@ window.arena = {
         } 
         return p;
     },
+
     pixelToHex: function(x, y) {
         let q = (Math.sqrt(3)/3 * (x - 60) - 1/3 * (y - 60)) / HEX_SIZE;
         let r = (2/3 * (y - 60)) / HEX_SIZE;
         return window.arena.hexRound(q, r);
     },
+
     hexRound: function(q, r) {
         let rq = Math.round(q), rr = Math.round(r), rs = Math.round(-q - r);
         let q_diff = Math.abs(rq - q), r_diff = Math.abs(rr - r), s_diff = Math.abs(rs - (-q - r));
@@ -1460,6 +1474,7 @@ window.arena = {
         else if (r_diff > s_diff) rr = -rq - rs;
         return { q: rq, r: rr };
     },
+
     getSVGPoint: function(e) {
         const svg = document.getElementById('arena-svg');
         if(!svg) return {x:0, y:0};
