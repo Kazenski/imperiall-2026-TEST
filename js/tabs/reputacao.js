@@ -39,7 +39,7 @@ function calculateStorageCapacity(ficha) {
     return armazemCap;
 }
 
-// --- RENDERIZADOR PRINCIPAL (AGORA ASYNC PARA BUSCAR A COLEÇÃO RPG_ARMAZENAMENTOS) ---
+// --- RENDERIZADOR PRINCIPAL ---
 export async function renderReputacaoTab() {
     const container = document.getElementById('recursos-reputacao-content');
     if (!container) return;
@@ -61,21 +61,22 @@ export async function renderReputacaoTab() {
         const repDetails = calculateReputationDetails(ficha);
         const maxStorage = calculateStorageCapacity(ficha);
 
-        // BUSCA O ARMAZÉM GERAL NA COLEÇÃO rpg_armazenamentos
-        const storageId = (ficha.recursos && typeof ficha.recursos.armazemGeral === 'string') ? ficha.recursos.armazemGeral : charData.id;
+        // CORREÇÃO: Usando globalState.selectedCharacterId ao invés de charData.id
+        const storageId = (ficha.recursos && typeof ficha.recursos.armazemGeral === 'string') ? ficha.recursos.armazemGeral : globalState.selectedCharacterId;
+        
         let armazemGeral = {};
         try {
-            const storageSnap = await getDoc(doc(db, "rpg_armazenamentos", storageId));
-            if (storageSnap.exists()) {
-                const snapData = storageSnap.data();
-                // Suporta tanto o objeto direto quanto salvo dentro de uma chave "itens"
-                armazemGeral = snapData.itens !== undefined ? snapData.itens : snapData;
+            if (storageId) {
+                const storageSnap = await getDoc(doc(db, "rpg_armazenamentos", storageId));
+                if (storageSnap.exists()) {
+                    const snapData = storageSnap.data();
+                    armazemGeral = snapData.itens !== undefined ? snapData.itens : snapData;
+                }
             }
         } catch (e) {
             console.error("Erro ao carregar coleção rpg_armazenamentos:", e);
         }
 
-        // Define a área da esquerda baseada na aba ativa
         let leftContentHtml = '';
         if (activeTab === 'storage') {
             leftContentHtml = `<div id="storage-mochila-container" class="flex-1 overflow-y-auto custom-scroll bg-slate-950/50 border border-slate-700 rounded-xl p-4 shadow-inner"></div>`;
@@ -141,8 +142,7 @@ export async function renderReputacaoTab() {
                 </div>
 
                 <div class="w-80 md:w-96 shrink-0 flex flex-col h-full relative">
-                    <div class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col h-full relative overflow-hidden" id="rep-inspect-panel">
-                        </div>
+                    <div class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col h-full relative overflow-hidden" id="rep-inspect-panel"></div>
                 </div>
 
             </div>
@@ -161,7 +161,6 @@ export async function renderReputacaoTab() {
     }
 }
 
-// 3. RENDERIZADORES DE GRID E INSPETOR (Para Estabelecimentos e Aliados)
 function renderRepGrid(ficha) {
     const grid = document.getElementById('rep-grid-container');
     if (!grid) return;
@@ -225,7 +224,7 @@ function renderRepRightPanel(ficha, repUsage) {
     const bData = myBuildings.find(b => b.templateId === selectedId);
     const isOwned = activeTab === 'buildings' ? !!bData : !!(ficha.recursos?.aliados || []).find(a => a.templateId === selectedId);
 
-    // VALIDAÇÃO DE CUSTOS (Reputação + Itens Físicos da Mochila)
+    // VALIDAÇÃO DE CUSTOS 
     let canAffordRep = repUsage.available >= (tpl.reputacaoCusto || tpl.reputacaoCustoBase || 0);
     let canAffordMats = true;
     let purchaseMatsHtml = '';
@@ -276,7 +275,6 @@ function renderRepRightPanel(ficha, repUsage) {
         opsBox += `</div>`;
     }
 
-    // CONTEÚDO DINÂMICO
     let dynamicBody = '';
     if (activeTab === 'buildings' && isOwned && innerTab === 'inventory') {
         const armazem = bData.armazem || {};
@@ -358,7 +356,7 @@ function renderRepRightPanel(ficha, repUsage) {
                             <i class="fas fa-times-circle mr-1 text-sm"></i> ${activeTab === 'allies' ? 'Dispensar Aliado' : 'Vender Propriedade'}
                         </button>
                        </div>`
-                    : `<button onclick="window.buyRepItem('${selectedId}', '${activeTab}', ${costRep})" 
+                    : `<button onclick="window.buyRepItem('${selectedId}', '${activeTab}', ${tpl.reputacaoCusto || tpl.reputacaoCustoBase || 0})" 
                         class="w-full ${canAffordRep && canAffordMats ? 'bg-amber-600 hover:bg-amber-500 text-black shadow-lg hover:scale-[1.02]' : 'bg-slate-700 text-slate-500 cursor-not-allowed'} py-3.5 rounded-xl text-[11px] font-black uppercase transition-all"
                         ${!(canAffordRep && canAffordMats) ? 'disabled' : ''}>
                         <i class="fas fa-shopping-cart mr-2 text-sm"></i> Adquirir Recurso
@@ -369,7 +367,6 @@ function renderRepRightPanel(ficha, repUsage) {
     `;
 }
 
-// 5. RENDERIZADORES DO ARMAZÉM GLOBAL (rpg_armazenamentos)
 function renderStorageMochila(ficha) {
     const container = document.getElementById('storage-mochila-container');
     if (!container) return;
@@ -415,7 +412,6 @@ function renderStorageVault(armazemGeral, maxStorage) {
     const panel = document.getElementById('rep-inspect-panel');
     if (!panel) return;
     
-    // Tratamento de segurança, ignora campos não numéricos que possam vir do BD
     const itemIds = Object.keys(armazemGeral).filter(id => typeof armazemGeral[id] === 'number' && armazemGeral[id] > 0);
     let currentOccupied = 0;
     itemIds.forEach(id => currentOccupied += armazemGeral[id]);
@@ -474,8 +470,7 @@ function renderStorageVault(armazemGeral, maxStorage) {
     panel.innerHTML = vaultHtml;
 }
 
-// --- LÓGICA DO FIREBASE E TRANSAÇÕES MULTI-COLEÇÃO ---
-
+// --- LÓGICA DO FIREBASE E TRANSAÇÕES ---
 window.buyRepItem = async function(templateId, type, costRep) {
     const charId = globalState.selectedCharacterId;
     const tpl = (type === 'buildings' ? globalState.cache.buildings.get(templateId) : 
@@ -496,7 +491,6 @@ window.buyRepItem = async function(templateId, type, costRep) {
             const mochila = d.mochila || {};
             const reqs = tpl.custoMateriais || tpl.requisitos || [];
             
-            // Valida materiais da mochila
             for (let req of reqs) {
                 if ((mochila[req.itemId] || 0) < req.quantidade) {
                     const info = globalState.cache.itens.get(req.itemId);
@@ -504,7 +498,6 @@ window.buyRepItem = async function(templateId, type, costRep) {
                 }
             }
 
-            // Consome materiais
             reqs.forEach(req => {
                 mochila[req.itemId] -= req.quantidade;
                 if (mochila[req.itemId] <= 0) delete mochila[req.itemId];
@@ -520,7 +513,6 @@ window.buyRepItem = async function(templateId, type, costRep) {
                 list.push({ templateId: templateId, active: true });
                 recursos.aliados = list;
             } else if (type === 'storage') {
-                // Expansões de carga viram itens na mochila
                 mochila[templateId] = (mochila[templateId] || 0) + 1;
             }
 
@@ -544,18 +536,15 @@ window.collectBuilding = async function(templateId) {
             const mochila = d.mochila || {};
             const consumos = tpl.consumo || [];
             
-            // Valida Manutenção na mochila
             for (let c of consumos) {
-                if ((mochila[c.itemId] || 0) < (c.quantidade || c.quantidadeBase)) throw "Falta de recursos de manutenção na mochila para iniciar o ciclo.";
+                if ((mochila[c.itemId] || 0) < (c.quantidade || c.quantidadeBase)) throw "Falta de recursos de manutenção na mochila para iniciar o ciclo de operação.";
             }
 
-            // Consome Manutenção
             consumos.forEach(c => {
                 mochila[c.itemId] -= (c.quantidade || c.quantidadeBase);
                 if (mochila[c.itemId] <= 0) delete mochila[c.itemId];
             });
 
-            // Gera Loots no Armazém Local da Propriedade
             const armazem = b.armazem || {};
             (tpl.producao || []).forEach(p => {
                 armazem[p.itemId] = (armazem[p.itemId] || 0) + (p.quantidade || p.quantidadeBase);
@@ -622,7 +611,6 @@ window.transferGlobalStorage = async function(from, to, itemId, amountRaw) {
             const fichaSnap = await t.get(refFicha);
             const d = fichaSnap.data();
             
-            // Busca o documento de armazenamento da coleção rpg_armazenamentos
             const storageId = (d.recursos && typeof d.recursos.armazemGeral === 'string') ? d.recursos.armazemGeral : charId;
             const storageRef = doc(db, "rpg_armazenamentos", storageId);
             const storageSnap = await t.get(storageRef);
@@ -630,7 +618,6 @@ window.transferGlobalStorage = async function(from, to, itemId, amountRaw) {
             const mochila = d.mochila || {};
             let storageData = storageSnap.exists() ? storageSnap.data() : {};
             
-            // Verifica se está envelopado num objeto 'itens'
             const isNested = storageData.itens !== undefined;
             let actualArmazem = isNested ? storageData.itens : storageData;
             
@@ -642,7 +629,6 @@ window.transferGlobalStorage = async function(from, to, itemId, amountRaw) {
             
             const amount = amountRaw === 'all' ? available : Math.min(amountRaw, available);
 
-            // Validação de Capacidade se estiver enviando para o Cofre
             if (to === 'armazem') {
                 const maxCap = calculateStorageCapacity(d);
                 let currentOcc = 0;
@@ -652,7 +638,6 @@ window.transferGlobalStorage = async function(from, to, itemId, amountRaw) {
                 }
             }
             
-            // Transferência
             sourceObj[itemId] -= amount;
             if (sourceObj[itemId] <= 0) delete sourceObj[itemId];
             destObj[itemId] = (destObj[itemId] || 0) + amount;
@@ -700,7 +685,7 @@ window.collectAllToVault = async function() {
                     currentOcc += qty;
                     collectedSomething = true;
                 }
-                b.armazem = {}; // Limpa o armazém local
+                b.armazem = {}; 
             });
             
             if (!collectedSomething) throw "Não existem produções prontas nas suas propriedades locais.";
