@@ -446,6 +446,27 @@ window.arena = {
         }
     },
 
+    // Esta função cria os números flutuantes (ex: -10 MP, +5 HP) em cima do token
+    showFloatingText: function(text, tokenId, color) {
+        const t = window.arena.data.tokens[tokenId];
+        if(!t) return;
+        
+        const pos = window.arena.hexToPixel(t.q, t.r);
+        const div = document.createElement('div');
+        
+        div.className = `absolute pointer-events-none font-bold text-lg animate-float-up z-[500]`;
+        div.style.left = `${pos.x}px`; 
+        div.style.top = `${pos.y - 20}px`;
+        div.style.color = color; 
+        div.textContent = text;
+        div.style.textShadow = "1px 1px 3px black";
+        
+        document.getElementById('arena-viewport').appendChild(div);
+        
+        // Remove a div da tela após 2 segundos (tempo da animação)
+        setTimeout(() => div.remove(), 2000);
+    },
+
     confirmAttack: async function(targetTokenId, targetName) {
         window.arena.closeAttackModal(); 
         
@@ -1135,7 +1156,7 @@ window.arena = {
         });
     },
 
-    renderSpawnList: function() {
+    renderSpawnList: async function() {
         const filterEl = document.getElementById('arena-spawn-filter');
         const filter = filterEl ? filterEl.value.toLowerCase() : "";
         
@@ -1147,24 +1168,55 @@ window.arena = {
         if(listNPCs) listNPCs.innerHTML = '';
         if(listMonsters) listMonsters.innerHTML = '';
 
-        if(globalState.cache.players) {
-            globalState.cache.players.forEach((p, id) => {
+        // 1. Renderiza Jogadores (Fichas)
+        if(globalState.cache.players || globalState.cache.personagens) {
+            const playersMap = globalState.cache.players || globalState.cache.personagens;
+            playersMap.forEach((p, id) => {
                 if ((p.nome || "").toLowerCase().includes(filter)) {
                     window.arena.createSpawnItem(listPlayers, p.nome || "Sem Nome", id, 'player', p.imageUrls?.imagem1 || p.imagemUrl, p.hpPersonagemBase, p.mpPersonagemBase, p.movimentoPersonagemBase || p.explorix || 5, 'rpg_fichas');
                 }
             });
         }
         
+        // 2. Renderiza Monstros (rpg_fichasNPCMonstros)
         if(globalState.cache.mobs) {
             globalState.cache.mobs.forEach((m, id) => {
                 if ((m.nome || "").toLowerCase().includes(filter)) {
-                    const isNpc = m.type === 'npc' || (m.collection === 'rpg_Npcs');
-                    const targetList = isNpc ? listNPCs : listMonsters;
-                    const type = isNpc ? 'npc' : 'monster';
-                    const hp = m.hpPersonagemBase || m.hpMaxPersonagemBase || 10;
-                    const mp = m.mpPersonagemBase || m.mpMaxPersonagemBase || 10;
-                    const move = m.explorixMovimento || m.movimentoPersonagemBase || 5; 
-                    window.arena.createSpawnItem(targetList, m.nome || "Mob", id, type, m.imageUrls?.imagem1 || m.imagemUrl, hp, mp, move, m.collection);
+                    // Evita que NPCs antigos que caíram no cache de monstros apareçam duplicados
+                    const isNpc = m.type === 'npc' || m.collection === 'rpg_Npcs';
+                    if (!isNpc) {
+                        const hp = m.hpPersonagemBase || m.hpMaxPersonagemBase || 10;
+                        const mp = m.mpPersonagemBase || m.mpMaxPersonagemBase || 10;
+                        const move = m.explorixMovimento || m.movimentoPersonagemBase || 5; 
+                        window.arena.createSpawnItem(listMonsters, m.nome || "Monstro", id, 'monster', m.imageUrls?.imagem1 || m.imagemUrl, hp, mp, move, m.collection || 'rpg_fichasNPCMonstros');
+                    }
+                }
+            });
+        }
+
+        // 3. Renderiza NPCs (Coleção rpg_Npcs)
+        // Se a coleção de NPCs não estiver no cache, ele importa os métodos do Firebase dinamicamente e busca!
+        if (!globalState.cache.npcs) {
+            globalState.cache.npcs = new Map();
+            try {
+                const { collection, getDocs } = await import('../core/firebase.js');
+                const snap = await getDocs(collection(db, "rpg_Npcs"));
+                snap.forEach(doc => {
+                    globalState.cache.npcs.set(doc.id, { id: doc.id, ...doc.data() });
+                });
+            } catch(e) {
+                console.warn("Aviso: Não foi possível buscar a coleção rpg_Npcs no momento.", e);
+            }
+        }
+
+        // Popula a coluna de NPCs
+        if(globalState.cache.npcs) {
+            globalState.cache.npcs.forEach((n, id) => {
+                if ((n.nome || "").toLowerCase().includes(filter)) {
+                    const hp = n.hpPersonagemBase || n.hpMaxPersonagemBase || 10;
+                    const mp = n.mpPersonagemBase || n.mpMaxPersonagemBase || 10;
+                    const move = n.explorixMovimento || n.movimentoPersonagemBase || 5; 
+                    window.arena.createSpawnItem(listNPCs, n.nome || "NPC", id, 'npc', n.imageUrls?.imagem1 || n.imagemUrl, hp, mp, move, 'rpg_Npcs');
                 }
             });
         }
