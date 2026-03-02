@@ -1,7 +1,20 @@
+// ARQUIVO: js/tabs/comercio.js
+
 import { db, doc, onSnapshot, runTransaction, increment, deleteField } from '../core/firebase.js';
 import { globalState, COINS, PLACEHOLDER_IMAGE_URL } from '../core/state.js';
 import { escapeHTML, optimizeCoins, getRankWeight } from '../core/utils.js';
 import { getWallet } from '../core/calculos.js';
+
+// Função utilitária que faltava no escopo global para a injeção do HTML
+window.getCoinImg = function(coinId) {
+    const item = globalState.cache.itens.get(coinId);
+    return item ? (item.imagemUrl || PLACEHOLDER_IMAGE_URL) : PLACEHOLDER_IMAGE_URL;
+};
+
+// Aliás local para uso nas templates string
+function getCoinImg(coinId) {
+    return window.getCoinImg(coinId);
+}
 
 export function renderComercioTab() {
     const container = document.getElementById('comercio-content');
@@ -11,6 +24,20 @@ export function renderComercioTab() {
     if (!charData) {
         container.innerHTML = '<p class="text-center text-slate-500 mt-10">Selecione um personagem.</p>';
         return;
+    }
+
+    // Inicializa o estado do comércio se não existir (evita crash ao dar reload)
+    if (!globalState.commerce) {
+        globalState.commerce = {
+            mode: 'buy',
+            selectedShopId: null,
+            liveShopData: null,
+            exchange: {
+                'gold_silver': { dir: 'down', val: 1 },
+                'silver_bronze': { dir: 'down', val: 1 },
+                'gold_bronze': { dir: 'down', val: 1 }
+            }
+        };
     }
 
     if (globalState.commerce.liveShopUnsubscribe) {
@@ -105,6 +132,7 @@ export function renderComercioTab() {
         window.selectShop(globalState.commerce.selectedShopId);
     }
 }
+window.renderComercioTab = renderComercioTab; // Expõe ao window para F5
 
 window.selectShop = function(shopId) {
     globalState.commerce.selectedShopId = shopId;
@@ -135,7 +163,7 @@ window.selectShop = function(shopId) {
 window.changeShopMode = function(mode) {
     globalState.commerce.mode = mode;
     
-    // Atualiza botões
+    // Atualiza botões visualmente sem renderizar tudo
     const btnBuy = document.querySelector('button[onclick="window.changeShopMode(\'buy\')"]');
     const btnSell = document.querySelector('button[onclick="window.changeShopMode(\'sell\')"]');
     
@@ -322,7 +350,7 @@ window.processShopTransaction = async function(action, itemId, priceCopper, maxA
             if (action === 'buy') t.update(shopRef, { itemsToSell: shopData.itemsToSell });
         });
         
-        renderWalletDisplay();
+        renderWalletDisplay(); // Atualiza a carteira local sem recarregar tudo
     } catch (e) {
         alert("Erro na transação: " + e);
     }
