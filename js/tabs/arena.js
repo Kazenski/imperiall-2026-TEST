@@ -11,7 +11,7 @@ const HEX_HEIGHT = 2 * HEX_SIZE;
 const GRID_ROWS = 40; 
 const GRID_COLS = 40;
 
-window.arena = {
+window.arena = { 
     data: null, 
     sessionDocId: null, 
     unsub: null,
