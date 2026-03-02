@@ -3,9 +3,8 @@ import { globalState, COINS, PLACEHOLDER_IMAGE_URL } from '../core/state.js';
 import { escapeHTML, optimizeCoins, getRankWeight } from '../core/utils.js';
 import { getWallet } from '../core/calculos.js';
 
-// Função utilitária para buscar as imagens das moedas e resolver o erro "getCoinImg is not defined"
 window.getCoinImg = function(coinId) {
-    const item = globalState.cache.itens.get(coinId);
+    const item = globalState.cache.itens.get(coinId) || globalState.cache.allItems?.get(coinId);
     return item ? (item.imagemUrl || PLACEHOLDER_IMAGE_URL) : PLACEHOLDER_IMAGE_URL;
 };
 
@@ -13,9 +12,45 @@ function getCoinImg(coinId) {
     return window.getCoinImg(coinId);
 }
 
-export function renderComercioTab() {
+// Inicializa o estado de comércio para evitar erros
+if (!globalState.commerce) {
+    globalState.commerce = {
+        selectedShopId: "",
+        mode: "buy",
+        buyQuantities: {},
+        sellQuantities: {},
+        liveShopUnsubscribe: null,
+        liveShopData: null,
+        exchange: {
+            'gold_silver': { dir: 'down', val: 1 },
+            'silver_bronze': { dir: 'down', val: 1 },
+            'gold_bronze': { dir: 'down', val: 1 }
+        }
+    };
+}
+
+// Helper para descobrir o período do dia atual
+function getSessionTimeAndPeriod() {
+    let w = globalState.world?.data || { time: "12:00" };
+    if (globalState.activeSessionId && globalState.activeSessionId !== 'world') {
+        const sess = globalState.userSessions?.find(s => s.id === globalState.activeSessionId);
+        if (sess && sess.customTime) w = { time: sess.customTime };
+    }
+    const time = w.time || "12:00";
+    const h = parseInt(time.split(':')[0]);
+    let period = "Madrugada";
+    if (h >= 6 && h < 12) period = "Manhã";
+    else if (h >= 12 && h < 18) period = "Tarde";
+    else if (h >= 18) period = "Noite";
+    return { time, period };
+}
+
+// RENDER PRINCIPAL DA ABA COMERCIO
+export function renderComercioTab(isLoading = false) {
     const container = document.getElementById('comercio-content');
     if (!container) return;
+
+    window.renderComercioTab = renderComercioTab;
 
     const charData = globalState.selectedCharacterData;
     if (!charData) {
@@ -23,506 +58,714 @@ export function renderComercioTab() {
         return;
     }
 
-    if (globalState.commerce.liveShopUnsubscribe) {
-        globalState.commerce.liveShopUnsubscribe();
-        globalState.commerce.liveShopUnsubscribe = null;
+    const sessionId = globalState.activeSessionId;
+    let sessionData = null;
+    if (sessionId && sessionId !== 'world') {
+        sessionData = globalState.userSessions?.find(s => s.id === sessionId);
     }
 
-    const sessionId = globalState.activeSessionId;
+    // Se estiver em modo global (world) ou não tiver grupo posicionado
+    if (!sessionData || !sessionData.groupLocation) {
+        container.innerHTML = `<div class="flex flex-col items-center justify-center h-96 text-slate-500"><i class="fas fa-map-marked-alt text-6xl mb-4 opacity-30"></i><p class="font-cinzel text-xl">Localização Desconhecida</p><p class="text-xs mt-2">Você deve estar dentro de uma Sessão com posição no mapa.</p></div>`;
+        return;
+    }
+
+    const groupLoc = sessionData.groupLocation;
+    const validCityNames = [];
     
-    let shopSelectorHtml = '';
-    if (sessionId === 'world') {
-        shopSelectorHtml = `
-            <div class="mb-4 bg-amber-900/20 border border-amber-500/30 p-4 rounded-lg text-center shadow-lg">
-                <i class="fas fa-globe text-amber-500 text-3xl mb-2"></i>
-                <h3 class="font-cinzel text-amber-400 font-bold">Comércio Global Desativado</h3>
-                <p class="text-xs text-slate-400 mt-1">Entre em uma sessão ativa (Arena/Cidade) para acessar as lojas locais.</p>
-            </div>
-        `;
-    } else {
-        const sessionData = globalState.userSessions.find(s => s.id === sessionId);
-        const shops = sessionData?.activeShops || [];
-        
-        if (shops.length === 0) {
-            shopSelectorHtml = `
-                <div class="mb-4 bg-slate-900/50 border border-slate-700 p-4 rounded-lg text-center shadow-lg">
-                    <i class="fas fa-store-slash text-slate-500 text-3xl mb-2"></i>
-                    <h3 class="font-cinzel text-slate-400 font-bold">Nenhuma Loja Aberta</h3>
-                    <p class="text-xs text-slate-500 mt-1">O mestre ainda não abriu nenhuma loja nesta região.</p>
-                </div>
-            `;
+    // Matemática dos Hexágonos
+    const HEX_SIZE = 17;
+    const R = 10; // MAP_CONSTANTS.HEX_RADIUS do seu mapa original, adaptado aqui para bater
+    const H = R * 2;
+    const W = Math.sqrt(3) * R;
+    const VERT_DIST = H * 0.75;
+
+    // Acha a cidade baseada no HexId que o grupo está pisando
+    if (globalState.world?.locations) {
+        globalState.world.locations.forEach(loc => {
+            if (loc.x && loc.y) {
+                const lx = Number(loc.x);
+                const ly = Number(loc.y);
+                const row = Math.round((ly + (H/2)) / VERT_DIST);
+                const xOffset = (row % 2 === 1) ? W / 2 : 0;
+                const col = Math.round((lx + (W/2) - xOffset) / W);
+                const hexId = `${row}-${col}`;
+                if (hexId === groupLoc.hexId) validCityNames.push(loc.name);
+            }
+        });
+    }
+
+    if (validCityNames.length === 0) {
+        if (globalState.commerce.liveShopUnsubscribe) {
+            globalState.commerce.liveShopUnsubscribe();
+            globalState.commerce.liveShopUnsubscribe = null;
+        }
+        container.innerHTML = `<div class="flex flex-col items-center justify-center h-96 text-slate-500 border-2 border-dashed border-slate-800 rounded-xl m-4 bg-slate-900/50"><i class="fas fa-store-slash text-6xl mb-4 opacity-30 text-red-500"></i><p class="font-cinzel text-xl text-slate-400">Ermo Selvagem</p><p class="text-xs mt-2">Nenhum comércio ou banco nesta área.</p></div>`;
+        return;
+    }
+
+    // Filtra as lojas pela cidade atual
+    const availableShops = [...(globalState.cache.lojas?.values() || [])].filter(shop => {
+        return shop.disponivel !== false && validCityNames.includes(shop.cidade);
+    });
+
+    const wallet = getWallet(charData.ficha);
+
+    if (!globalState.commerce.selectedShopId && availableShops.length > 0) {
+        window.switchShop(availableShops[0].id);
+    }
+    
+    const selectedShop = globalState.commerce.liveShopData || availableShops.find(s => s.id === globalState.commerce.selectedShopId);
+    const timeInfo = getSessionTimeAndPeriod();
+    const isShopOpen = selectedShop && selectedShop.horariosFuncionamento?.includes(timeInfo.period);
+    const isAnyShopOpen = availableShops.some(shop => shop.horariosFuncionamento?.includes(timeInfo.period));
+
+    const imgGold = getCoinImg(COINS.GOLD.id);
+    const imgSilver = getCoinImg(COINS.SILVER.id);
+    const imgBronze = getCoinImg(COINS.BRONZE.id);
+
+    // Lógica do Rank da Loja
+    let shopRankLetter = "F";
+    if (selectedShop && selectedShop.tierId) {
+        if (selectedShop.tierId.length <= 2) {
+            shopRankLetter = selectedShop.tierId;
         } else {
-            let options = '<option value="">-- Selecione uma Loja --</option>';
-            shops.forEach(s => { options += `<option value="${s.id}" ${globalState.commerce.selectedShopId === s.id ? 'selected' : ''}>${escapeHTML(s.name)}</option>`; });
-            
-            shopSelectorHtml = `
-                <div class="mb-6 flex flex-col md:flex-row gap-4 items-center bg-slate-900/80 p-4 rounded-lg border border-sky-500/30 shadow-lg">
-                    <div class="shrink-0 w-12 h-12 rounded-full bg-sky-900 flex items-center justify-center border-2 border-sky-500 shadow-[0_0_15px_rgba(14,165,233,0.4)]">
-                        <i class="fas fa-store text-xl text-sky-400"></i>
+            const tierInfo = globalState.cache.shopTiers ? globalState.cache.shopTiers.get(selectedShop.tierId) : null;
+            if (tierInfo) {
+                shopRankLetter = (tierInfo.nome || tierInfo.id || "F").replace(/rank/i, '').trim().toUpperCase();
+            }
+        }
+    }
+
+    let html = `
+        <div class="flex flex-col h-full animate-fade-in">
+            <div class="bg-slate-900 border border-slate-700 rounded-lg overflow-hidden shadow-lg mb-4 shrink-0">
+                <div class="p-4 flex flex-wrap gap-4 items-end justify-between bg-slate-800">
+                    <div>
+                        <h2 class="font-cinzel text-2xl text-amber-500 leading-none">Centro Comercial de ${validCityNames[0]}</h2>
+                        <div class="flex items-center gap-2 mt-1">
+                             <span class="text-xs text-slate-400"><i class="fas fa-clock"></i> ${timeInfo.time} (${timeInfo.period})</span>
+                        </div>
                     </div>
-                    <div class="flex-grow w-full">
-                        <label class="text-[10px] text-sky-400 font-bold uppercase tracking-widest block mb-1">Mercado Local</label>
-                        <select id="comercio-shop-select" class="w-full bg-slate-950 border border-slate-600 rounded py-2 px-3 text-white font-bold outline-none focus:border-sky-500 shadow-inner" onchange="window.selectShop(this.value)">
-                            ${options}
+                    <div class="flex gap-4 bg-slate-950 px-4 py-2 rounded border border-slate-600 shadow-inner items-center">
+                        <div class="flex items-center gap-2 text-amber-400 text-lg font-bold" title="Ouro"><img src="${imgGold}" class="w-6 h-6 object-contain"> ${wallet.gold}</div>
+                        <div class="flex items-center gap-2 text-slate-300 text-lg font-bold" title="Prata"><img src="${imgSilver}" class="w-6 h-6 object-contain"> ${wallet.silver}</div>
+                        <div class="flex items-center gap-2 text-orange-400 text-lg font-bold" title="Bronze"><img src="${imgBronze}" class="w-6 h-6 object-contain"> ${wallet.bronze}</div>
+                    </div>
+                </div>
+
+                <div class="p-3 border-t border-slate-700 bg-slate-800/50 flex gap-4 items-center">
+                    <div class="flex-grow">
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="text-[9px] text-slate-500 font-bold uppercase block">Estabelecimento Selecionado</label>
+                            ${selectedShop ? `<span class="text-[9px] px-2 rounded font-bold uppercase tracking-widest ${isShopOpen ? 'bg-emerald-900/50 border border-emerald-500 text-emerald-400' : 'bg-red-900/50 border border-red-500 text-red-400'}">${isShopOpen ? 'ABERTO' : 'FECHADO'}</span>` : ''}
+                        </div>
+                        <select id="shop-select" class="std-height w-full bg-slate-900 border border-slate-600 rounded text-slate-200 px-3 outline-none focus:border-amber-500" onchange="window.switchShop(this.value)">
+                            ${availableShops.length === 0 ? '<option>Nenhum mercador disponível</option>' : ''}
+                            ${availableShops.map(s => {
+                                let sRank = "F";
+                                if (s.tierId) {
+                                    if (s.tierId.length <= 2) sRank = s.tierId;
+                                    else {
+                                        const tInfo = globalState.cache.shopTiers ? globalState.cache.shopTiers.get(s.tierId) : null;
+                                        if (tInfo) sRank = (tInfo.nome || "F").replace(/rank/i, '').trim().toUpperCase();
+                                    }
+                                }
+                                return `<option value="${s.id}" ${s.id === globalState.commerce.selectedShopId ? 'selected' : ''}>[Rank ${sRank}] ${s.nome}</option>`;
+                            }).join('')}
                         </select>
                     </div>
                 </div>
-            `;
-        }
-    }
 
-    container.innerHTML = `
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full min-h-[600px]">
-            <div class="lg:col-span-8 flex flex-col h-full">
-                ${shopSelectorHtml}
-                
-                <div class="flex gap-2 mb-4">
-                    <button onclick="window.changeShopMode('buy')" class="btn ${globalState.commerce.mode === 'buy' ? 'btn-primary' : 'bg-slate-800 text-slate-400'} flex-1 py-3 text-sm font-bold uppercase tracking-widest transition-all">
-                        <i class="fas fa-shopping-cart mr-2"></i> Comprar
-                    </button>
-                    <button onclick="window.changeShopMode('sell')" class="btn ${globalState.commerce.mode === 'sell' ? 'btn-green' : 'bg-slate-800 text-slate-400'} flex-1 py-3 text-sm font-bold uppercase tracking-widest transition-all">
-                        <i class="fas fa-coins mr-2"></i> Vender
-                    </button>
-                </div>
-
-                <div id="live-shop-container" class="bg-slate-900/50 p-4 rounded-lg border border-slate-700 flex-grow overflow-y-auto custom-scroll shadow-inner min-h-[400px]">
-                    <div class="flex flex-col h-full items-center justify-center text-slate-600 opacity-50">
-                        <i class="fas fa-store text-6xl mb-4"></i>
-                        <p class="font-cinzel text-lg">Selecione uma loja para ver os itens.</p>
-                    </div>
+                <div class="flex border-t border-slate-700">
+                    <div onclick="window.setCommerceMode('buy')" class="commerce-tab ${globalState.commerce.mode === 'buy' ? 'active-buy' : ''}">COMPRAR</div>
+                    <div onclick="window.setCommerceMode('sell')" class="commerce-tab ${globalState.commerce.mode === 'sell' ? 'active-sell' : ''}">VENDER</div>
+                    <div onclick="window.setCommerceMode('exchange')" class="commerce-tab ${globalState.commerce.mode === 'exchange' ? 'active-exchange' : ''} text-purple-400 hover:text-purple-300">CÂMBIO (BANCO)</div>
                 </div>
             </div>
-
-            <div class="lg:col-span-4 flex flex-col gap-6">
-                <div class="bg-slate-900/80 p-6 rounded-lg border border-amber-500/30 shadow-lg relative overflow-hidden">
-                    <div class="absolute -right-4 -top-4 text-amber-500/10 text-8xl pointer-events-none"><i class="fas fa-wallet"></i></div>
-                    <h3 class="text-lg font-cinzel text-amber-400 mb-4 border-b border-slate-700 pb-2 flex items-center gap-2"><i class="fas fa-coins"></i> Sua Carteira</h3>
-                    <div id="comercio-wallet-display" class="flex flex-col gap-3 relative z-10"></div>
-                </div>
-
-                <div class="bg-slate-900/80 p-6 rounded-lg border border-slate-700 shadow-lg flex-grow">
-                    <h3 class="text-lg font-cinzel text-slate-300 mb-4 border-b border-slate-700 pb-2 flex items-center gap-2"><i class="fas fa-exchange-alt text-sky-400"></i> Casa de Câmbio</h3>
-                    <div id="comercio-exchange-display" class="flex flex-col gap-4"></div>
-                </div>
-            </div>
-        </div>
+            <div class="bg-slate-900/50 rounded-lg border border-slate-800 flex-grow p-4 overflow-y-auto custom-scroll">
     `;
 
-    renderWalletDisplay();
-    renderExchangePanel();
-
-    if (globalState.commerce.selectedShopId && sessionId !== 'world') {
-        window.selectShop(globalState.commerce.selectedShopId);
-    }
-}
-
-window.selectShop = function(shopId) {
-    globalState.commerce.selectedShopId = shopId;
-    if (globalState.commerce.liveShopUnsubscribe) {
-        globalState.commerce.liveShopUnsubscribe();
-        globalState.commerce.liveShopUnsubscribe = null;
-    }
-    
-    const container = document.getElementById('live-shop-container');
-    if (!shopId) {
-        if(container) container.innerHTML = '<div class="flex flex-col h-full items-center justify-center text-slate-600 opacity-50"><i class="fas fa-store text-6xl mb-4"></i><p class="font-cinzel text-lg">Selecione uma loja para ver os itens.</p></div>';
-        return;
-    }
-
-    if(container) container.innerHTML = '<div class="flex justify-center py-10"><div class="animate-spin rounded-full h-8 w-8 border-t-2 border-sky-500"></div></div>';
-
-    globalState.commerce.liveShopUnsubscribe = onSnapshot(doc(db, "rpg_shops", shopId), (docSnap) => {
-        if (docSnap.exists()) {
-            globalState.commerce.liveShopData = docSnap.data();
-            renderLiveShopItems();
+    // ==========================================
+    // MODO CÂMBIO
+    // ==========================================
+    if (globalState.commerce.mode === 'exchange') {
+        if (!isAnyShopOpen) {
+            html += `
+                <div class="col-span-full flex flex-col items-center justify-center py-10 opacity-50">
+                    <i class="fas fa-university text-4xl mb-3 text-red-500"></i>
+                    <p class="text-slate-400 font-bold">Os serviços de câmbio estão fechados.</p>
+                    <p class="text-[10px] mt-1 text-slate-500">Volte durante o expediente comercial da cidade.</p>
+                </div>`;
         } else {
-            globalState.commerce.liveShopData = null;
-            if(container) container.innerHTML = '<p class="text-center text-red-500 py-10">Esta loja foi fechada ou não existe mais.</p>';
-        }
-    });
-};
+            const exchanges = [
+                { id: 'gold_silver', label1: 'Ouro', img1: imgGold, label2: 'Prata', img2: imgSilver, rate: 10 },
+                { id: 'silver_bronze', label1: 'Prata', img1: imgSilver, label2: 'Bronze', img2: imgBronze, rate: 10 },
+                { id: 'gold_bronze', label1: 'Ouro', img1: imgGold, label2: 'Bronze', img2: imgBronze, rate: 100 }
+            ];
+            html += `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">`;
+            exchanges.forEach(ex => {
+                 const state = globalState.commerce.exchange[ex.id];
+                 const isDown = state.dir === 'down';
+                 const sourceLabel = isDown ? ex.label1 : ex.label2;
+                 const targetLabel = isDown ? ex.label2 : ex.label1;
+                 const sourceImg = isDown ? ex.img1 : ex.img2;
+                 const targetImg = isDown ? ex.img2 : ex.img1;
+                 const inputVal = parseInt(state.val) || 0;
+                 let resultText = "";
+                 let canAfford = false;
+                 let bal = 0;
+                 if(sourceLabel === 'Ouro') bal = wallet.gold;
+                 else if(sourceLabel === 'Prata') bal = wallet.silver;
+                 else bal = wallet.bronze;
 
-window.changeShopMode = function(mode) {
-    globalState.commerce.mode = mode;
-    
-    // Atualiza botões
-    const btnBuy = document.querySelector('button[onclick="window.changeShopMode(\'buy\')"]');
-    const btnSell = document.querySelector('button[onclick="window.changeShopMode(\'sell\')"]');
-    
-    if (mode === 'buy') {
-        if(btnBuy) btnBuy.className = 'btn btn-primary flex-1 py-3 text-sm font-bold uppercase tracking-widest transition-all';
-        if(btnSell) btnSell.className = 'btn bg-slate-800 text-slate-400 flex-1 py-3 text-sm font-bold uppercase tracking-widest transition-all';
-    } else {
-        if(btnBuy) btnBuy.className = 'btn bg-slate-800 text-slate-400 flex-1 py-3 text-sm font-bold uppercase tracking-widest transition-all';
-        if(btnSell) btnSell.className = 'btn btn-green flex-1 py-3 text-sm font-bold uppercase tracking-widest transition-all';
-    }
-
-    renderLiveShopItems();
-};
-
-function renderLiveShopItems() {
-    const container = document.getElementById('live-shop-container');
-    if (!container) return;
-
-    const shopData = globalState.commerce.liveShopData;
-    if (!shopData) {
-        container.innerHTML = '<p class="text-center text-slate-500 py-10">Loja indisponível.</p>';
-        return;
-    }
-
-    const mode = globalState.commerce.mode;
-    const itemsData = mode === 'buy' ? (shopData.itemsToSell || []) : (shopData.itemsToBuy || []);
-
-    if (itemsData.length === 0) {
-        container.innerHTML = `<p class="text-center text-slate-500 py-10 italic">A loja não está ${mode === 'buy' ? 'vendendo' : 'comprando'} itens no momento.</p>`;
-        return;
-    }
-
-    let itemsHtml = '<div class="grid grid-cols-1 md:grid-cols-2 gap-3">';
-
-    itemsData.forEach(shopItem => {
-        const itemInfo = globalState.cache.itens.get(shopItem.itemId);
-        if (!itemInfo) return;
-
-        const priceData = optimizeCoins(shopItem.priceCopper);
-        let priceHtml = '';
-        if (priceData.gold > 0) priceHtml += `<span class="text-amber-400 font-bold ml-1">${priceData.gold} O</span>`;
-        if (priceData.silver > 0) priceHtml += `<span class="text-slate-300 font-bold ml-1">${priceData.silver} P</span>`;
-        if (priceData.bronze > 0) priceHtml += `<span class="text-amber-700 font-bold ml-1">${priceData.bronze} B</span>`;
-        if (priceHtml === '') priceHtml = '<span class="text-amber-700 font-bold ml-1">0 B</span>';
-
-        const configInfo = (globalState.cache.itemConfig) ? globalState.cache.itemConfig.get(shopItem.itemId) : null;
-        let rank = (itemInfo.tierId || itemInfo.tier || itemInfo.rank || (configInfo ? configInfo.tierId : null) || "F").toUpperCase();
-
-        const rankColors = { 'SS': 'text-amber-400 border-amber-400', 'S': 'text-rose-400 border-rose-500', 'A': 'text-amber-400 border-amber-500', 'B': 'text-purple-400 border-purple-500', 'C': 'text-blue-400 border-blue-500', 'D': 'text-emerald-400 border-emerald-500', 'E': 'text-slate-400 border-slate-500', 'F': 'text-slate-500 border-slate-700' };
-        const rankColor = rankColors[rank] || rankColors['F'];
-
-        let actionArea = '';
-        const charData = globalState.selectedCharacterData.ficha;
-        
-        if (mode === 'buy') {
-            const stockHtml = shopItem.stock === -1 ? '<span class="text-green-400">∞</span>' : `<span class="${shopItem.stock > 0 ? 'text-white' : 'text-red-500'}">${shopItem.stock}</span>`;
-            const maxBuy = shopItem.stock === -1 ? 99 : shopItem.stock;
-            const canBuy = shopItem.stock !== 0;
-
-            actionArea = `
-                <div class="flex flex-col items-end gap-2 w-1/3 min-w-[100px] shrink-0">
-                    <div class="text-[9px] text-slate-400 uppercase font-bold text-right w-full">Estoque: ${stockHtml}</div>
-                    ${canBuy ? `
-                        <div class="flex w-full">
-                            <input type="number" id="qty-buy-${shopItem.itemId}" class="w-1/2 bg-slate-950 border border-slate-600 rounded-l text-center text-xs text-white outline-none focus:border-sky-500 py-1" value="1" min="1" max="${maxBuy}">
-                            <button onclick="window.processShopTransaction('buy', '${shopItem.itemId}', ${shopItem.priceCopper}, ${shopItem.stock})" class="w-1/2 btn btn-primary rounded-l-none text-xs py-1 px-0 flex justify-center items-center shadow-md"><i class="fas fa-shopping-cart"></i></button>
+                 if (isDown) {
+                     const result = inputVal * ex.rate;
+                     resultText = `= <span class="text-emerald-400 font-bold">${result}</span> ${targetLabel}`;
+                     canAfford = bal >= inputVal && inputVal > 0;
+                 } else {
+                     const convert = Math.floor(inputVal / ex.rate);
+                     resultText = `= <span class="text-emerald-400 font-bold">${convert}</span> ${targetLabel}`;
+                     canAfford = bal >= inputVal && inputVal > 0;
+                 }
+                 
+                 html += `
+                    <div class="bg-slate-800 border border-slate-600 rounded-lg p-4 flex flex-col gap-3 shadow-lg group">
+                        <div class="flex justify-between items-center z-10 relative">
+                            <div class="flex flex-col items-center w-20">
+                                <img src="${sourceImg}" class="w-10 h-10 object-contain mb-2 drop-shadow-md">
+                                <span class="text-xs font-bold text-slate-300 uppercase">${sourceLabel}</span>
+                                <span class="text-[10px] text-slate-500">Possui: ${bal}</span>
+                            </div>
+                            <button onclick="window.toggleExchangeDir('${ex.id}')" class="btn bg-slate-700 hover:bg-slate-600 border border-slate-500 rounded-full w-8 h-8 flex items-center justify-center transition-transform hover:rotate-180 z-20">
+                                <i class="fas fa-sync-alt text-xs text-purple-400"></i>
+                            </button>
+                            <div class="flex flex-col items-center w-20">
+                                <img src="${targetImg}" class="w-10 h-10 object-contain mb-2 drop-shadow-md">
+                                <span class="text-xs font-bold text-slate-300 uppercase">${targetLabel}</span>
+                                <span class="text-[10px] text-emerald-500 font-bold">Taxa: ${isDown ? '1:'+ex.rate : ex.rate+':1'}</span>
+                            </div>
                         </div>
-                    ` : `<button class="btn bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed text-xs py-1 w-full" disabled>Esgotado</button>`}
-                </div>
-            `;
+                        <div class="bg-slate-900/80 p-3 rounded border border-slate-700 z-10 relative mt-2">
+                            <div class="flex items-center gap-2">
+                                <input type="number" min="1" max="${bal}" value="${inputVal}" onchange="window.updateExchangeInput('${ex.id}', this.value)" class="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-white text-center font-bold outline-none focus:border-purple-500">
+                            </div>
+                            <div class="text-center mt-2 text-sm">${resultText}</div>
+                        </div>
+                        <button onclick="window.executeExchange('${ex.id}')" class="btn z-10 w-full py-2 text-xs font-bold uppercase rounded shadow-lg transition-all ${canAfford ? 'bg-purple-600 hover:bg-purple-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed opacity-70'}" ${!canAfford ? 'disabled' : ''}>${isDown ? 'Quebrar' : 'Fundir'}</button>
+                    </div>`;
+            });
+            html += `</div>`;
+        }
+    } 
+    // ==========================================
+    // MODO COMPRAR
+    // ==========================================
+    else if (globalState.commerce.mode === 'buy') {
+        if(!selectedShop) { 
+            html += '<p class="col-span-full text-center text-slate-500 py-10">Nenhuma loja cadastrada nesta área.</p>'; 
+        } else if (!isShopOpen) { 
+            html += `
+                <div class="col-span-full flex flex-col items-center justify-center py-10 opacity-50">
+                    <i class="fas fa-store-slash text-4xl mb-3 text-red-500"></i>
+                    <p class="text-slate-400 font-bold">A loja está fechada agora.</p>
+                </div>`;
         } else {
-            const owned = charData.mochila?.[shopItem.itemId] || 0;
-            const canSell = owned > 0;
-
-            actionArea = `
-                <div class="flex flex-col items-end gap-2 w-1/3 min-w-[100px] shrink-0">
-                    <div class="text-[9px] text-slate-400 uppercase font-bold text-right w-full">Na Mochila: <span class="${owned > 0 ? 'text-emerald-400' : 'text-red-500'}">${owned}</span></div>
-                    ${canSell ? `
-                        <div class="flex w-full">
-                            <input type="number" id="qty-sell-${shopItem.itemId}" class="w-1/2 bg-slate-950 border border-slate-600 rounded-l text-center text-xs text-white outline-none focus:border-green-500 py-1" value="1" min="1" max="${owned}">
-                            <button onclick="window.processShopTransaction('sell', '${shopItem.itemId}', ${shopItem.priceCopper}, ${owned})" class="w-1/2 btn btn-green rounded-l-none text-xs py-1 px-0 flex justify-center items-center shadow-md"><i class="fas fa-coins"></i></button>
-                        </div>
-                    ` : `<button class="btn bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed text-xs py-1 w-full" disabled>Sem Item</button>`}
-                </div>
-            `;
-        }
-
-        itemsHtml += `
-            <div class="bg-slate-800 border border-slate-700 rounded p-2 flex gap-3 hover:border-slate-500 transition shadow-sm relative group overflow-hidden">
-                <div class="w-14 h-14 rounded border ${rankColor} bg-black shrink-0 relative flex items-center justify-center overflow-hidden">
-                    <img src="${itemInfo.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity">
-                    <div class="absolute bottom-0 right-0 bg-black/80 text-[8px] font-bold px-1 rounded-tl border-t border-l ${rankColor}">${rank}</div>
-                </div>
-                
-                <div class="flex-grow flex flex-col justify-between overflow-hidden">
-                    <div class="text-xs font-bold text-slate-200 truncate" title="${itemInfo.nome}">${escapeHTML(itemInfo.nome)}</div>
-                    <div class="text-[10px] bg-slate-950/50 p-1 rounded border border-slate-700/50 inline-block w-max mt-1">
-                        <span class="text-slate-500 uppercase font-bold mr-1">${mode === 'buy' ? 'Preço:' : 'Paga:'}</span> 
-                        ${priceHtml}
-                    </div>
-                </div>
-                
-                ${actionArea}
-            </div>
-        `;
-    });
-
-    itemsHtml += '</div>';
-
-    if (mode === 'sell') {
-        const massSellHtml = `
-            <div class="mt-6 border-t border-slate-700 pt-4">
-                <h4 class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-3">Venda Rápida por Rank</h4>
-                <div class="flex flex-wrap gap-2">
-                    ${['F', 'E', 'D', 'C'].map(r => `<button onclick="window.sellAllByRank('${r}')" class="btn bg-slate-800 border border-slate-600 text-slate-300 hover:text-white hover:bg-slate-700 text-xs py-1 px-3 shadow-sm flex-1 sm:flex-none">Vender Rank ${r}</button>`).join('')}
-                </div>
-                <p class="text-[9px] text-red-400 mt-2"><i class="fas fa-exclamation-triangle"></i> Atenção: Isso venderá todos os itens desequipados do rank selecionado se a loja estiver comprando.</p>
-            </div>
-        `;
-        itemsHtml += massSellHtml;
-    }
-
-    container.innerHTML = itemsHtml;
-}
-
-window.processShopTransaction = async function(action, itemId, priceCopper, maxAvailable) {
-    const qtyInput = document.getElementById(`qty-${action}-${itemId}`);
-    if (!qtyInput) return;
-    
-    let qty = parseInt(qtyInput.value);
-    if (isNaN(qty) || qty <= 0) return alert("Quantidade inválida.");
-    if (qty > maxAvailable && action === 'buy' && maxAvailable !== -1) return alert("A loja não tem essa quantidade.");
-    if (qty > maxAvailable && action === 'sell') return alert("Você não possui essa quantidade.");
-
-    const totalPrice = priceCopper * qty;
-    const charId = globalState.selectedCharacterId;
-    const shopId = globalState.commerce.selectedShopId;
-
-    try {
-        await runTransaction(db, async (t) => {
-            const charRef = doc(db, "rpg_fichas", charId);
-            const shopRef = doc(db, "rpg_shops", shopId);
+            const stock = selectedShop.itensEstoque || {};
+            const items = Object.entries(stock).map(([id, data]) => ({ id, ...data }));
             
-            const [charSnap, shopSnap] = await Promise.all([t.get(charRef), t.get(shopRef)]);
-            if (!charSnap.exists() || !shopSnap.exists()) throw "Dados não encontrados.";
-
-            const charData = charSnap.data();
-            const shopData = shopSnap.data();
-            const mochila = charData.mochila || {};
-            const wallet = getWallet(charData);
-
-            if (action === 'buy') {
-                if (wallet.total < totalPrice) throw "Cobre insuficiente.";
-                
-                let remaining = wallet.total - totalPrice;
-                mochila[COINS.GOLD.id] = Math.floor(remaining / COINS.GOLD.val); remaining %= COINS.GOLD.val;
-                mochila[COINS.SILVER.id] = Math.floor(remaining / COINS.SILVER.val); remaining %= COINS.SILVER.val;
-                mochila[COINS.BRONZE.id] = remaining;
-
-                Object.keys(COINS).forEach(k => { if(mochila[COINS[k].id] === 0) delete mochila[COINS[k].id]; });
-
-                mochila[itemId] = (mochila[itemId] || 0) + qty;
-
-                const itemIndex = shopData.itemsToSell.findIndex(i => i.itemId === itemId);
-                if (itemIndex > -1 && shopData.itemsToSell[itemIndex].stock !== -1) {
-                    shopData.itemsToSell[itemIndex].stock -= qty;
-                }
-
+            if(items.length === 0) {
+                html += '<p class="col-span-full text-center opacity-50 py-10">Estoque esgotado.</p>';
             } else {
-                if ((mochila[itemId] || 0) < qty) throw "Item insuficiente.";
+                html += `<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 content-start">`;
                 
-                mochila[itemId] -= qty;
-                if (mochila[itemId] <= 0) delete mochila[itemId];
+                items.forEach(item => {
+                    if (item.estoqueAtual <= 0) return;
+                    
+                    const myQty = globalState.commerce.buyQuantities[item.id] || 1;
+                    const totalCost = (item.precoCompra || 0) * myQty;
+                    const canBuy = wallet.total >= totalCost && item.estoqueAtual >= myQty;
+                    
+                    const itemImgSafe = item.imagemUrl || PLACEHOLDER_IMAGE_URL;
+                    const itemNameSafe = escapeHTML(item.nome);
 
-                let remaining = wallet.total + totalPrice;
-                mochila[COINS.GOLD.id] = Math.floor(remaining / COINS.GOLD.val); remaining %= COINS.GOLD.val;
-                mochila[COINS.SILVER.id] = Math.floor(remaining / COINS.SILVER.val); remaining %= COINS.SILVER.val;
-                mochila[COINS.BRONZE.id] = remaining;
-                
-                Object.keys(COINS).forEach(k => { if(mochila[COINS[k].id] === 0) delete mochila[COINS[k].id]; });
+                    html += `
+                        <div class="shop-card group border-slate-700">
+                            <div class="shop-image-container" style="background-image: url('${itemImgSafe}')">
+                                <div class="absolute top-0 right-0 bg-black/60 text-white text-[10px] px-1.5 py-0.5 font-bold border-b border-l border-slate-600">Est: ${item.estoqueAtual}</div>
+                                <div class="absolute top-0 left-0 bg-black/60 text-amber-400 text-[10px] px-1.5 py-0.5 font-bold border-b border-r border-slate-600">Rank ${item.tierId || 'F'}</div>
+                            </div>
+                            <div class="p-3 flex flex-col flex-grow bg-slate-800">
+                                <div class="font-bold text-sm text-slate-200 mb-1 truncate" title="${itemNameSafe}">${itemNameSafe}</div>
+                                <div class="text-[10px] text-amber-400 font-bold mb-2">${item.precoCompra} CP / unid.</div>
+                                <div class="mt-auto">
+                                    <div class="qty-control mb-2">
+                                        <div class="qty-btn hover:bg-slate-700" onclick="window.adjustBuyQty('${item.id}', -1, ${item.estoqueAtual})">-</div>
+                                        <input type="number" class="qty-input" value="${myQty}" onchange="window.setBuyQtyDirect('${item.id}', this.value, ${item.estoqueAtual})">
+                                        <div class="qty-btn hover:bg-slate-700" onclick="window.adjustBuyQty('${item.id}', 1, ${item.estoqueAtual})">+</div>
+                                    </div>
+                                    <button onclick="window.executeBuy('${item.id}', ${item.precoCompra}, '${itemNameSafe.replace(/'/g, "\\'")}')" class="w-full py-2 rounded text-xs font-bold uppercase transition-all ${canBuy ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}" ${!canBuy ? 'disabled' : ''}>Comprar (${totalCost})</button>
+                                </div>
+                            </div>
+                        </div>`;
+                });
+                html += `</div>`;
             }
-
-            t.update(charRef, { mochila: mochila });
-            if (action === 'buy') t.update(shopRef, { itemsToSell: shopData.itemsToSell });
-        });
+        }
+    } 
+    // ==========================================
+    // MODO VENDER 
+    // ==========================================
+    else {
+        const shopCash = selectedShop ? (selectedShop.caixaAtual || 0) : 0;
         
-        renderWalletDisplay();
-    } catch (e) {
-        alert("Erro na transação: " + e);
-    }
-};
+        html += `
+            <div class="flex items-center justify-between bg-slate-800 p-2 rounded mb-4 border border-slate-600">
+                <span class="text-xs text-slate-400 uppercase font-bold"><i class="fas fa-cash-register mr-2"></i> Caixa da Loja</span>
+                <span class="text-sm font-mono font-bold text-emerald-400">${shopCash.toLocaleString()} CP</span>
+            </div>
+        `;
 
-window.sellAllByRank = async function(targetRank) {
-    if (!confirm(`Deseja vender TODOS os itens de rank ${targetRank} da sua mochila para esta loja? (Apenas os que a loja compra serão vendidos)`)) return;
-
-    const charId = globalState.selectedCharacterId;
-    const shopId = globalState.commerce.selectedShopId;
-    const shopData = globalState.commerce.liveShopData;
-
-    if (!shopData || !shopData.itemsToBuy || shopData.itemsToBuy.length === 0) return alert("Esta loja não está comprando nada.");
-
-    try {
-        await runTransaction(db, async (t) => {
-            const charRef = doc(db, "rpg_fichas", charId);
-            const charSnap = await t.get(charRef);
-            const charData = charSnap.data();
-            const mochila = charData.mochila || {};
-            const equipadosIds = new Set(Object.values(charData.equipamento || charData.equipamentos || {}).filter(Boolean));
-            
-            let totalProfitCopper = 0;
-            let itemsSold = 0;
-
-            const itemsToBuyMap = new Map();
-            shopData.itemsToBuy.forEach(i => itemsToBuyMap.set(i.itemId, i.priceCopper));
+        if (!selectedShop) {
+            html += '<p class="col-span-full text-center text-slate-500 py-10">Selecione uma loja.</p>';
+        } 
+        else if (!isShopOpen) {
+            html += `
+                <div class="col-span-full flex flex-col items-center justify-center py-10 opacity-50">
+                    <i class="fas fa-store-slash text-4xl mb-3 text-red-500"></i>
+                    <p class="text-slate-400 font-bold">O mercador não está atendendo no momento.</p>
+                </div>
+            `;
+        } 
+        else {
+            const mochila = charData.ficha.mochila || {};
+            const itemsToShow = [];
+            const coinIds = [COINS.GOLD.id, COINS.SILVER.id, COINS.BRONZE.id];
 
             Object.keys(mochila).forEach(itemId => {
-                if (equipadosIds.has(itemId)) return;
-                
-                const itemInfo = globalState.cache.itens.get(itemId);
-                if (!itemInfo) return;
+                if (coinIds.includes(itemId) || mochila[itemId] <= 0) return;
 
-                const configInfo = (globalState.cache.itemConfig) ? globalState.cache.itemConfig.get(itemId) : null;
-                const rank = (itemInfo.tierId || itemInfo.tier || itemInfo.rank || (configInfo ? configInfo.tierId : null) || "F").toUpperCase();
+                const config = globalState.cache.itemConfig ? globalState.cache.itemConfig.get(itemId) : null;
+                const baseItem = globalState.cache.itens ? globalState.cache.itens.get(itemId) : null;
+                if (!config && !baseItem) return;
 
-                if (rank === targetRank && itemsToBuyMap.has(itemId)) {
-                    const priceUnit = itemsToBuyMap.get(itemId);
-                    const qty = mochila[itemId];
-                    totalProfitCopper += (priceUnit * qty);
-                    itemsSold += qty;
-                    delete mochila[itemId];
+                const itemTierStr = (config ? config.tierId : null) || (baseItem ? baseItem.tier : null) || "F";
+
+                // Vende se for igual ao Rank da loja
+                if (itemTierStr.toUpperCase() === shopRankLetter.toUpperCase()) {
+                    const precoItem = Number(config?.basePrice || baseItem?.precoBase || 0);
+                    if (precoItem > 0) {
+                        itemsToShow.push({
+                            id: itemId,
+                            nome: (config ? config.nome : null) || (baseItem ? baseItem.nome : "Item sem nome"),
+                            imagemUrl: (config ? config.imagemUrl : null) || (baseItem ? baseItem.imagemUrl : PLACEHOLDER_IMAGE_URL),
+                            basePrice: precoItem,
+                            tierId: itemTierStr,
+                            maxQty: mochila[itemId]
+                        });
+                    }
                 }
             });
 
-            if (itemsSold === 0) throw "Nenhum item do rank especificado que a loja aceite foi encontrado.";
+            if (itemsToShow.length === 0) {
+                html += `
+                    <div class="col-span-full flex flex-col items-center justify-center h-full py-10 opacity-50">
+                        <i class="fas fa-box-open text-4xl mb-2"></i>
+                        <p>Sua mochila não possui itens compatíveis com este mercador.</p>
+                        <p class="text-[10px] mt-1 text-slate-500">Nota: Ele negocia <b>APENAS</b> itens do seu próprio Rank (Rank ${shopRankLetter}).</p>
+                    </div>`;
+            } else {
+                html += `<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 content-start">`;
+                let totalSellValue = 0;
+                
+                itemsToShow.forEach(item => {
+                    const currentSel = globalState.commerce.sellQuantities[item.id] || 0;
+                    const sellPrice = Math.floor(item.basePrice * 0.50);
+                    totalSellValue += sellPrice * currentSel;
+                    
+                    const borderClass = currentSel > 0 ? 'border-emerald-500 ring-1 ring-emerald-500/50' : 'border-slate-700';
 
-            const wallet = getWallet(charData);
-            let remaining = wallet.total + totalProfitCopper;
-            
-            mochila[COINS.GOLD.id] = Math.floor(remaining / COINS.GOLD.val); remaining %= COINS.GOLD.val;
-            mochila[COINS.SILVER.id] = Math.floor(remaining / COINS.SILVER.val); remaining %= COINS.SILVER.val;
-            mochila[COINS.BRONZE.id] = remaining;
-            
-            Object.keys(COINS).forEach(k => { if(mochila[COINS[k].id] === 0) delete mochila[COINS[k].id]; });
+                    html += `
+                        <div class="shop-card group ${borderClass}">
+                            <div class="shop-image-container" style="background-image: url('${item.imagemUrl}')">
+                                <div class="absolute top-0 left-0 bg-black/60 text-slate-300 text-[10px] px-1.5 py-0.5 rounded-br font-bold border-b border-r border-slate-600">Rank ${item.tierId}</div>
+                                <div class="absolute top-0 right-0 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-bl font-bold border-b border-l border-slate-600">x${item.maxQty}</div>
+                                ${currentSel > 0 ? `<div class="absolute inset-0 bg-emerald-900/40 flex items-center justify-center font-bold text-emerald-300 text-xl border-4 border-emerald-500/50">x${currentSel}</div>` : ''}
+                            </div>
+                            <div class="p-3 flex flex-col flex-grow bg-slate-800">
+                                <div class="font-bold text-sm text-slate-200 leading-tight mb-2 line-clamp-2 h-10" title="${escapeHTML(item.nome)}">${escapeHTML(item.nome)}</div>
+                                <div class="mt-auto pt-2 border-t border-slate-700/50">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-[10px] text-slate-400 uppercase">Oferta</span>
+                                        <span class="text-xs font-bold text-emerald-400">${sellPrice} CP</span>
+                                    </div>
+                                    <div class="qty-control mb-2">
+                                        <div class="qty-btn hover:bg-slate-700" onclick="window.setSellQty('${item.id}', ${currentSel - 1}, ${item.maxQty})">-</div>
+                                        <input type="number" class="qty-input" value="${currentSel}" onchange="window.setSellQty('${item.id}', this.value, ${item.maxQty})">
+                                        <div class="qty-btn hover:bg-slate-700" onclick="window.setSellQty('${item.id}', ${currentSel + 1}, ${item.maxQty})">+</div>
+                                    </div>
+                                    <button onclick="window.setSellQty('${item.id}', ${item.maxQty}, ${item.maxQty})" class="w-full text-[10px] text-slate-500 hover:text-emerald-400 uppercase font-bold transition-colors">Vender Tudo</button>
+                                </div>
+                            </div>
+                        </div>`;
+                });
 
-            t.update(charRef, { mochila: mochila });
+                if (totalSellValue > 0) {
+                    const shopCanPay = shopCash >= totalSellValue;
+                    html = `
+                        <div class="col-span-full mb-4 sticky top-0 z-20 bg-emerald-900/95 p-3 rounded-lg border border-emerald-500 flex justify-between items-center shadow-2xl backdrop-blur-md animate-fade-in ring-1 ring-emerald-400/50">
+                            <div class="flex items-center gap-3">
+                                 <div class="bg-emerald-950 p-2 rounded-full border border-emerald-700"><i class="fas fa-coins text-amber-300 text-lg"></i></div>
+                                 <div class="flex flex-col">
+                                    <span class="text-[10px] text-emerald-300 uppercase font-bold tracking-wider">Total a Receber</span>
+                                    <span class="text-lg font-cinzel font-bold text-white leading-none">${totalSellValue} CP</span>
+                                 </div>
+                            </div>
+                            <button onclick="window.executeSellBatch(${totalSellValue})" 
+                                class="px-6 py-2 rounded text-xs font-bold uppercase shadow-lg transition transform hover:-translate-y-1 flex items-center gap-2 ${shopCanPay ? 'bg-emerald-500 hover:bg-emerald-400 text-black' : 'bg-red-900 text-red-300 cursor-not-allowed'}"
+                                ${!shopCanPay ? 'disabled title="A loja não tem dinheiro suficiente!"' : ''}>
+                                ${shopCanPay ? '<i class="fas fa-hand-holding-usd"></i> Concluir Venda' : '<i class="fas fa-times-circle"></i> Loja sem Caixa'}
+                            </button>
+                        </div>
+                     ` + html;
+                }
+                html += `</div>`;
+            }
+        }
+    }
+
+    html += `</div></div>`;
+    container.innerHTML = html;
+}
+
+window.switchShop = function(shopId) {
+    if (globalState.commerce && globalState.commerce.liveShopUnsubscribe) {
+        globalState.commerce.liveShopUnsubscribe();
+        globalState.commerce.liveShopUnsubscribe = null;
+    }
+    globalState.commerce.selectedShopId = shopId;
+    globalState.commerce.liveShopData = null; 
+    globalState.commerce.buyQuantities = {};
+    globalState.commerce.sellQuantities = {};
+
+    if (!shopId) return;
+
+    globalState.commerce.liveShopUnsubscribe = onSnapshot(doc(db, "rpg_lojas", shopId), (docSnap) => {
+        if (docSnap.exists()) {
+            globalState.commerce.liveShopData = { id: docSnap.id, ...docSnap.data() };
+            // Apenas renderiza se a aba atual for comercio
+            const activeTab = document.querySelector('.tab-button.active');
+            if (activeTab && activeTab.dataset.tab === 'comercio') {
+                renderComercioTab();
+            }
+        }
+    });
+};
+
+window.setCommerceMode = function(mode) {
+    globalState.commerce.mode = mode;
+    renderComercioTab();
+};
+
+window.adjustBuyQty = function(id, delta, max) {
+    const current = globalState.commerce.buyQuantities[id] || 1;
+    const newVal = Math.max(1, Math.min(max, current + delta));
+    globalState.commerce.buyQuantities[id] = newVal;
+    renderComercioTab();
+};
+
+window.setBuyQtyDirect = function(id, val, max) {
+    const num = parseInt(val);
+    if (isNaN(num)) return;
+    globalState.commerce.buyQuantities[id] = Math.max(1, Math.min(max, num));
+    renderComercioTab();
+};
+
+window.setSellQty = function(id, val, max) {
+    const num = parseInt(val);
+    if (isNaN(num)) return;
+    const cleanVal = Math.max(0, Math.min(max, num));
+    globalState.commerce.sellQuantities[id] = cleanVal;
+    renderComercioTab(); 
+};
+
+// Funções de Banco (Compra / Venda / Câmbio)
+window.executeBuy = async function(itemId, unitPrice, itemName) {
+    const qty = globalState.commerce.buyQuantities[itemId] || 1;
+    const totalCostCP = unitPrice * qty; 
+    const charId = globalState.selectedCharacterId;
+    const shopId = globalState.commerce.selectedShopId;
+    const charData = globalState.selectedCharacterData.ficha;
+    const wallet = getWallet(charData);
+
+    if (wallet.total < totalCostCP) return alert(`Saldo insuficiente! Custa ${totalCostCP} CP.`);
+
+    try {
+        await runTransaction(db, async (t) => {
+            const charRef = doc(db, "rpg_fichas", charId);
+            const shopRef = doc(db, "rpg_lojas", shopId);
+            
+            const cDoc = await t.get(charRef);
+            const sDoc = await t.get(shopRef);
+            
+            if(!sDoc.exists()) throw "Loja indisponível.";
+            const sData = sDoc.data();
+            
+            const estoqueLoja = sData.itensEstoque || {};
+            const itemNaLoja = estoqueLoja[itemId];
+
+            if (!itemNaLoja) throw "Este item não está mais disponível na loja (Erro de Sincronia). Atualize a página.";
+            if (itemNaLoja.estoqueAtual < qty) throw "Estoque insuficiente na loja.";
+
+            const sm = cDoc.data().mochila || {};
+            const sTotal = ((sm[COINS.GOLD.id]||0)*100) + ((sm[COINS.SILVER.id]||0)*10) + (sm[COINS.BRONZE.id]||0);
+            if (sTotal < totalCostCP) throw "Saldo insuficiente no servidor.";
+
+            const finalCP = sTotal - totalCostCP;
+            const finalCoins = optimizeCoins(finalCP);
+            const newMochila = { ...sm };
+            
+            if(finalCoins.gold > 0) newMochila[COINS.GOLD.id] = finalCoins.gold; else delete newMochila[COINS.GOLD.id];
+            if(finalCoins.silver > 0) newMochila[COINS.SILVER.id] = finalCoins.silver; else delete newMochila[COINS.SILVER.id];
+            if(finalCoins.bronze > 0) newMochila[COINS.BRONZE.id] = finalCoins.bronze; else delete newMochila[COINS.BRONZE.id];
+            
+            newMochila[itemId] = (newMochila[itemId] || 0) + qty;
+
+            t.update(charRef, { mochila: newMochila });
+            t.update(shopRef, { 
+                [`itensEstoque.${itemId}.estoqueAtual`]: increment(-qty),
+                caixaAtual: increment(totalCostCP) 
+            });
         });
-        
-        renderWalletDisplay();
-        alert("Venda em massa concluída com sucesso!");
+
+        globalState.commerce.buyQuantities[itemId] = 1;
+        renderComercioTab(); 
+
     } catch (e) {
-        alert(e);
+        console.error(e);
+        alert("Erro na compra: " + e);
     }
 };
 
-function renderWalletDisplay() {
-    const container = document.getElementById('comercio-wallet-display');
-    if (!container) return;
-
-    const ficha = globalState.selectedCharacterData?.ficha;
-    if (!ficha) return;
-
-    const wallet = getWallet(ficha);
-
-    const makeCoinBox = (val, iconId, colorClass, borderClass, bgClass, name) => `
-        <div class="flex items-center justify-between ${bgClass} border ${borderClass} rounded-lg p-3 shadow-sm">
-            <div class="flex items-center gap-3">
-                <img src="${getCoinImg(iconId)}" class="w-8 h-8 rounded-full border ${borderClass} bg-black shadow-inner">
-                <span class="text-xs font-bold uppercase tracking-widest text-slate-400">${name}</span>
-            </div>
-            <span class="text-2xl font-cinzel font-bold ${colorClass}">${val}</span>
-        </div>
-    `;
-
-    container.innerHTML = `
-        ${makeCoinBox(wallet.gold, COINS.GOLD.id, 'text-amber-400', 'border-amber-500/50', 'bg-amber-900/10', 'Ouro')}
-        ${makeCoinBox(wallet.silver, COINS.SILVER.id, 'text-slate-300', 'border-slate-400/50', 'bg-slate-800/50', 'Prata')}
-        ${makeCoinBox(wallet.bronze, COINS.BRONZE.id, 'text-amber-700', 'border-amber-800/50', 'bg-amber-950/30', 'Cobre')}
-    `;
-}
-
-function renderExchangePanel() {
-    const container = document.getElementById('comercio-exchange-display');
-    if (!container) return;
-
-    const makeExchangeRow = (type, upperCoin, lowerCoin, rate) => {
-        const dir = globalState.commerce.exchange[type].dir;
-        const val = globalState.commerce.exchange[type].val;
-        
-        const isDown = dir === 'down';
-        const srcIconId = isDown ? upperCoin.id : lowerCoin.id;
-        const destIconId = isDown ? lowerCoin.id : upperCoin.id;
-        const resultVal = isDown ? (val * rate) : Math.floor(val / rate);
-
-        return `
-            <div class="bg-slate-900 p-3 rounded-lg border border-slate-700 shadow-inner flex flex-col gap-3">
-                <div class="flex justify-between items-center text-[10px] text-slate-500 font-bold uppercase border-b border-slate-800 pb-1">
-                    <span>${upperCoin.name} <i class="fas fa-arrows-alt-h mx-1 text-slate-600"></i> ${lowerCoin.name}</span>
-                    <span class="text-sky-400 font-mono">Taxa: 1 = ${rate}</span>
-                </div>
-                
-                <div class="flex items-center gap-2">
-                    <button onclick="window.toggleExchangeDir('${type}')" class="btn bg-slate-800 border-slate-600 text-slate-300 px-3 py-2 shrink-0 shadow-md hover:bg-slate-700 transition" title="Inverter Troca">
-                        <i class="fas fa-exchange-alt"></i>
-                    </button>
-                    
-                    <div class="flex-grow flex items-center bg-slate-950 border border-slate-700 rounded p-1">
-                        <img src="${getCoinImg(srcIconId)}" class="w-6 h-6 rounded-full mx-2 border border-slate-600 shrink-0">
-                        <input type="number" value="${val}" min="1" onchange="window.updateExchangeVal('${type}', this.value)" class="w-full bg-transparent text-white font-bold text-center outline-none">
-                    </div>
-                    
-                    <div class="text-slate-500"><i class="fas fa-arrow-right"></i></div>
-                    
-                    <div class="flex-grow flex items-center bg-slate-950 border border-slate-700 rounded p-1 opacity-80">
-                        <img src="${getCoinImg(destIconId)}" class="w-6 h-6 rounded-full mx-2 border border-slate-600 shrink-0">
-                        <div class="w-full text-center text-sky-400 font-bold">${resultVal}</div>
-                    </div>
-                </div>
-                
-                <button onclick="window.executeExchange('${type}')" class="btn btn-primary w-full py-2 text-xs font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(14,165,233,0.3)]">
-                    Realizar Câmbio
-                </button>
-            </div>
-        `;
-    };
-
-    container.innerHTML = `
-        ${makeExchangeRow('gold_silver', COINS.GOLD, COINS.SILVER, 10)}
-        ${makeExchangeRow('silver_bronze', COINS.SILVER, COINS.BRONZE, 10)}
-        ${makeExchangeRow('gold_bronze', COINS.GOLD, COINS.BRONZE, 100)}
-    `;
-}
-
-window.toggleExchangeDir = function(type) {
-    globalState.commerce.exchange[type].dir = globalState.commerce.exchange[type].dir === 'down' ? 'up' : 'down';
-    renderExchangePanel();
-};
-
-window.updateExchangeVal = function(type, val) {
-    let num = parseInt(val);
-    if(isNaN(num) || num < 1) num = 1;
-    globalState.commerce.exchange[type].val = num;
-    renderExchangePanel();
-};
-
-window.executeExchange = async function(type) {
+window.executeSellBatch = async function(totalValueCP) {
     const charId = globalState.selectedCharacterId;
-    const exData = globalState.commerce.exchange[type];
+    const shopId = globalState.commerce.selectedShopId;
     
-    let upperCoin, lowerCoin, rate;
-    if (type === 'gold_silver') { upperCoin = COINS.GOLD; lowerCoin = COINS.SILVER; rate = 10; }
-    else if (type === 'silver_bronze') { upperCoin = COINS.SILVER; lowerCoin = COINS.BRONZE; rate = 10; }
-    else { upperCoin = COINS.GOLD; lowerCoin = COINS.BRONZE; rate = 100; }
+    const timeInfo = getSessionTimeAndPeriod();
+    const shopDataCache = globalState.commerce.liveShopData || globalState.cache.lojas.get(shopId);
+    const isShopOpen = shopDataCache && shopDataCache.horariosFuncionamento?.includes(timeInfo.period);
 
-    const isDown = exData.dir === 'down';
-    const srcId = isDown ? upperCoin.id : lowerCoin.id;
-    const destId = isDown ? lowerCoin.id : upperCoin.id;
-    const srcName = isDown ? upperCoin.name : lowerCoin.name;
-    const costVal = exData.val;
-    const gainVal = isDown ? (costVal * rate) : Math.floor(costVal / rate);
+    if (!isShopOpen) return alert("Esta loja está fechada no momento!");
+    
+    let shopRankLetter = "F";
+    if (shopDataCache && shopDataCache.tierId) {
+        if (shopDataCache.tierId.length <= 2) {
+            shopRankLetter = shopDataCache.tierId;
+        } else {
+            const tierInfo = globalState.cache.shopTiers ? globalState.cache.shopTiers.get(shopDataCache.tierId) : null;
+            if (tierInfo) {
+                shopRankLetter = (tierInfo.nome || "F").replace(/rank/i, '').trim().toUpperCase();
+            }
+        }
+    }
 
-    if (gainVal <= 0) return alert("Quantidade insuficiente para gerar câmbio.");
+    const validIds = new Set();
+    Object.keys(globalState.commerce.sellQuantities).forEach(itemId => {
+        const config = globalState.cache.itemConfig ? globalState.cache.itemConfig.get(itemId) : null;
+        const baseItem = globalState.cache.itens ? globalState.cache.itens.get(itemId) : null;
+        const itemTierStr = (config ? config.tierId : null) || (baseItem ? baseItem.tier : null) || "F";
+        
+        if (itemTierStr.toUpperCase() === shopRankLetter.toUpperCase()) {
+            validIds.add(itemId);
+        }
+    });
+
+    const itemsToSell = Object.entries(globalState.commerce.sellQuantities)
+        .filter(([k, v]) => v > 0 && validIds.has(k))
+        .map(([k, v]) => [k, Number(v)]); 
+
+    if (itemsToSell.length === 0) return;
+
+    try {
+        await runTransaction(db, async (t) => {
+            const charRef = doc(db, "rpg_fichas", charId);
+            const shopRef = doc(db, "rpg_lojas", shopId);
+            
+            const charSnap = await t.get(charRef);
+            const shopSnap = await t.get(shopRef);
+            
+            if (!charSnap.exists() || !shopSnap.exists()) throw "Dados inválidos.";
+            
+            const cData = charSnap.data();
+            const sData = shopSnap.data();
+            
+            const serverMochila = cData.mochila || {};
+            const serverShopCash = sData.caixaAtual || 0;
+            const serverEstoque = sData.itensEstoque || {};
+            
+            let totalValue = 0;
+
+            for (const [itemId, qty] of itemsToSell) {
+                if ((serverMochila[itemId] || 0) < qty) throw "Você não possui essa quantidade no servidor.";
+                
+                const config = globalState.cache.itemConfig ? globalState.cache.itemConfig.get(itemId) : null;
+                const baseItem = globalState.cache.itens ? globalState.cache.itens.get(itemId) : null;
+                const basePrice = Number(config?.basePrice || baseItem?.precoBase || 0);
+                const sellPrice = Math.floor(basePrice * 0.50);
+                
+                totalValue += (sellPrice * qty);
+
+                serverMochila[itemId] -= qty;
+                if(serverMochila[itemId] <= 0) delete serverMochila[itemId];
+
+                if (serverEstoque[itemId]) {
+                    serverEstoque[itemId].estoqueAtual += qty;
+                } else {
+                    const itemTierStr = (config ? config.tierId : null) || (baseItem ? baseItem.tier : null) || "F";
+                    serverEstoque[itemId] = {
+                        nome: (config ? config.nome : null) || (baseItem ? baseItem.nome : "Item sem nome"),
+                        imagemUrl: (config ? config.imagemUrl : null) || (baseItem ? baseItem.imagemUrl : PLACEHOLDER_IMAGE_URL),
+                        estoqueAtual: qty,
+                        estoqueMaximo: qty,
+                        precoCompra: basePrice,
+                        precoVenda: sellPrice,
+                        tierId: itemTierStr,
+                        slotsOcupados: 1
+                    };
+                }
+            }
+
+            if (serverShopCash < totalValue) throw "O mercador não tem dinheiro suficiente no momento.";
+
+            serverMochila[COINS.BRONZE.id] = (serverMochila[COINS.BRONZE.id] || 0) + totalValue;
+
+            t.update(charRef, { mochila: serverMochila });
+            t.update(shopRef, { 
+                caixaAtual: serverShopCash - totalValue,
+                itensEstoque: serverEstoque 
+            });
+        });
+
+        globalState.commerce.sellQuantities = {};
+        renderComercioTab();
+        alert("Venda realizada com sucesso!");
+
+    } catch (e) {
+        console.error(e);
+        alert("Erro na venda: " + e);
+    }
+};
+
+window.toggleExchangeDir = function(key) {
+    const current = globalState.commerce.exchange[key].dir;
+    globalState.commerce.exchange[key].dir = current === 'down' ? 'up' : 'down';
+    renderComercioTab();
+};
+
+window.updateExchangeInput = function(key, val) {
+    const num = parseInt(val);
+    if(isNaN(num) || num < 0) return;
+    globalState.commerce.exchange[key].val = num;
+    renderComercioTab();
+};
+
+window.executeExchange = async function(key) {
+    const state = globalState.commerce.exchange[key];
+    const charId = globalState.selectedCharacterId;
+    
+    const sessionId = globalState.activeSessionId;
+    let isAnyShopOpen = false;
+    
+    if (sessionId && sessionId !== 'world') {
+        const sessionData = globalState.userSessions.find(s => s.id === sessionId);
+        const groupLoc = sessionData?.groupLocation;
+        
+        if (groupLoc && globalState.world.locations) {
+            const R = 10; 
+            const H = R * 2; 
+            const W = Math.sqrt(3) * R; 
+            const VERT_DIST = H * 0.75;
+            const validCityNames = [];
+            
+            globalState.world.locations.forEach(loc => {
+                if (loc.x && loc.y) {
+                    const row = Math.round((Number(loc.y) + (H/2)) / VERT_DIST);
+                    const xOffset = (row % 2 === 1) ? W / 2 : 0;
+                    const col = Math.round((Number(loc.x) + (W/2) - xOffset) / W);
+                    if (`${row}-${col}` === groupLoc.hexId) validCityNames.push(loc.name);
+                }
+            });
+            
+            const timeInfo = getSessionTimeAndPeriod();
+            isAnyShopOpen = [...globalState.cache.lojas.values()].some(shop => {
+                return shop.disponivel !== false && validCityNames.includes(shop.cidade) && shop.horariosFuncionamento?.includes(timeInfo.period);
+            });
+        }
+    }
+    
+    if (!isAnyShopOpen) return alert("Os serviços de câmbio da cidade estão fechados no momento!");
+    
+    const charData = globalState.selectedCharacterData.ficha;
+    const mochila = { ...charData.mochila };
+    const inputVal = state.val;
+    const rate = (key === 'gold_silver' || key === 'silver_bronze') ? 10 : 100;
+    
+    let sourceId, targetId;
+    
+    if (key === 'gold_silver') {
+        sourceId = state.dir === 'down' ? COINS.GOLD.id : COINS.SILVER.id;
+        targetId = state.dir === 'down' ? COINS.SILVER.id : COINS.GOLD.id;
+    } else if (key === 'silver_bronze') {
+        sourceId = state.dir === 'down' ? COINS.SILVER.id : COINS.BRONZE.id;
+        targetId = state.dir === 'down' ? COINS.BRONZE.id : COINS.SILVER.id;
+    } else { // gold_bronze
+        sourceId = state.dir === 'down' ? COINS.GOLD.id : COINS.BRONZE.id;
+        targetId = state.dir === 'down' ? COINS.BRONZE.id : COINS.GOLD.id;
+    }
+
+    const sourceBalance = mochila[sourceId] || 0;
+    if (inputVal > sourceBalance) return alert("Saldo insuficiente.");
+    if (inputVal <= 0) return;
+
+    let cost = inputVal;
+    let gain = 0;
+
+    if (state.dir === 'down') {
+        gain = inputVal * rate;
+    } else {
+        const effectiveInput = Math.floor(inputVal / rate) * rate; 
+        if (effectiveInput === 0) return alert(`Precisa de pelo menos ${rate} moedas para fundir.`);
+        
+        cost = effectiveInput;
+        gain = effectiveInput / rate;
+    }
 
     try {
         await runTransaction(db, async (t) => {
             const ref = doc(db, "rpg_fichas", charId);
             const d = (await t.get(ref)).data();
-            const mochila = d.mochila || {};
+            const serverMochila = d.mochila || {};
 
-            if ((mochila[srcId] || 0) < costVal) throw `Você não tem ${costVal} ${srcName}.`;
+            if ((serverMochila[sourceId] || 0) < cost) throw "Saldo insuficiente no servidor.";
 
-            mochila[srcId] -= costVal;
-            if (mochila[srcId] <= 0) delete mochila[srcId];
+            serverMochila[sourceId] -= cost;
+            if(serverMochila[sourceId] <= 0) delete serverMochila[sourceId];
+            
+            serverMochila[targetId] = (serverMochila[targetId] || 0) + gain;
 
-            mochila[destId] = (mochila[destId] || 0) + gainVal;
-
-            t.update(ref, { mochila: mochila });
+            t.update(ref, { mochila: serverMochila });
         });
-        renderWalletDisplay();
-    } catch (e) { alert("Erro de Câmbio: " + e); }
+
+        mochila[sourceId] -= cost;
+        if(mochila[sourceId] <= 0) delete mochila[sourceId];
+        mochila[targetId] = (mochila[targetId] || 0) + gain;
+        
+        globalState.selectedCharacterData.ficha.mochila = mochila;
+        renderComercioTab();
+        
+        globalState.commerce.exchange[key].val = 1;
+
+    } catch (e) {
+        alert("Erro no câmbio: " + e);
+    }
 };
