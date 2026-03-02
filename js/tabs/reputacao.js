@@ -1,1066 +1,573 @@
-import { db, doc, getDoc, updateDoc, runTransaction } from '../core/firebase.js';
+// ARQUIVO: js/tabs/reputacao.js
+
+import { db, doc, onSnapshot, updateDoc, runTransaction, increment, deleteField } from '../core/firebase.js';
 import { globalState, PLACEHOLDER_IMAGE_URL } from '../core/state.js';
-import { calculateReputationUsage, calculateReputationDetails } from '../core/calculos.js';
-import { escapeHTML } from '../core/utils.js';
+import { COINS } from '../core/state.js'; // Assumindo que COINS esteja no state.js, caso contrário importe onde estiver
+import { optimizeCoins } from '../core/calculos.js';
 
-const COLET_COOLDOWN_MS = 10 * 60 * 1000;
+const ID_PREDIO_ARMAZENAMENTO = '0fwxHnGjLBuNw2kTxGSs';
 
-// --- GESTÃO DE ESTADO DA INTERFACE ---
-window.switchRepTab = function(tabName) {
-    if (!globalState.repUI) globalState.repUI = { tab: 'buildings', selectedId: null, innerTab: 'details', shopCategory: 'buildings', showHelp: false };
-    globalState.repUI.tab = tabName;
-    globalState.repUI.selectedId = null; 
-    globalState.repUI.showHelp = false;
-    
-    if (tabName === 'shop' && !globalState.repUI.shopCategory) globalState.repUI.shopCategory = 'buildings';
-
-    window.renderReputacaoTab();
-};
-
-window.selectRepItem = function(tab, id) {
-    if (!globalState.repUI) globalState.repUI = { tab: 'buildings', selectedId: null, innerTab: 'details', showHelp: false };
-    globalState.repUI.selectedId = id;
-    globalState.repUI.innerTab = 'details';
-    globalState.repUI.showHelp = false;
-    window.renderReputacaoTab();
-};
-
-window.switchRepInnerTab = function(tabName) {
-    if (!globalState.repUI) return;
-    globalState.repUI.innerTab = tabName;
-    window.renderReputacaoTab();
-};
-
-window.switchShopCategory = function(category) {
-    if (!globalState.repUI) return;
-    globalState.repUI.shopCategory = category;
-    globalState.repUI.selectedId = null;
-    globalState.repUI.showHelp = false;
-    window.renderReputacaoTab();
-};
-
-window.toggleRepHelp = function() {
-    if (!globalState.repUI) return;
-    globalState.repUI.showHelp = !globalState.repUI.showHelp;
-    window.renderReputacaoTab();
-}
-
-window.transferWithInput = function(from, to, itemId, inputId) {
-    const inputEl = document.getElementById(inputId);
-    if (!inputEl) return;
-    let val = parseInt(inputEl.value);
-    if (isNaN(val) || val <= 0) return alert("Insira um valor numérico válido.");
-    window.transferGlobalStorage(from, to, itemId, val);
-};
-
-window.withdrawLocalWithInput = function(instanceId, itemId, inputId) {
-    const inputEl = document.getElementById(inputId);
-    if (!inputEl) return;
-    let val = parseInt(inputEl.value);
-    if (isNaN(val) || val <= 0) return alert("Insira um valor numérico válido.");
-    window.withdrawLocalBuildingItem(instanceId, itemId, val);
-};
-
-// --- CÁLCULO DE CAPACIDADE DO ARMAZÉM ---
-function calculateStorageCapacity(ficha) {
-    let armazemCap = 50; 
-    const mochilaForCap = ficha.mochila || {};
-    Object.entries(mochilaForCap).forEach(([id, qty]) => {
-        const tpl = globalState.cache.itens.get(id);
-        if (tpl && (tpl.tipoItem === 'Armazenamento' || tpl.categoria === 'Armazenamento' || tpl.slot_equipavel_id === 'bau')) {
-            armazemCap += (Number(tpl.bonusCapacidadeMochila) || 0) * qty;
-        }
-    });
-    return armazemCap;
-}
-
-// --- RENDERIZADOR PRINCIPAL ---
-export async function renderReputacaoTab() {
+export function renderRecursosReputacaoTab() {
     const container = document.getElementById('recursos-reputacao-content');
     if (!container) return;
 
-    window.renderReputacaoTab = renderReputacaoTab;
-
-    try {
-        const charId = globalState.selectedCharacterId;
-        const charData = globalState.selectedCharacterData;
-        
-        if (!charId || !charData || !charData.ficha) {
-            container.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500 italic">Selecione um personagem primeiro.</div>';
-            return;
-        }
-
-        if (!globalState.repUI) globalState.repUI = { tab: 'buildings', selectedId: null, innerTab: 'details', shopCategory: 'buildings', showHelp: false };
-        const activeTab = globalState.repUI.tab;
-        
-        const ficha = charData.ficha;
-        const repUsage = calculateReputationUsage(ficha);
-        const repDetails = calculateReputationDetails(ficha);
-        const maxStorage = calculateStorageCapacity(ficha);
-
-        let storageId = String(charId); 
-        if (ficha.recursos && typeof ficha.recursos.armazemGeral === 'string' && ficha.recursos.armazemGeral.trim() !== '') {
-            storageId = ficha.recursos.armazemGeral.trim();
-        }
-
-        let armazemGeral = {};
-        if (storageId && storageId !== "undefined" && storageId !== "null") {
-            try {
-                const storageRef = doc(db, "rpg_armazenamentos", storageId);
-                const storageSnap = await getDoc(storageRef);
-                if (storageSnap.exists()) {
-                    const snapData = storageSnap.data();
-                    armazemGeral = snapData.itens !== undefined ? snapData.itens : snapData;
-                }
-            } catch (e) { console.error("Erro cofre:", e); }
-        }
-
-        let totalGuardado = 0;
-        Object.values(armazemGeral).forEach(v => { if (typeof v === 'number') totalGuardado += v; });
-
-        let leftContentHtml = '';
-        if (activeTab === 'storage') {
-            leftContentHtml = `<div id="storage-mochila-container" class="flex-1 overflow-y-auto custom-scroll bg-slate-950/50 border border-slate-700 rounded-xl p-4 shadow-inner"></div>`;
-        } else {
-            leftContentHtml = `<div id="rep-grid-container" class="flex-1 overflow-y-auto custom-scroll bg-slate-950/50 border border-slate-700 rounded-xl p-4 shadow-inner grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 content-start"></div>`;
-        }
-
-        container.innerHTML = `
-            <div id="rep-layout-wrapper" class="flex w-full h-full gap-6 animate-fade-in pb-4">
-                <div class="flex-1 flex flex-col min-w-0 h-full">
-                    
-                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4 shrink-0">
-                        <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-700 flex justify-between items-center shadow-lg relative overflow-hidden">
-                            <div class="flex items-center gap-4">
-                                <div class="w-12 h-12 rounded-full bg-slate-950 border-2 border-amber-500 flex items-center justify-center text-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.3)]">
-                                    <i class="fas fa-crown text-xl"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-[10px] font-black text-amber-500 uppercase tracking-widest leading-none">Influência Total</h3>
-                                    <div class="flex gap-3 mt-1.5">
-                                        <span class="text-[9px] text-slate-400 font-mono" title="Nível + Profissões"><i class="fas fa-arrow-up text-emerald-500"></i> ${repDetails.level + repDetails.profissoes}</span>
-                                        <span class="text-[9px] text-slate-400 font-mono" title="Enciclopédia"><i class="fas fa-book text-sky-500"></i> ${repUsage.colecao}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="text-right border-l border-slate-800 pl-4">
-                                <div class="text-2xl font-cinzel text-amber-400 leading-none">${repUsage.total}</div>
-                                <div class="text-[10px] ${repUsage.available >= 0 ? 'text-emerald-400' : 'text-red-400'} font-bold mt-1">Livre: ${repUsage.available}</div>
-                            </div>
-                        </div>
-
-                        <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700 grid grid-cols-3 gap-2 text-center shadow-inner">
-                            <div class="flex flex-col justify-center border-r border-slate-700">
-                                <span class="text-[8px] text-slate-500 uppercase font-black">Propriedades</span>
-                                <strong class="text-lg text-white font-cinzel">${(ficha.recursos?.estabelecimentos || []).length}</strong>
-                            </div>
-                            <div class="flex flex-col justify-center border-r border-slate-700">
-                                <span class="text-[8px] text-slate-500 uppercase font-black">Exército/Aliados</span>
-                                <strong class="text-lg text-white font-cinzel">${(ficha.recursos?.aliados || []).length}</strong>
-                            </div>
-                            <div class="flex flex-col justify-center">
-                                <span class="text-[8px] text-slate-500 uppercase font-black" title="Armazém Infinito">Itens Cofre</span>
-                                <strong class="text-lg text-sky-400 font-cinzel">${totalGuardado} <i class="fas fa-infinity text-[10px] ml-1 opacity-50"></i></strong>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex gap-2 mb-4 shrink-0 bg-slate-900/50 p-1 rounded-xl border border-slate-800">
-                        <button onclick="window.switchRepTab('buildings')" class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black transition-all ${activeTab === 'buildings' ? 'bg-amber-600 text-black shadow-lg' : 'text-slate-500 hover:bg-slate-800'}">
-                            <i class="fas fa-city mr-1"></i> Meu Império
-                        </button>
-                        <button onclick="window.switchRepTab('allies')" class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black transition-all ${activeTab === 'allies' ? 'bg-sky-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'}">
-                            <i class="fas fa-users mr-1"></i> Meu Exército
-                        </button>
-                        <button onclick="window.switchRepTab('storage')" class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black transition-all ${activeTab === 'storage' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'}">
-                            <i class="fas fa-boxes mr-1"></i> Cofre Imperial
-                        </button>
-                        <button onclick="window.switchRepTab('shop')" class="flex-1 py-2 rounded-lg text-[10px] uppercase font-black transition-all ${activeTab === 'shop' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-800'}">
-                            <i class="fas fa-shopping-cart mr-1"></i> Loja & Aluguel
-                        </button>
-                    </div>
-
-                    ${activeTab === 'shop' ? `
-                        <div class="flex gap-2 mb-2">
-                            <button onclick="window.switchShopCategory('buildings')" class="flex-1 py-1 text-[9px] uppercase font-bold rounded ${globalState.repUI.shopCategory === 'buildings' ? 'bg-slate-700 text-amber-400' : 'bg-slate-900 text-slate-500'}">Terrenos & Propriedades</button>
-                            <button onclick="window.switchShopCategory('allies')" class="flex-1 py-1 text-[9px] uppercase font-bold rounded ${globalState.repUI.shopCategory === 'allies' ? 'bg-slate-700 text-sky-400' : 'bg-slate-900 text-slate-500'}">Contratos & Mercenários</button>
-                            <button onclick="window.switchShopCategory('storage')" class="flex-1 py-1 text-[9px] uppercase font-bold rounded ${globalState.repUI.shopCategory === 'storage' ? 'bg-slate-700 text-purple-400' : 'bg-slate-900 text-slate-500'}">Expansões de Carga</button>
-                        </div>
-                    ` : ''}
-
-                    ${leftContentHtml}
-                </div>
-
-                <div class="w-80 md:w-96 shrink-0 flex flex-col h-full relative">
-                    <div class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col h-full relative overflow-hidden" id="rep-inspect-panel"></div>
-                </div>
-            </div>
-        `;
-
-        if (activeTab === 'storage') {
-            renderStorageMochila(ficha);
-            renderStorageVault(armazemGeral);
-        } else if (activeTab === 'shop') {
-            renderShopGrid();
-            renderShopInspector(ficha, repUsage);
-        } else {
-            renderMyEmpireGrid(ficha);
-            renderMyEmpireInspector(ficha);
-        }
-
-    } catch (error) {
-        console.error("Erro na Aba Reputação:", error);
-    }
-}
-
-// ------------------------------------------------------------------
-// 1. MEU IMPÉRIO E EXÉRCITO
-// ------------------------------------------------------------------
-function renderMyEmpireGrid(ficha) {
-    const grid = document.getElementById('rep-grid-container');
-    if (!grid) return;
-    grid.innerHTML = '';
-    
-    const activeTab = globalState.repUI.tab;
-    const selectedId = globalState.repUI.selectedId;
-
-    let myResources = activeTab === 'buildings' ? (ficha.recursos?.estabelecimentos || []) : (ficha.recursos?.aliados || []);
-    
-    if (myResources.length === 0) {
-        grid.innerHTML = `<div class="col-span-full text-center text-slate-500 py-10 italic">Nenhum registro encontrado. Vá à loja para adquirir.</div>`;
+    const charData = globalState.selectedCharacterData;
+    if(!charData || !charData.ficha) {
+        container.innerHTML = '<p class="text-center text-slate-500 mt-10">Selecione um personagem.</p>';
         return;
     }
 
-    myResources.forEach((inst, index) => {
-        const cacheMap = activeTab === 'buildings' ? globalState.cache.buildings : globalState.cache.allies;
-        const tpl = cacheMap.get(inst.templateId);
-        if (!tpl) return;
+    const ficha = charData.ficha;
+    const recursos = ficha.recursos || { estabelecimentos: [], aliados: [], estoqueTemporario: {} };
+    const estoqueTemp = recursos.estoqueTemporario || {};
 
-        const isSelected = selectedId === index.toString(); 
-        const border = isSelected ? 'border-sky-400 shadow-[0_0_20px_rgba(56,189,248,0.4)]' : 'border-slate-700 hover:border-slate-500';
+    // Controle de Abas Internas (Estado Padrão)
+    if (!globalState.recursosUI) globalState.recursosUI = { abaAtiva: 'estabelecimentos' };
+    let ui = globalState.recursosUI;
 
-        let extraBadge = '';
-        if (activeTab === 'buildings') {
-            const workers = inst.trabalhadores || [];
-            extraBadge = `<div class="absolute top-1 right-1 bg-black/80 border border-slate-700 text-slate-300 text-[8px] font-mono px-1 rounded shadow"><i class="fas fa-users mr-1 text-sky-400"></i>${workers.length}/${tpl.vagas || 0}</div>`;
+    const estabelecimentosDoJogador = recursos.estabelecimentos || [];
+    const hasStorage = estabelecimentosDoJogador.some(b => b.templateId === ID_PREDIO_ARMAZENAMENTO);
+
+    // Se tem o prédio e tem itens temporários, migra automaticamente
+    if (hasStorage && Object.keys(estoqueTemp).length > 0) {
+        window.migrateTempToStorage(globalState.selectedCharacterId, estoqueTemp);
+    }
+
+    // Redireciona abas dependendo de ter o prédio de armazenamento ou não
+    if (hasStorage && ui.abaAtiva === 'inventario') ui.abaAtiva = 'armazenamento';
+    if (!hasStorage && ui.abaAtiva === 'armazenamento') ui.abaAtiva = 'inventario';
+
+    const repStats = calculateReputationUsage(ficha); 
+    const pctRep = repStats.total > 0 ? Math.min(100, Math.max(0, (repStats.used / repStats.total) * 100)) : 0;
+
+    // Cálculo Financeiro (Produção e Consumo)
+    const productionMap = new Map();
+    const consumptionMap = new Map();
+    const addToMap = (map, itemId, qtd) => map.set(itemId, (map.get(itemId) || 0) + qtd);
+
+    estabelecimentosDoJogador.forEach(inst => {
+        const tpl = globalState.cache.buildings.get(inst.templateId);
+        if(tpl) {
+            tpl.producaoPassiva?.forEach(r => addToMap(productionMap, r.itemId, r.qtd));
+            tpl.custoManutencao?.forEach(c => addToMap(consumptionMap, c.itemId, c.qtd));
         }
-
-        const el = document.createElement('div');
-        el.className = 'relative group cursor-pointer hover:-translate-y-1 transition-transform';
-        el.onclick = () => window.selectRepItem(activeTab, index.toString());
-        
-        el.innerHTML = `
-            <div class="w-full aspect-square bg-slate-950 rounded-xl border-2 ${border} overflow-hidden relative transition-all">
-                <img src="${tpl.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-full h-full object-cover opacity-90 group-hover:opacity-100">
-                <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black pt-4 pb-1 text-center px-1">
-                    <span class="text-[8.5px] font-black uppercase truncate block text-amber-400">ID: #${index+1}</span>
-                    <span class="text-[8px] font-bold uppercase truncate block text-slate-300">${tpl.nome}</span>
-                </div>
-                ${extraBadge}
-            </div>
-        `;
-        grid.appendChild(el);
     });
-}
 
-function renderMyEmpireInspector(ficha) {
-    const panel = document.getElementById('rep-inspect-panel');
-    if (!panel) return;
+    const aliados = recursos.aliados || [];
+    let allyWorking = 0;
+    let buildOpen = 0;
+    let buildFull = 0;
+    let totalSlots = 0;
 
-    const activeTab = globalState.repUI.tab;
-    const selectedIdx = globalState.repUI.selectedId;
-    const innerTab = globalState.repUI.innerTab || 'details';
-    const showHelp = globalState.repUI.showHelp;
-
-    if (showHelp) {
-        panel.innerHTML = renderHelpPanel();
-        return;
-    }
-
-    if (!selectedIdx) {
-        panel.innerHTML = `<div class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 opacity-40 p-10 text-center"><i class="fas fa-chess-rook text-6xl mb-4"></i><p class="font-cinzel text-sm uppercase tracking-widest">Gestão de Instância</p></div>
-        <button onclick="window.toggleRepHelp()" class="absolute top-4 right-4 text-slate-500 hover:text-white cursor-pointer z-10 p-2"><i class="fas fa-question-circle text-xl"></i></button>`;
-        return;
-    }
-
-    const resourcesArray = activeTab === 'buildings' ? (ficha.recursos?.estabelecimentos || []) : (ficha.recursos?.aliados || []);
-    const inst = resourcesArray[parseInt(selectedIdx)];
-    if (!inst) return;
-
-    const cacheMap = activeTab === 'buildings' ? globalState.cache.buildings : globalState.cache.allies;
-    const tpl = cacheMap.get(inst.templateId);
-    if (!tpl) return;
-
-    if (activeTab === 'buildings') {
-        const vagasTotal = tpl.vagas || 0;
-        const trabalhadores = inst.trabalhadores || []; 
-        
-        let opsBox = `<div class="bg-slate-950/80 p-3 rounded-xl border border-slate-700 shadow-inner mb-4">
-            <h4 class="text-[9px] uppercase font-black text-slate-500 mb-2 border-b border-slate-800 pb-1">Operação (Por Hora)</h4>`;
-        
-        if (tpl.consumo?.length > 0) {
-            tpl.consumo.forEach(c => {
-                const i = globalState.cache.itens.get(c.itemId);
-                opsBox += `<div class="flex justify-between text-[10px] mb-1"><span class="text-slate-400">${i?.nome}</span><span class="text-red-500 font-bold">-${c.quantidadeBase}</span></div>`;
-            });
-        } else { opsBox += `<p class="text-[9px] text-slate-500 italic">Nenhum custo de manutenção.</p>`; }
-
-        if (tpl.producao?.length > 0) {
-            opsBox += `<div class="mt-2 pt-2 border-t border-slate-800">`;
-            tpl.producao.forEach(p => {
-                const i = globalState.cache.itens.get(p.itemId);
-                opsBox += `<div class="flex justify-between text-[10px] mb-1"><span class="text-slate-300">${i?.nome}</span><span class="text-emerald-400 font-bold">+${p.quantidadeBase}</span></div>`;
-            });
-            opsBox += `</div>`;
+    estabelecimentosDoJogador.forEach(b => {
+        const tpl = globalState.cache.buildings.get(b.templateId);
+        if(tpl) {
+            const slots = tpl.slotsTrabalho || 1;
+            totalSlots += slots;
+            const workers = aliados.filter(a => a.assignedBuildingId === b.uniqueId).length;
+            if(workers >= slots) buildFull++; else buildOpen++;
         }
-        opsBox += `</div>`;
-
-        let workersHtml = `<div class="mb-4"><h4 class="text-[9px] uppercase font-black text-sky-400 mb-2 border-b border-sky-900/50 pb-1"><i class="fas fa-users mr-1"></i> Trabalhadores Alocados (${trabalhadores.length}/${vagasTotal})</h4>`;
-        
-        if (vagasTotal === 0) {
-            workersHtml += `<p class="text-[9px] italic text-slate-500">Este local não suporta trabalhadores.</p>`;
-        } else {
-            workersHtml += `<div class="space-y-2">`;
-            for (let i = 0; i < vagasTotal; i++) {
-                const allyIdx = trabalhadores[i];
-                if (allyIdx !== undefined) {
-                    const allyInst = ficha.recursos.aliados[allyIdx];
-                    const allyTpl = allyInst ? globalState.cache.allies.get(allyInst.templateId) : null;
-                    workersHtml += `
-                        <div class="flex justify-between items-center bg-slate-900 border border-slate-700 p-1.5 rounded">
-                            <div class="flex items-center gap-2">
-                                <img src="${allyTpl?.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-6 h-6 rounded-full object-cover">
-                                <span class="text-[9px] text-slate-200 font-bold">${allyTpl?.nome || 'Desconhecido'}</span>
-                            </div>
-                            <button onclick="window.unassignWorker('${selectedIdx}', ${allyIdx})" class="text-red-500 hover:text-red-400 text-[10px]"><i class="fas fa-user-minus"></i></button>
-                        </div>
-                    `;
-                } else {
-                    let options = `<option value="">-- Escalar Aliado Livre --</option>`;
-                    const allAllies = ficha.recursos?.aliados || [];
-                    allAllies.forEach((a, aIdx) => {
-                        let isWorking = false;
-                        (ficha.recursos?.estabelecimentos || []).forEach(est => {
-                            if (est.trabalhadores && est.trabalhadores.includes(aIdx)) isWorking = true;
-                        });
-                        if (!isWorking) {
-                            const aTpl = globalState.cache.allies.get(a.templateId);
-                            options += `<option value="${aIdx}">#${aIdx+1} - ${aTpl?.nome}</option>`;
-                        }
-                    });
-
-                    workersHtml += `
-                        <div class="flex gap-1">
-                            <select id="assign_sel_${i}" class="flex-1 bg-slate-950 border border-slate-700 text-[9px] text-slate-400 rounded outline-none p-1">${options}</select>
-                            <button onclick="window.assignWorker('${selectedIdx}', 'assign_sel_${i}')" class="bg-sky-600 hover:bg-sky-500 text-white px-2 py-1 rounded text-[9px] font-bold">Alocar</button>
-                        </div>
-                    `;
-                }
-            }
-            workersHtml += `</div>`;
-        }
-        workersHtml += `</div>`;
-
-        let centerContent = '';
-        if (innerTab === 'inventory') {
-            const armazem = inst.armazem || {};
-            const keys = Object.keys(armazem);
-            if (keys.length === 0) {
-                centerContent = `<div class="text-center text-slate-500 opacity-50 py-10"><i class="fas fa-box-open text-4xl mb-2 block"></i><span class="text-[10px] uppercase font-bold">Armazém Local Vazio</span></div>`;
-            } else {
-                centerContent = `<div class="grid grid-cols-2 gap-2">`;
-                keys.forEach(k => {
-                    const it = globalState.cache.itens.get(k);
-                    centerContent += `
-                        <div class="bg-slate-900 border border-slate-700 rounded p-2 text-center relative group">
-                            <img src="${it?.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-8 h-8 mx-auto object-cover rounded mb-1">
-                            <div class="text-[8px] font-bold text-slate-300 truncate">${it?.nome}</div>
-                            <div class="text-[10px] text-amber-500 font-black mb-1">x${armazem[k]}</div>
-                            <div class="flex gap-1 w-full mt-1">
-                                <input type="number" id="loc_wit_${k}" value="1" min="1" max="${armazem[k]}" class="w-8 bg-slate-950 text-white text-[9px] text-center border border-slate-600 rounded">
-                                <button onclick="window.withdrawLocalWithInput('${selectedIdx}', '${k}', 'loc_wit_${k}')" class="flex-1 bg-sky-600 text-white text-[9px] rounded">Sacar</button>
-                            </div>
-                        </div>
-                    `;
-                });
-                centerContent += `</div>`;
-            }
-        } else {
-            centerContent = `${opsBox}${workersHtml}`;
-        }
-
-        panel.innerHTML = `
-            <div class="flex flex-col h-full relative">
-                <button onclick="window.toggleRepHelp()" class="absolute top-4 right-4 text-slate-500 hover:text-white cursor-pointer z-10 p-2"><i class="fas fa-question-circle text-xl"></i></button>
-                <div class="p-6 border-b border-slate-700 bg-slate-900/50 flex flex-col items-center shrink-0">
-                    <div class="w-24 h-24 rounded-xl bg-black border-2 border-amber-500 overflow-hidden mb-2 relative">
-                        <img src="${tpl.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-full h-full object-cover">
-                        <div class="absolute top-0 right-0 bg-amber-500 text-black font-black text-[9px] px-1 rounded-bl">#${parseInt(selectedIdx)+1}</div>
-                    </div>
-                    <h3 class="font-cinzel text-xl text-amber-400 text-center leading-tight mb-1">${tpl.nome}</h3>
-                    <p class="text-[9px] text-slate-500 uppercase font-black">${tpl.funcao || 'Estabelecimento'}</p>
-                </div>
-                
-                <div class="flex p-2 bg-slate-950 border-b border-slate-700 shrink-0 gap-2">
-                    <button onclick="window.switchRepInnerTab('details')" class="flex-1 py-1.5 text-[9px] uppercase font-black rounded-lg transition-colors ${innerTab === 'details' ? 'bg-slate-800 text-amber-500 border border-amber-500/30 shadow-md' : 'text-slate-500 hover:bg-slate-900'}">Gestão</button>
-                    <button onclick="window.switchRepInnerTab('inventory')" class="flex-1 py-1.5 text-[9px] uppercase font-black rounded-lg transition-colors ${innerTab === 'inventory' ? 'bg-slate-800 text-sky-400 border border-sky-400/30 shadow-md' : 'text-slate-500 hover:bg-slate-900'}">Armazém Local</button>
-                </div>
-
-                <div class="flex-1 overflow-y-auto custom-scroll p-4 bg-slate-900/20">
-                    ${centerContent}
-                </div>
-
-                <div class="p-4 bg-slate-900 border-t border-slate-700">
-                    <button onclick="window.collectBuilding('${selectedIdx}')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-lg text-[10px] uppercase shadow-lg animate-pulse mb-2"><i class="fas fa-hammer mr-1"></i> Simular 1 Hora de Produção</button>
-                    <button onclick="window.sellInstance('buildings', '${selectedIdx}')" class="w-full bg-red-900/30 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/50 py-2 rounded-lg text-[9px] font-black uppercase transition-all"><i class="fas fa-bomb mr-1"></i> Destruir Propriedade</button>
-                </div>
-            </div>
-        `;
-    } 
-    else if (activeTab === 'allies') {
-        let isWorkingAt = null;
-        (ficha.recursos?.estabelecimentos || []).forEach((est, eIdx) => {
-            if (est.trabalhadores && est.trabalhadores.includes(parseInt(selectedIdx))) {
-                const estTpl = globalState.cache.buildings.get(est.templateId);
-                isWorkingAt = `Trabalhando em: ${estTpl?.nome} #${eIdx+1}`;
-            }
-        });
-
-        panel.innerHTML = `
-            <div class="flex flex-col h-full relative">
-                <button onclick="window.toggleRepHelp()" class="absolute top-4 right-4 text-slate-500 hover:text-white cursor-pointer z-10 p-2"><i class="fas fa-question-circle text-xl"></i></button>
-                <div class="p-6 border-b border-slate-700 bg-slate-900/50 flex flex-col items-center shrink-0">
-                    <div class="w-24 h-24 rounded-full bg-black border-4 border-sky-500 overflow-hidden mb-2 relative">
-                        <img src="${tpl.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-full h-full object-cover">
-                    </div>
-                    <h3 class="font-cinzel text-xl text-sky-400 text-center leading-tight mb-1">${tpl.nome} <span class="text-xs text-slate-500 ml-1">#${parseInt(selectedIdx)+1}</span></h3>
-                    <p class="text-[9px] text-amber-500 uppercase font-black">${tpl.funcao || 'Mercenário'}</p>
-                </div>
-
-                <div class="flex-1 overflow-y-auto custom-scroll p-6 bg-slate-900/20">
-                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center mb-4">
-                        <span class="block text-[9px] text-slate-500 uppercase font-black mb-1">Status de Alocação</span>
-                        <strong class="text-xs ${isWorkingAt ? 'text-amber-400' : 'text-emerald-400'} font-mono">${isWorkingAt || 'Livre / Aguardando Ordens'}</strong>
-                    </div>
-                    <p class="text-[10px] text-slate-300 italic leading-relaxed border-l-2 border-slate-600 pl-3">${escapeHTML(tpl.descricao)}</p>
-                </div>
-
-                <div class="p-4 bg-slate-900 border-t border-slate-700">
-                    <button onclick="window.sellInstance('allies', '${selectedIdx}')" class="w-full bg-red-900/30 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/50 py-3 rounded-lg text-[10px] font-black uppercase transition-all"><i class="fas fa-user-times mr-1"></i> Dispensar Aliado</button>
-                </div>
-            </div>
-        `;
-    }
-}
-
-// ------------------------------------------------------------------
-// 2. LOJA IMPERIAL (COMPRA CLARA DE PRODUÇÃO E CONSUMO)
-// ------------------------------------------------------------------
-function renderShopGrid() {
-    const grid = document.getElementById('rep-grid-container');
-    if (!grid) return;
-    grid.innerHTML = '';
-
-    const cat = globalState.repUI.shopCategory || 'buildings';
-    const selectedId = globalState.repUI.selectedId;
-
-    let itemsToDisplay = [];
-    if (cat === 'buildings') itemsToDisplay = [...globalState.cache.buildings.values()];
-    else if (cat === 'allies') itemsToDisplay = [...globalState.cache.allies.values()];
-    else if (cat === 'storage') itemsToDisplay = [...globalState.cache.itens.values()].filter(i => i.tipoItem === 'Armazenamento' || i.categoria === 'Armazenamento' || i.slot_equipavel_id === 'bau');
-
-    itemsToDisplay.sort((a,b) => a.nome.localeCompare(b.nome)).forEach(tpl => {
-        const isSelected = selectedId === tpl.id;
-        const border = isSelected ? 'border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.3)]' : 'border-slate-700 hover:border-slate-500';
-
-        const el = document.createElement('div');
-        el.className = 'relative group cursor-pointer hover:-translate-y-1 transition-transform';
-        el.onclick = () => {
-            globalState.repUI.selectedId = tpl.id;
-            window.renderReputacaoTab();
-        };
-
-        el.innerHTML = `
-            <div class="w-full aspect-square bg-slate-950 rounded-xl border-2 ${border} overflow-hidden relative transition-all">
-                <img src="${tpl.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity">
-                <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black pt-4 pb-1 text-center px-1">
-                    <span class="text-[8px] font-black uppercase truncate block text-slate-200">${tpl.nome}</span>
-                </div>
-                <div class="absolute top-1 right-1 bg-black/80 border border-slate-700 text-amber-400 text-[8px] font-mono px-1.5 py-0.5 rounded shadow">${tpl.reputacaoCusto || tpl.reputacaoCustoBase || 0} REP</div>
-            </div>
-        `;
-        grid.appendChild(el);
     });
-}
 
-function renderShopInspector(ficha, repUsage) {
-    const panel = document.getElementById('rep-inspect-panel');
-    if (!panel) return;
-
-    const cat = globalState.repUI.shopCategory;
-    const selectedId = globalState.repUI.selectedId;
-    const showHelp = globalState.repUI.showHelp;
-
-    if (showHelp) {
-        panel.innerHTML = renderHelpPanel();
-        return;
-    }
-
-    if (!selectedId) {
-        panel.innerHTML = `<div class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 opacity-40 p-10 text-center"><i class="fas fa-shopping-cart text-6xl mb-4"></i><p class="font-cinzel text-sm uppercase tracking-widest">Loja Imperial</p></div>
-        <button onclick="window.toggleRepHelp()" class="absolute top-4 right-4 text-slate-500 hover:text-white cursor-pointer z-10 p-2"><i class="fas fa-question-circle text-xl"></i></button>`;
-        return;
-    }
-
-    let tpl;
-    if (cat === 'buildings') tpl = globalState.cache.buildings.get(selectedId);
-    else if (cat === 'allies') tpl = globalState.cache.allies.get(selectedId);
-    else tpl = globalState.cache.itens.get(selectedId);
-
-    if (!tpl) return;
-
-    const costRep = tpl.reputacaoCusto || tpl.reputacaoCustoBase || 0;
-    
-    let qtdPosse = 0;
-    if (cat === 'buildings') qtdPosse = (ficha.recursos?.estabelecimentos || []).filter(e => e.templateId === selectedId).length;
-    else if (cat === 'allies') qtdPosse = (ficha.recursos?.aliados || []).filter(a => a.templateId === selectedId).length;
-    else qtdPosse = (ficha.mochila || {})[selectedId] || 0;
-
-    let canAffordRep = repUsage.available >= costRep;
-    let canAffordMats = true;
-    let purchaseMatsHtml = '';
-
-    const buyRequirements = tpl.custoMateriais || tpl.requisitos || [];
-    if (buyRequirements.length > 0) {
-        purchaseMatsHtml = `<div class="mt-4"><h4 class="text-[9px] uppercase font-black text-amber-500 mb-2 border-b border-amber-500/20 pb-1">Custo de Construção/Contrato (Requerido na Mochila):</h4><div class="grid grid-cols-2 gap-2">`;
-        buyRequirements.forEach(req => {
-            const itemReq = globalState.cache.itens.get(req.itemId);
-            const has = (ficha.mochila || {})[req.itemId] || 0;
-            const enough = has >= req.quantidade;
-            if (!enough) canAffordMats = false;
-            purchaseMatsHtml += `
-                <div class="flex items-center gap-2 bg-slate-900 border ${enough ? 'border-emerald-900/40' : 'border-red-900/40'} p-2 rounded">
-                    <img src="${itemReq?.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-6 h-6 rounded shrink-0">
-                    <span class="text-[10px] font-bold font-mono ${enough ? 'text-emerald-400' : 'text-red-400'}">${has} / ${req.quantidade}</span>
-                </div>`;
-        });
-        purchaseMatsHtml += `</div></div>`;
-    }
-
-    let opsBox = '';
-    if ((tpl.producao?.length || 0) > 0 || (tpl.consumo?.length || 0) > 0) {
-        opsBox = `<div class="space-y-4 mt-4">`;
-        if (tpl.consumo?.length > 0) {
-            opsBox += `<div><h4 class="text-[9px] uppercase font-black text-red-500 mb-2 border-b border-red-900/30 pb-1"><i class="fas fa-fire mr-1"></i> Custo de Operação (Gasto p/ Hora):</h4>`;
-            tpl.consumo.forEach(c => {
-                const item = globalState.cache.itens.get(c.itemId);
-                opsBox += `<div class="flex justify-between items-center text-[10px] bg-red-950 p-1.5 rounded mb-1 border border-red-900/50">
-                    <span class="flex items-center gap-2 font-bold text-slate-300 truncate"><img src="${item?.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-4 h-4 rounded"> ${item?.nome}</span>
-                    <span class="font-black text-red-500">-${c.quantidade || c.quantidadeBase}</span>
-                </div>`;
-            });
-            opsBox += `</div>`;
+    aliados.forEach(inst => {
+        if (!inst.assignedBuildingId) return;
+        allyWorking++;
+        const tpl = globalState.cache.allies.get(inst.templateId);
+        if(tpl) {
+            tpl.producaoBase?.forEach(r => addToMap(productionMap, r.itemId, r.qtd));
+            tpl.custoManutencao?.forEach(c => addToMap(consumptionMap, c.itemId, c.qtd));
         }
-        if (tpl.producao?.length > 0) {
-            opsBox += `<div><h4 class="text-[9px] uppercase font-black text-emerald-500 mb-2 border-b border-emerald-900/30 pb-1"><i class="fas fa-box-open mr-1"></i> Produção Diária (Gerado p/ Hora):</h4>`;
-            tpl.producao.forEach(p => {
-                const item = globalState.cache.itens.get(p.itemId);
-                opsBox += `<div class="flex justify-between items-center text-[10px] bg-emerald-950 p-1.5 rounded mb-1 border border-emerald-900/50">
-                    <span class="flex items-center gap-2 font-bold text-slate-300 truncate"><img src="${item?.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-4 h-4 rounded"> ${item?.nome}</span>
-                    <span class="font-black text-emerald-400">+${p.quantidade || p.quantidadeBase}</span>
-                </div>`;
-            });
-            opsBox += `</div>`;
-        }
-        opsBox += `</div>`;
-    }
+    });
 
-    panel.innerHTML = `
-        <div class="flex flex-col h-full relative animate-fade-in">
-            <button onclick="window.toggleRepHelp()" class="absolute top-4 right-4 text-slate-500 hover:text-white cursor-pointer z-10 p-2"><i class="fas fa-question-circle text-xl"></i></button>
+    const allyIdle = aliados.length - allyWorking;
+    const pctBuild = totalSlots > 0 ? Math.min(100, (allyWorking / totalSlots) * 100) : 0;
+    const pctAlly = aliados.length > 0 ? Math.min(100, (allyWorking / aliados.length) * 100) : 0;
 
-            <div class="p-8 border-b border-slate-700 bg-slate-900/50 flex flex-col items-center shrink-0">
-                <div class="w-24 h-24 rounded-2xl bg-black border-2 border-slate-600 overflow-hidden mb-4">
-                    <img src="${tpl.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-full h-full object-cover">
-                </div>
-                <h3 class="font-cinzel text-xl text-slate-200 text-center leading-tight mb-1">${tpl.nome}</h3>
-                <p class="text-[9px] text-emerald-500 uppercase font-black bg-emerald-900/20 px-2 py-0.5 rounded">Em posse: ${qtdPosse}</p>
-            </div>
+    // Cálculo de Lucro Líquido
+    let netGold = 0;
+    netGold += (productionMap.get(COINS.GOLD.id) || 0) * 100;
+    netGold += (productionMap.get(COINS.SILVER.id) || 0) * 10;
+    netGold += (productionMap.get(COINS.BRONZE.id) || 0) * 1;
+    netGold -= (consumptionMap.get(COINS.GOLD.id) || 0) * 100;
+    netGold -= (consumptionMap.get(COINS.SILVER.id) || 0) * 10;
+    netGold -= (consumptionMap.get(COINS.BRONZE.id) || 0) * 1;
 
-            <div class="flex-1 overflow-y-auto custom-scroll p-6 bg-slate-900/20">
-                <p class="text-[10px] text-slate-300 leading-relaxed italic border-l-2 border-slate-600 pl-3 mb-4">${escapeHTML(tpl.descricao)}</p>
-                
-                <div class="grid grid-cols-2 gap-4 mt-2">
-                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center shadow-inner">
-                        <span class="block text-[8px] text-slate-500 uppercase font-black">Reputação/Influência</span>
-                        <strong class="${canAffordRep ? 'text-white' : 'text-red-500'} font-cinzel text-lg">${costRep}</strong>
-                    </div>
-                    ${cat === 'buildings' ? `<div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center shadow-inner"><span class="block text-[8px] text-slate-500 uppercase font-black">Vagas de Trab.</span><strong class="text-sky-400 font-cinzel text-lg">${tpl.vagas || 0}</strong></div>` : ''}
-                    ${cat === 'storage' ? `<div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center shadow-inner"><span class="block text-[8px] text-slate-500 uppercase font-black">Carga Adicional</span><strong class="text-purple-400 font-cinzel text-lg">+${tpl.bonusCapacidadeMochila || 0}</strong></div>` : ''}
-                </div>
-                
-                ${purchaseMatsHtml}
-                ${opsBox}
-            </div>
+    let chestGold = 0;
+    chestGold += (estoqueTemp[COINS.GOLD.id] || 0) * 100;
+    chestGold += (estoqueTemp[COINS.SILVER.id] || 0) * 10;
+    chestGold += (estoqueTemp[COINS.BRONZE.id] || 0) * 1;
 
-            <div class="p-4 bg-slate-900 border-t border-slate-700">
-                <div class="flex gap-2 items-center">
-                    <div class="flex flex-col w-20">
-                        <span class="text-[8px] text-slate-400 uppercase font-bold text-center mb-1">Qtd</span>
-                        <input type="number" id="shop_qty" value="1" min="1" class="bg-slate-950 text-white text-center text-sm font-bold border border-slate-600 rounded outline-none py-2">
-                    </div>
-                    <button onclick="window.buyInstance('${selectedId}', '${cat}', ${costRep}, 'shop_qty')" 
-                        class="flex-1 ${canAffordRep && canAffordMats ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg' : 'bg-slate-700 text-slate-500 cursor-not-allowed'} py-3 rounded-xl text-[11px] font-black uppercase transition-all"
-                        ${!(canAffordRep && canAffordMats) ? 'disabled' : ''}>
-                        <i class="fas fa-shopping-cart mr-2"></i> Adquirir Novas
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-// ------------------------------------------------------------------
-// MENU DE INFORMAÇÕES EXPLICATIVO (O HELP)
-// ------------------------------------------------------------------
-function renderHelpPanel() {
-    return `
-        <div class="flex flex-col h-full animate-fade-in relative bg-slate-900 text-slate-300">
-            <button onclick="window.toggleRepHelp()" class="absolute top-4 right-4 text-red-400 hover:text-red-300 cursor-pointer z-10"><i class="fas fa-times text-xl"></i></button>
-            
-            <div class="p-6 border-b border-slate-700 shrink-0">
-                <h3 class="font-cinzel text-2xl text-amber-400"><i class="fas fa-book-open mr-2"></i> Manual Imperial</h3>
-                <p class="text-[10px] text-slate-500 uppercase tracking-widest mt-1">Como gerir o seu Império</p>
-            </div>
-
-            <div class="flex-1 overflow-y-auto custom-scroll p-6 space-y-6">
-                
-                <div>
-                    <h4 class="text-sky-400 font-bold mb-2 uppercase text-xs border-b border-slate-700 pb-1"><i class="fas fa-shopping-cart mr-1"></i> 1. Adquirindo Bens</h4>
-                    <p class="text-xs leading-relaxed">Vá até a aba <strong class="text-white">Loja Imperial</strong>. Lá você poderá usar a sua <strong class="text-amber-400">Reputação Livre</strong> e os materiais físicos da sua <strong class="text-white">Mochila</strong> para construir Propriedades ou contratar Aliados.</p>
-                </div>
-
-                <div>
-                    <h4 class="text-emerald-400 font-bold mb-2 uppercase text-xs border-b border-slate-700 pb-1"><i class="fas fa-industry mr-1"></i> 2. Produção e Consumo</h4>
-                    <p class="text-xs leading-relaxed mb-2">Cada propriedade tem um <strong>Custo de Operação</strong>. Para que ela gere loots (produza), você deve ter os materiais exigidos na sua mochila. Ao clicar em <strong>Simular 1 Hora de Produção</strong>, os materiais são descontados da mochila e o loot gerado vai direto para o <strong>Armazém Local</strong> do prédio.</p>
-                </div>
-
-                <div>
-                    <h4 class="text-purple-400 font-bold mb-2 uppercase text-xs border-b border-slate-700 pb-1"><i class="fas fa-users mr-1"></i> 3. Aliados e Trabalhadores</h4>
-                    <p class="text-xs leading-relaxed">Você pode possuir inúmeros aliados. Propriedades possuem <strong>Vagas</strong>. Ao inspecionar uma de suas propriedades na aba "Meu Império", você pode selecionar um de seus aliados e atribuí-lo a trabalhar lá, o que garantirá bônus ou a execução da tarefa.</p>
-                </div>
-
-                <div>
-                    <h4 class="text-amber-400 font-bold mb-2 uppercase text-xs border-b border-slate-700 pb-1"><i class="fas fa-warehouse mr-1"></i> 4. Cofre Central</h4>
-                    <p class="text-xs leading-relaxed">O <strong>Cofre Imperial</strong> tem espaço infinito. Você pode usar a aba Armazenamento para enviar itens da sua mochila para o cofre, poupando espaço. O botão <strong>Puxar Todas Produções</strong> coleta automaticamente os loots que estão em todas as suas propriedades (Armazém Local) e os centraliza no Cofre.</p>
-                </div>
-
-            </div>
-        </div>
-    `;
-}
-
-// ------------------------------------------------------------------
-// 3. ABA ARMAZENAMENTO (MOCHILA VS COFRE)
-// ------------------------------------------------------------------
-function renderStorageMochila(ficha) {
-    const container = document.getElementById('storage-mochila-container');
-    if (!container) return;
-    const mochila = ficha.mochila || {};
-    const itemIds = Object.keys(mochila).filter(id => mochila[id] > 0);
-
+    // Estrutura Principal do Painel
     let html = `
-        <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-700">
-            <h3 class="text-amber-400 font-cinzel font-bold text-lg"><i class="fas fa-briefcase mr-2"></i> Sua Mochila</h3>
-            <span class="text-[10px] font-mono text-slate-500">Enviar p/ Cofre</span>
+        <div class="flex justify-between items-center mb-6 border-b border-slate-800 pb-2">
+            <div class="text-xs text-slate-500 uppercase font-bold tracking-widest mt-2 flex items-center gap-3">
+                PAINEL DE GESTÃO DO IMPÉRIO
+            </div>
+            ${globalState.isAdmin ? `<button onclick="window.adminEditReputation()" class="text-[10px] bg-red-900/50 text-red-300 px-3 py-1 rounded hover:bg-red-800" title="Editar Bônus de Reputação"><i class="fas fa-edit mr-1"></i> Edit GM</button>` : ''}
         </div>
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="reputation-summary-card dashboard-card-hover p-2 relative group">
+                <div class="flex flex-col items-center w-full">
+                    <span class="text-xl font-bold text-emerald-400 font-cinzel">${allyWorking} / ${totalSlots}</span>
+                    <div class="rep-progress-container w-full max-w-[80%]">
+                        <div class="rep-progress-fill bg-gradient-to-r from-emerald-500 to-green-400" style="width: ${pctBuild}%"></div>
+                    </div>
+                    <span class="reputation-summary-label mt-2"><i class="fas fa-city"></i> Vagas Ocupadas</span>
+                </div>
+                <div class="dashboard-tooltip-body hidden group-hover:block absolute bottom-full mb-2 w-48 text-left bg-slate-900 p-2 rounded shadow-lg border border-emerald-500 z-50">
+                    <div class="text-xs text-white">Total Prédios: ${estabelecimentosDoJogador.length}</div>
+                    <div class="text-xs text-emerald-400">Vagas Livres: ${buildOpen}</div>
+                    <div class="text-xs text-red-400">Vagas Cheias: ${buildFull}</div>
+                </div>
+            </div>
+
+            <div class="reputation-summary-card dashboard-card-hover p-2 relative group">
+                <div class="flex flex-col items-center w-full">
+                    <span class="text-xl font-bold text-sky-400 font-cinzel">${allyWorking} / ${aliados.length}</span>
+                    <div class="rep-progress-container w-full max-w-[80%]">
+                        <div class="rep-progress-fill bg-gradient-to-r from-sky-500 to-blue-400" style="width: ${pctAlly}%"></div>
+                    </div>
+                    <span class="reputation-summary-label mt-2"><i class="fas fa-users"></i> Taxa de Emprego</span>
+                </div>
+                <div class="dashboard-tooltip-body hidden group-hover:block absolute bottom-full mb-2 w-48 text-left bg-slate-900 p-2 rounded shadow-lg border border-sky-500 z-50">
+                    <div class="text-xs text-emerald-400">Trabalhando: ${allyWorking}</div>
+                    <div class="text-xs text-red-400">Ociosos: ${allyIdle}</div>
+                </div>
+            </div>
+
+            <div class="reputation-summary-card dashboard-card-hover p-2 relative group">
+                <div class="flex flex-col items-center w-full">
+                    <span class="text-xl font-bold text-amber-400 font-cinzel">${repStats.used} / ${repStats.total}</span>
+                    <div class="rep-progress-container w-full max-w-[80%]">
+                        <div class="rep-progress-fill" style="width: ${pctRep}%"></div>
+                    </div>
+                    <span class="reputation-summary-label mt-2"><i class="fas fa-crown"></i> Cap. Reputação</span>
+                </div>
+                <div class="dashboard-tooltip-body hidden group-hover:block absolute bottom-full mb-2 w-64 text-left bg-slate-900 p-2 rounded shadow-lg border border-amber-500 z-50">
+                    <div class="text-xs">Nível: +${ficha.levelPersonagemBase||1}</div>
+                    <div class="text-xs">Méritos GM: +${recursos.reputacaoBonusGM||0}</div>
+                    <div class="text-xs">Objetivos: +${recursos.reputacaoObjetivos||0}</div>
+                    <div class="text-xs border-b border-slate-600 pb-1 mb-1">Coleções: +${repStats.colecao}</div>
+                    <div class="text-xs text-emerald-400 font-bold">Total: ${repStats.total}</div>
+                    <div class="text-xs text-red-400">Usado: -${repStats.used}</div>
+                    <div class="text-xs text-white">Livre: ${repStats.available}</div>
+                </div>
+            </div>
+
+            <div class="reputation-summary-card dashboard-card-hover relative group">
+                <span class="reputation-summary-value ${netGold >= 0 ? 'text-emerald-400' : 'text-red-400'}">${(netGold / 100).toFixed(2)}</span>
+                <span class="reputation-summary-label"><i class="fas fa-coins"></i> Moedas/h</span>
+                <div class="absolute right-2 bottom-2 text-[10px] text-slate-500 bg-black/50 px-2 rounded">
+                    Baú: <span class="text-amber-400 font-bold">${(chestGold / 100).toFixed(2)}</span>
+                </div>
+                <div class="dashboard-tooltip-body hidden group-hover:block absolute bottom-full mb-2 w-64 text-center bg-slate-900 p-2 rounded shadow-lg border border-emerald-500 z-50 text-xs text-slate-300">
+                    Isso é o que seu império gera por hora (Líquido).<br><br>
+                    O valor menor é o Ouro acumulado no Estoque aguardando coleta.
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div class="bg-slate-900/50 p-4 rounded-lg border border-emerald-900/30 relative">
+                <div class="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
+                <h4 class="text-emerald-400 font-bold uppercase text-xs tracking-widest mb-3 flex items-center"><i class="fas fa-arrow-up mr-2"></i>Produção / Hora</h4>
+                <div class="mini-grid-container min-h-[40px]">${renderSmallItemGrid(productionMap)}</div>
+            </div>
+            <div class="bg-slate-900/50 p-4 rounded-lg border border-red-900/30 relative">
+                <div class="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
+                <h4 class="text-red-400 font-bold uppercase text-xs tracking-widest mb-3 flex items-center"><i class="fas fa-arrow-down mr-2"></i>Custos / Hora</h4>
+                <div class="mini-grid-container min-h-[40px]">${renderSmallItemGrid(consumptionMap)}</div>
+            </div>
+        </div>
+
+        <div class="sub-nav-container flex gap-2 overflow-x-auto mb-6 border-b border-slate-700 pb-0">
+            <button class="sub-tab-btn ${ui.abaAtiva === 'estabelecimentos' ? 'active' : ''}" onclick="window.switchRepSubTab('estabelecimentos')">Meus Estabelecimentos</button>
+            <button class="sub-tab-btn ${ui.abaAtiva === 'allies' ? 'active' : ''}" onclick="window.switchRepSubTab('allies')">Meus Aliados</button>
+            ${!hasStorage ? `
+                <button class="sub-tab-btn ${ui.abaAtiva === 'inventario' ? 'active' : ''}" onclick="window.switchRepSubTab('inventario')">Inv. Temporário (10 min)</button>
+            ` : `
+                <button class="sub-tab-btn ${ui.abaAtiva === 'armazenamento' ? 'active' : ''} border-emerald-500 text-emerald-400 font-bold" onclick="window.switchRepSubTab('armazenamento')">
+                    <i class="fas fa-warehouse mr-1"></i> Armazém Central
+                </button>
+            `}
+            <button class="sub-tab-btn ${ui.abaAtiva === 'store' ? 'active' : ''}" onclick="window.switchRepSubTab('store')">Comprar / Contratar</button>
+        </div>
+
+        <div id="rep-dynamic-content" class="w-full relative min-h-[300px]"></div>
     `;
 
-    if (itemIds.length === 0) {
-        html += `<div class="col-span-full text-slate-500 italic text-center py-10 text-xs">A sua mochila está vazia.</div>`;
-    } else {
-        itemIds.forEach(id => {
-            const item = globalState.cache.itens.get(id);
-            if (!item) return;
-            html += `
-                <div class="bg-slate-900 border border-slate-700 rounded-lg p-2 flex flex-col items-center group">
-                    <img src="${item.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-10 h-10 object-cover rounded bg-black mb-1 border border-slate-800">
-                    <span class="text-[9px] text-slate-300 font-bold truncate w-full text-center uppercase">${item.nome}</span>
-                    <span class="text-xs text-amber-500 font-black mb-2">Qtd: ${mochila[id]}</span>
-                    
-                    <div class="flex w-full gap-1 items-center">
-                        <input type="number" id="dep_${id}" value="1" min="1" max="${mochila[id]}" class="w-10 bg-slate-800 text-white text-center text-[10px] rounded border border-slate-600 outline-none p-1">
-                        <button onclick="window.transferWithInput('mochila', 'armazem', '${id}', 'dep_${id}')" class="flex-1 bg-sky-600 hover:bg-sky-500 text-white text-[9px] font-bold py-1.5 rounded">Guardar</button>
-                        <button onclick="window.transferGlobalStorage('mochila', 'armazem', '${id}', 'all')" class="bg-sky-700 hover:bg-sky-500 text-white text-[9px] font-bold py-1.5 px-2 rounded">All</button>
+    container.innerHTML = html;
+    const dynContainer = document.getElementById('rep-dynamic-content');
+
+    if (ui.abaAtiva === 'estabelecimentos') renderMyBuildings(dynContainer, estabelecimentosDoJogador, aliados);
+    else if (ui.abaAtiva === 'allies') renderMyAllies(dynContainer, aliados, estabelecimentosDoJogador);
+    else if (ui.abaAtiva === 'store') renderReputationStore(dynContainer, repStats);
+    else if (ui.abaAtiva === 'inventario') renderResourceInventory(dynContainer, estoqueTemp, recursos.tempoConclusaoColeta);
+    else if (ui.abaAtiva === 'armazenamento') {
+        if (typeof window.renderStorageTab === 'function') window.renderStorageTab(dynContainer);
+    }
+}
+
+// --- RENDERS DAS SUB-ABAS ---
+
+function renderMyBuildings(container, buildings, allies) {
+    if(buildings.length === 0) {
+        container.innerHTML = '<p class="text-slate-500 text-center py-10">Você não possui estabelecimentos.</p>';
+        return;
+    }
+
+    let html = `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">`;
+    buildings.forEach(inst => {
+        const tpl = globalState.cache.buildings.get(inst.templateId);
+        if(!tpl) return;
+        const assigned = allies.filter(a => a.assignedBuildingId === inst.uniqueId);
+
+        html += `
+            <div class="asset-card relative group">
+                <div class="h-32 bg-cover bg-center relative" style="background-image: url('${tpl.imagemUrl || PLACEHOLDER_IMAGE_URL}')">
+                    <button onclick="window.deleteAsset('${inst.uniqueId}', 'building')" class="absolute top-2 left-2 bg-red-900/80 hover:bg-red-600 text-white w-6 h-6 rounded flex items-center justify-center transition shadow-lg z-10" title="Demolir">
+                        <i class="fas fa-trash text-xs"></i>
+                    </button>
+                    <div class="absolute top-2 right-2 bg-black/60 px-2 py-1 rounded text-[10px] text-amber-400 border border-amber-500/30">Nível 1</div>
+                </div>
+                <div class="p-3 flex flex-col gap-2 flex-grow">
+                    <h4 class="font-bold text-amber-500 font-cinzel text-lg">${tpl.nome}</h4>
+                    <div class="text-xs flex justify-between"><span>Vagas:</span> <span class="text-white">${assigned.length} / ${tpl.slotsTrabalho}</span></div>
+                    <div class="text-xs flex justify-between"><span>Reputação:</span> <span class="text-amber-400">+${tpl.reputacaoGerada}</span></div>
+                    <div class="bg-slate-900/50 p-2 rounded border border-slate-700 mt-2">
+                        <div class="text-[10px] text-slate-500 uppercase font-bold mb-1">Produção Passiva</div>
+                        <div class="text-xs text-sky-400">${renderResourceString(tpl.producaoPassiva)}</div>
                     </div>
                 </div>
-            `;
-        });
-    }
+            </div>
+        `;
+    });
     html += `</div>`;
     container.innerHTML = html;
 }
 
-function renderStorageVault(armazemGeral) {
-    const panel = document.getElementById('rep-inspect-panel');
-    if (!panel) return;
-    
-    const showHelp = globalState.repUI.showHelp;
-    if (showHelp) {
-        panel.innerHTML = renderHelpPanel();
+function renderMyAllies(container, allies, buildings) {
+    if(allies.length === 0) {
+        container.innerHTML = '<p class="text-slate-500 text-center py-10">Você não possui aliados contratados.</p>';
         return;
     }
-    
-    const itemIds = Object.keys(armazemGeral).filter(id => typeof armazemGeral[id] === 'number' && armazemGeral[id] > 0);
 
-    let vaultHtml = `
-        <div class="p-6 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center shrink-0 relative">
-            <button onclick="window.toggleRepHelp()" class="absolute top-4 right-4 text-slate-500 hover:text-white cursor-pointer z-10"><i class="fas fa-question-circle text-xl"></i></button>
-            <div>
-                <h3 class="font-cinzel text-xl text-sky-400 leading-tight mb-1"><i class="fas fa-warehouse mr-2"></i>Cofre Imperial</h3>
-                <p class="text-[9px] text-slate-500 uppercase font-black tracking-widest">Estoque Sem Limites</p>
+    let html = `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">`;
+    allies.forEach(inst => {
+        const tpl = globalState.cache.allies.get(inst.templateId);
+        if(!tpl) return;
+        const workplace = buildings.find(b => b.uniqueId === inst.assignedBuildingId);
+        const wpName = workplace ? globalState.cache.buildings.get(workplace.templateId)?.nome : "Desempregado";
+
+        html += `
+            <div class="asset-card relative">
+                <div class="h-32 bg-cover bg-center relative" style="background-image: url('${tpl.imagemUrl || PLACEHOLDER_IMAGE_URL}')">
+                    <button onclick="window.deleteAsset('${inst.uniqueId}', 'ally')" class="absolute top-2 left-2 bg-red-900/80 hover:bg-red-600 text-white w-6 h-6 rounded flex items-center justify-center transition shadow-lg z-10" title="Demitir">
+                        <i class="fas fa-trash text-xs"></i>
+                    </button>
+                </div>
+                <div class="p-3 flex flex-col gap-2 flex-grow">
+                    <h4 class="font-bold text-sky-400 font-cinzel text-lg">${tpl.nome}</h4>
+                    <p class="text-xs text-slate-400">${tpl.tipo}</p>
+                    <div class="bg-slate-900/50 p-2 rounded border border-slate-700 mb-2">
+                        <div class="text-[10px] text-slate-500 uppercase">Local de Trabalho</div>
+                        <div class="text-sm font-bold ${workplace ? 'text-emerald-400' : 'text-red-400'} flex justify-between items-center">
+                            <span class="truncate pr-2">${wpName}</span>
+                            <button class="text-[10px] bg-slate-700 px-2 py-1 rounded hover:bg-slate-600 text-white" onclick="window.openAssignModal('${inst.uniqueId}')"><i class="fas fa-edit"></i></button>
+                        </div>
+                    </div>
+                    <div class="text-xs flex justify-between"><span>Salário/h:</span> <span>${renderCostString(tpl.custoManutencao)}</span></div>
+                    <div class="text-xs flex justify-between"><span>Produção Base:</span> <span class="text-sky-400">${renderResourceString(tpl.producaoBase)}</span></div>
+                </div>
             </div>
-            <div class="text-right mr-6">
-                <i class="fas fa-infinity text-2xl text-slate-700"></i>
+        `;
+    });
+    html += `</div>`;
+    container.innerHTML = html;
+}
+
+function renderReputationStore(container, repStats) {
+    const charFicha = globalState.selectedCharacterData.ficha;
+    const isLevelValid = (charFicha.levelPersonagemBase || 1) >= 5;
+    const isSessionValid = globalState.activeSessionId && globalState.activeSessionId !== 'world';
+    
+    let warning = '';
+    if (!isLevelValid || !isSessionValid) {
+        warning = `
+            <div class="bg-red-900/30 border border-red-500/50 p-3 rounded mb-4 text-xs text-red-200">
+                <i class="fas fa-lock text-red-500 mr-2"></i><strong>Loja Bloqueada:</strong> ${!isLevelValid ? 'O personagem deve ser Nível 5+.' : 'Você deve estar em uma Sessão de Jogo.'}
+            </div>
+        `;
+    }
+
+    let html = `${warning}<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">`;
+    
+    // Predios
+    html += `<div><h3 class="font-cinzel text-amber-500 text-lg border-b border-slate-700 pb-2 mb-4">Estabelecimentos</h3><div class="grid grid-cols-1 sm:grid-cols-2 gap-4">`;
+    globalState.cache.buildings.forEach(tpl => { html += createStoreCard(tpl, 'building', repStats, isLevelValid, isSessionValid); });
+    html += `</div></div>`;
+
+    // Aliados
+    html += `<div><h3 class="font-cinzel text-sky-500 text-lg border-b border-slate-700 pb-2 mb-4">Contratar Aliados</h3><div class="grid grid-cols-1 sm:grid-cols-2 gap-4">`;
+    globalState.cache.allies.forEach(tpl => { html += createStoreCard(tpl, 'ally', repStats, isLevelValid, isSessionValid); });
+    html += `</div></div></div>`;
+
+    container.innerHTML = html;
+}
+
+function createStoreCard(tpl, type, repStats, isLevelValid, isSessionValid) {
+    const reqRep = type === 'building' ? (tpl.reputacaoCusto || 0) : (tpl.reputacaoCustoBase || 0);
+    // Para construir precisa ter Espaço Livre suficiente
+    const isLocked = repStats.available < reqRep || !isLevelValid || !isSessionValid;
+    const costResources = type === 'building' ? (tpl.custoConstrucao || []) : (tpl.custoAquisicao || []);
+
+    let btnHtml = isLocked 
+        ? `<button class="btn bg-slate-800 text-slate-500 w-full py-2 text-xs border border-slate-700" disabled><i class="fas fa-lock mr-1"></i> Req. ${reqRep} Espaço Rep</button>`
+        : `<button class="btn btn-primary w-full py-2 text-xs" onclick="window.purchaseAsset('${tpl.id}', '${type}')"><i class="fas fa-shopping-cart mr-1"></i> Adquirir</button>`;
+
+    return `
+        <div class="asset-card ${isLocked ? 'grayscale opacity-70' : ''}">
+            <div class="h-32 bg-cover bg-center relative" style="background-image: url('${tpl.imagemUrl || PLACEHOLDER_IMAGE_URL}')">
+                <div class="absolute bottom-0 w-full bg-black/70 p-2"><h4 class="font-bold text-white text-sm truncate">${tpl.nome}</h4></div>
+            </div>
+            <div class="p-3 flex flex-col gap-2 flex-grow">
+                <p class="text-xs text-slate-400 line-clamp-2 min-h-[2.5em]">${tpl.descricao || ''}</p>
+                <div class="mt-auto pt-2 border-t border-slate-700">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-[10px] text-slate-500 uppercase">Custo</span>
+                        ${reqRep > 0 ? `<span class="text-[10px] ${repStats.available < reqRep ? 'text-red-500' : 'text-amber-400'} font-bold"><i class="fas fa-crown"></i> ${reqRep}</span>` : ''}
+                    </div>
+                    <div class="flex flex-wrap gap-1 mb-3">${costResources.length > 0 ? renderResourcesMini(costResources) : '<span class="text-green-400 text-xs font-bold">Grátis</span>'}</div>
+                    ${btnHtml}
+                </div>
             </div>
         </div>
-        <div class="flex-1 overflow-y-auto custom-scroll p-4 bg-slate-900/20">
-            <div class="grid grid-cols-2 gap-3">
+    `;
+}
+
+function renderResourceInventory(container, estoqueTemp, coletaFim) {
+    let html = `
+        <div class="bg-slate-900/80 p-6 rounded-lg border border-slate-700">
+            <h3 class="font-cinzel text-amber-400 text-lg mb-1">Estoque Temporário</h3>
+            <p class="text-xs text-slate-500 mb-6">Itens produzidos aguardando transporte de 10 minutos.</p>
     `;
 
-    if (itemIds.length === 0) {
-        vaultHtml += `<div class="col-span-full flex flex-col items-center justify-center h-full text-slate-500 opacity-40 py-10"><i class="fas fa-box-open text-5xl mb-3"></i><p class="text-xs uppercase font-bold tracking-widest">Cofre Vazio</p></div>`;
+    const itemIds = Object.keys(estoqueTemp || {});
+    if(itemIds.length === 0) {
+        html += `<div class="p-8 text-center text-slate-500 italic border-2 border-dashed border-slate-800 rounded-lg mb-6">O depósito está vazio.</div>`;
     } else {
+        html += `<div class="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2 mb-6">`;
         itemIds.forEach(id => {
-            const item = globalState.cache.itens.get(id);
-            if (!item) return;
-            vaultHtml += `
-                <div class="bg-slate-950 border border-slate-800 rounded-lg p-2 flex flex-col items-center shadow-inner">
-                    <img src="${item.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-10 h-10 object-cover rounded bg-black mb-1 border border-slate-700">
-                    <span class="text-[9px] text-slate-300 font-bold truncate w-full text-center uppercase">${item.nome}</span>
-                    <span class="text-xs text-sky-400 font-black mb-2">Cofre: ${armazemGeral[id]}</span>
-                    
-                    <div class="flex w-full gap-1 items-center">
-                        <input type="number" id="wit_${id}" value="1" min="1" max="${armazemGeral[id]}" class="w-10 bg-slate-800 text-white text-center text-[10px] rounded border border-slate-600 outline-none p-1">
-                        <button onclick="window.transferWithInput('armazem', 'mochila', '${id}', 'wit_${id}')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-bold py-1.5 rounded">Sacar</button>
-                        <button onclick="window.transferGlobalStorage('armazem', 'mochila', '${id}', 'all')" class="bg-emerald-700 hover:bg-emerald-500 text-white text-[9px] font-bold py-1.5 px-2 rounded">All</button>
-                    </div>
+            const qty = estoqueTemp[id];
+            let itemInfo = globalState.cache.allItems.get(id) || globalState.cache.itens.get(id) || { nome: "Item Desconhecido", imagemUrl: PLACEHOLDER_IMAGE_URL };
+            html += `
+                <div class="relative bg-slate-800 border border-slate-600 rounded p-1 group">
+                    <img src="${itemInfo.imagemUrl}" class="w-full aspect-square object-contain" title="${itemInfo.nome}">
+                    <span class="absolute bottom-0 right-0 bg-black/80 text-white text-[10px] px-1 rounded">${qty}</span>
                 </div>
             `;
         });
+        html += `</div>`;
     }
 
-    vaultHtml += `
-            </div>
-        </div>
-        <div class="p-4 bg-slate-900 border-t border-slate-700 shadow-[0_-10px_20px_rgba(0,0,0,0.3)]">
-            <button onclick="window.collectAllToVault()" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-black py-3.5 rounded-xl text-[10px] uppercase tracking-widest transition-all shadow-lg hover:scale-[1.02]">
-                <i class="fas fa-truck-loading mr-2 text-sm"></i> Puxar Todas Produções Locais p/ Cofre
-            </button>
-        </div>
-    `;
+    const agora = Date.now();
+    if (coletaFim) {
+        if (agora < coletaFim) {
+            const min = Math.ceil((coletaFim - agora) / 60000);
+            html += `<button class="btn w-full py-4 bg-slate-800 border border-slate-600 text-slate-400 cursor-not-allowed flex items-center justify-center gap-3"><i class="fas fa-hourglass-half animate-pulse text-amber-500"></i> Chegando em ${min} min</button>`;
+        } else {
+            html += `<button onclick="window.handleCollectionClick()" class="btn btn-green w-full py-4 shadow-lg animate-bounce flex items-center justify-center gap-3"><i class="fas fa-box-open"></i> CONFIRMAR RECEBIMENTO</button>`;
+        }
+    } else if (itemIds.length > 0) {
+        html += `<button onclick="window.handleCollectionClick()" class="btn btn-primary w-full py-4 flex items-center justify-center gap-3"><i class="fas fa-dolly"></i> INICIAR TRANSPORTE</button>`;
+    } else {
+        html += `<button class="btn bg-slate-800 text-slate-500 w-full py-4 cursor-not-allowed">Nada a coletar</button>`;
+    }
 
-    panel.innerHTML = vaultHtml;
+    html += `</div>`;
+    container.innerHTML = html;
 }
 
-// ------------------------------------------------------------------
-// 4. FUNÇÕES DE BANCO DE DADOS 
-// ------------------------------------------------------------------
-
-window.buyInstance = async function(templateId, cat, costRep, qtyInputId) {
-    const charId = globalState.selectedCharacterId;
-    if(!charId) return;
-
-    const input = document.getElementById(qtyInputId);
-    let qty = parseInt(input?.value || 1);
-    if(isNaN(qty) || qty <= 0) return alert("Quantidade inválida.");
-
-    const tpl = (cat === 'buildings' ? globalState.cache.buildings.get(templateId) : globalState.cache.allies.get(templateId));
-
-    if (!confirm(`Comprar ${qty}x "${tpl.nome}"?\nCustará ${costRep * qty} Reputação e os materiais físicos serão consumidos da sua mochila.`)) return;
-
-    try {
-        await runTransaction(db, async (t) => {
-            const ref = doc(db, "rpg_fichas", charId);
-            const d = (await t.get(ref)).data();
-            const usage = calculateReputationUsage(d);
-            
-            const totalRepCost = costRep * qty;
-            if (usage.available < totalRepCost) throw `Reputação insuficiente para comprar ${qty}.`;
-            
-            const mochila = d.mochila || {};
-            const reqs = tpl.custoMateriais || tpl.requisitos || [];
-            
-            // Valida e Consome
-            for (let req of reqs) {
-                const totalReq = req.quantidade * qty;
-                if ((mochila[req.itemId] || 0) < totalReq) {
-                    const info = globalState.cache.itens.get(req.itemId);
-                    throw `Materiais insuficientes: falta ${totalReq}x ${info?.nome || req.itemId} na Mochila.`;
-                }
-            }
-            reqs.forEach(req => {
-                mochila[req.itemId] -= (req.quantidade * qty);
-                if (mochila[req.itemId] <= 0) delete mochila[req.itemId];
-            });
-
-            const recursos = d.recursos || {};
-            if (cat === 'buildings') {
-                const list = recursos.estabelecimentos || [];
-                for(let i=0; i<qty; i++) list.push({ templateId: templateId, lastCollect: Date.now(), armazem: {}, trabalhadores: [] });
-                recursos.estabelecimentos = list;
-            } else if (cat === 'allies') {
-                const list = recursos.aliados || [];
-                for(let i=0; i<qty; i++) list.push({ templateId: templateId });
-                recursos.aliados = list;
-            }
-
-            t.update(ref, { recursos, mochila });
-        });
-        window.renderReputacaoTab();
-    } catch (e) { alert(typeof e === 'string' ? e : "Falha na transação."); }
+// --- FUNÇÕES UTILITÁRIAS GLOBAIS ---
+window.switchRepSubTab = function(tabName) {
+    if (!globalState.recursosUI) globalState.recursosUI = { abaAtiva: 'estabelecimentos' };
+    globalState.recursosUI.abaAtiva = tabName;
+    renderRecursosReputacaoTab();
 };
 
-window.sellInstance = async function(category, idxStr) {
-    if (!confirm("Vender/Destruir esta instância ESPECÍFICA? Loots/Alocações atreladas serão perdidos.")) return;
-    const charId = globalState.selectedCharacterId;
-    const idx = parseInt(idxStr);
-
+window.deleteAsset = async function(uniqueId, type) {
+    if(!confirm("Tem certeza que deseja remover? Recursos não são devolvidos.")) return;
     try {
         await runTransaction(db, async (t) => {
-            const ref = doc(db, "rpg_fichas", charId);
+            const ref = doc(db, "rpg_fichas", globalState.selectedCharacterId);
             const d = (await t.get(ref)).data();
-            const rec = d.recursos || {};
-
-            if (category === 'buildings') {
-                const arr = rec.estabelecimentos || [];
-                arr.splice(idx, 1);
-                rec.estabelecimentos = arr;
+            const r = d.recursos;
+            if (type === 'building') {
+                r.estabelecimentos = r.estabelecimentos.filter(b => b.uniqueId !== uniqueId);
+                r.aliados.forEach(a => { if (a.assignedBuildingId === uniqueId) a.assignedBuildingId = null; });
             } else {
-                const arr = rec.aliados || [];
-                arr.splice(idx, 1);
-                rec.aliados = arr;
-                
-                // Remove aliado destruído de qualquer vaga em prédios
-                if (rec.estabelecimentos) {
-                    rec.estabelecimentos.forEach(est => {
-                        if (est.trabalhadores) {
-                            est.trabalhadores = est.trabalhadores.filter(wId => wId !== idx);
-                            // Corrige índices deslocados
-                            est.trabalhadores = est.trabalhadores.map(wId => wId > idx ? wId - 1 : wId);
-                        }
-                    });
+                r.aliados = r.aliados.filter(a => a.uniqueId !== uniqueId);
+            }
+            t.update(ref, { recursos: r });
+        });
+        alert("Removido com sucesso!");
+    } catch(e) { alert("Erro ao remover."); }
+};
+
+window.purchaseAsset = async function(templateId, type) {
+    const charId = globalState.selectedCharacterId;
+    const cache = type === 'building' ? globalState.cache.buildings : globalState.cache.allies;
+    const tpl = cache.get(templateId);
+    if(!tpl || !confirm(`Comprar ${tpl.nome}?`)) return;
+
+    try {
+        await runTransaction(db, async (t) => {
+            const ref = doc(db, "rpg_fichas", charId);
+            const docSnap = await t.get(ref);
+            const data = docSnap.data();
+            const mochila = data.mochila || {};
+            const r = data.recursos || { estabelecimentos: [], aliados: [] };
+            
+            const costs = type === 'building' ? (tpl.custoConstrucao || []) : (tpl.custoAquisicao || []);
+            let costValue = 0; 
+            let playerValue = (mochila[COINS.GOLD.id]||0)*100 + (mochila[COINS.SILVER.id]||0)*10 + (mochila[COINS.BRONZE.id]||0);
+
+            for(const c of costs) {
+                if (c.itemId === COINS.BRONZE.id) costValue += c.qtd;
+                else if (c.itemId === COINS.SILVER.id) costValue += c.qtd * 10;
+                else if (c.itemId === COINS.GOLD.id) costValue += c.qtd * 100;
+                else {
+                    if ((mochila[c.itemId] || 0) < c.qtd) throw `Falta material: ${c.nome}`;
+                    mochila[c.itemId] -= c.qtd;
+                    if(mochila[c.itemId] <= 0) delete mochila[c.itemId];
                 }
             }
-            t.update(ref, { recursos: rec });
+
+            if (playerValue < costValue) throw "Ouro insuficiente.";
+
+            let remaining = playerValue - costValue;
+            delete mochila[COINS.GOLD.id]; delete mochila[COINS.SILVER.id]; delete mochila[COINS.BRONZE.id];
+            
+            const g = Math.floor(remaining / 100); remaining %= 100;
+            const s = Math.floor(remaining / 10); remaining %= 10;
+            if(g>0) mochila[COINS.GOLD.id] = g;
+            if(s>0) mochila[COINS.SILVER.id] = s;
+            if(remaining>0) mochila[COINS.BRONZE.id] = remaining;
+
+            const newAsset = { templateId: tpl.id, uniqueId: Date.now().toString(36), dataAquisicao: Date.now() };
+            if(type === 'building') { newAsset.assignedAllies = []; r.estabelecimentos.push(newAsset); }
+            else { newAsset.assignedBuildingId = null; r.aliados.push(newAsset); }
+
+            t.update(ref, { mochila, recursos: r });
         });
-        globalState.repUI.selectedId = null;
-        window.renderReputacaoTab();
-    } catch (e) { console.error(e); }
+    } catch(e) { alert(e); }
 };
 
-window.assignWorker = async function(buildingIdxStr, selectId) {
-    const sel = document.getElementById(selectId);
-    if (!sel || sel.value === "") return;
-    
+window.handleCollectionClick = async function() {
     const charId = globalState.selectedCharacterId;
-    const bIdx = parseInt(buildingIdxStr);
-    const allyIdx = parseInt(sel.value);
-
-    try {
+    const r = globalState.selectedCharacterData.ficha.recursos;
+    if (!r.tempoConclusaoColeta) {
+        if(!confirm("Iniciar transporte? Levará 10 minutos.")) return;
+        await updateDoc(doc(db, "rpg_fichas", charId), { "recursos.tempoConclusaoColeta": Date.now() + (10 * 60000) });
+    } else if (Date.now() >= r.tempoConclusaoColeta) {
         await runTransaction(db, async (t) => {
             const ref = doc(db, "rpg_fichas", charId);
             const d = (await t.get(ref)).data();
-            const ests = d.recursos?.estabelecimentos || [];
-            if (!ests[bIdx]) throw "Estabelecimento não encontrado.";
-            
-            const tpl = globalState.cache.buildings.get(ests[bIdx].templateId);
-            const vagas = tpl.vagas || 0;
-            
-            if (!ests[bIdx].trabalhadores) ests[bIdx].trabalhadores = [];
-            if (ests[bIdx].trabalhadores.length >= vagas) throw "Capacidade máxima de trabalhadores atingida.";
-            if (ests[bIdx].trabalhadores.includes(allyIdx)) throw "Aliado já está aqui.";
-
-            ests[bIdx].trabalhadores.push(allyIdx);
-            t.update(ref, { "recursos.estabelecimentos": ests });
+            const est = d.recursos.estoqueTemporario || {};
+            const moch = d.mochila || {};
+            for (const [id, q] of Object.entries(est)) moch[id] = (moch[id]||0) + q;
+            t.update(ref, { mochila: moch, "recursos.estoqueTemporario": deleteField(), "recursos.tempoConclusaoColeta": deleteField() });
         });
-        window.renderReputacaoTab();
-    } catch (e) { alert(e); }
+        alert("Itens guardados!");
+    } else { alert("Ainda não chegou."); }
 };
 
-window.unassignWorker = async function(buildingIdxStr, allyIdx) {
-    const charId = globalState.selectedCharacterId;
-    const bIdx = parseInt(buildingIdxStr);
-
-    try {
-        await runTransaction(db, async (t) => {
-            const ref = doc(db, "rpg_fichas", charId);
-            const d = (await t.get(ref)).data();
-            const ests = d.recursos?.estabelecimentos || [];
-            if (!ests[bIdx] || !ests[bIdx].trabalhadores) return;
-            
-            ests[bIdx].trabalhadores = ests[bIdx].trabalhadores.filter(id => id !== allyIdx);
-            t.update(ref, { "recursos.estabelecimentos": ests });
-        });
-        window.renderReputacaoTab();
-    } catch (e) { console.error(e); }
+window.adminEditReputation = async function() {
+    const num = parseInt(prompt("Bônus GM:", globalState.selectedCharacterData.ficha.recursos?.reputacaoBonusGM || 0));
+    if(!isNaN(num)) await updateDoc(doc(db, "rpg_fichas", globalState.selectedCharacterId), { "recursos.reputacaoBonusGM": num });
 };
 
-window.collectBuilding = async function(idxStr) {
-    const charId = globalState.selectedCharacterId;
-    const idx = parseInt(idxStr);
+// Helpers Matemáticos Internos
+function calculateReputationUsage(ficha) {
+    let totalCap = (ficha.levelPersonagemBase || 1); 
+    if (ficha.profissoes) Object.values(ficha.profissoes).forEach(p => totalCap += (p.nivel || 0));
+    totalCap += Number(ficha.recursos?.reputacaoBonusGM || 0) + Number(ficha.recursos?.reputacaoObjetivos || 0);
 
-    try {
-        await runTransaction(db, async (t) => {
-            const ref = doc(db, "rpg_fichas", charId);
-            const d = (await t.get(ref)).data();
-            const estabs = d.recursos?.estabelecimentos || [];
-            const b = estabs[idx];
-            if (!b) throw "Instância inválida.";
+    let repColecao = 0;
+    ['colecao_jogadores', 'colecao_npcs', 'colecao_cidades'].forEach(k => {
+        if(ficha[k]) Object.values(ficha[k]).forEach(v => { if (v?.resgatado) repColecao += (k==='colecao_cidades'?10:(k==='colecao_npcs'?5:2)); });
+    });
+    totalCap += repColecao;
 
-            const tpl = globalState.cache.buildings.get(b.templateId);
-            const mochila = d.mochila || {};
-            const consumos = tpl.consumo || [];
-            
-            // Consumo
-            for (let c of consumos) {
-                if ((mochila[c.itemId] || 0) < (c.quantidade || c.quantidadeBase)) {
-                    const info = globalState.cache.itens.get(c.itemId);
-                    throw `Falta de ${info?.nome || c.itemId} na mochila para realizar a operação.`;
-                }
-            }
-            consumos.forEach(c => {
-                mochila[c.itemId] -= (c.quantidade || c.quantidadeBase);
-                if (mochila[c.itemId] <= 0) delete mochila[c.itemId];
-            });
+    const buildings = ficha.recursos?.estabelecimentos || [];
+    let used = 0;
+    buildings.forEach(b => {
+        const tpl = globalState.cache.buildings.get(b.templateId);
+        if (tpl) { totalCap += (tpl.reputacaoGerada || 0); used += (tpl.reputacaoCusto || 0); }
+    });
 
-            // Produção Local
-            const armazem = b.armazem || {};
-            (tpl.producao || []).forEach(p => {
-                armazem[p.itemId] = (armazem[p.itemId] || 0) + (p.quantidade || p.quantidadeBase);
-            });
+    (ficha.recursos?.aliados || []).forEach(a => {
+        const tpl = globalState.cache.allies.get(a.templateId);
+        if (tpl) used += (tpl.reputacaoCustoBase || 0);
+    });
 
-            b.lastCollect = Date.now();
-            b.armazem = armazem;
-            t.update(ref, { "recursos.estabelecimentos": estabs, mochila });
-        });
-        window.renderReputacaoTab();
-    } catch (e) { alert(e); }
-};
+    return { total: totalCap, used, available: totalCap - used, colecao: repColecao };
+}
 
-window.withdrawLocalBuildingItem = async function(idxStr, itemId, amountRaw) {
-    const charId = globalState.selectedCharacterId;
-    const idx = parseInt(idxStr);
-    try {
-        await runTransaction(db, async (t) => {
-            const ref = doc(db, "rpg_fichas", charId);
-            const d = (await t.get(ref)).data();
-            const estabs = d.recursos?.estabelecimentos || [];
-            const b = estabs[idx];
-            
-            const available = b.armazem[itemId] || 0;
-            if (available <= 0) return;
+function renderSmallItemGrid(mapObj) {
+    if(mapObj.size === 0) return '<span class="text-xs text-slate-600">Nada.</span>';
+    let h = '';
+    mapObj.forEach((qty, id) => {
+        const item = globalState.cache.allItems.get(id) || globalState.cache.itens.get(id);
+        const img = item?.imagemUrl ? `background-image:url('${item.imagemUrl}')` : `background-color:#334`;
+        h += `<div class="mini-slot" style="${img}" title="${item?.nome||'Item'}"><span class="mini-slot-qty">${qty}</span></div>`;
+    });
+    return h;
+}
 
-            const amount = amountRaw === 'all' ? available : Math.min(amountRaw, available);
+function renderResourcesMini(list) {
+    return list.map(r => {
+        const item = globalState.cache.allItems.get(r.itemId) || globalState.cache.itens.get(r.itemId);
+        return `<div class="flex items-center bg-black/40 px-1 rounded border border-slate-700" title="${item?.nome}"><img src="${item?.imagemUrl||PLACEHOLDER_IMAGE_URL}" class="w-3 h-3 mr-1 object-cover"><span class="text-[9px] text-white font-mono">${r.qtd}</span></div>`;
+    }).join('');
+}
 
-            b.armazem[itemId] -= amount;
-            if (b.armazem[itemId] <= 0) delete b.armazem[itemId];
-            
-            const mochila = d.mochila || {};
-            mochila[itemId] = (mochila[itemId] || 0) + amount;
+function renderResourceString(list) {
+    return list?.length ? list.map(c => `${c.qtd}x ${globalState.cache.allItems.get(c.itemId)?.nome||'Item'}`).join(', ') : "Nada";
+}
+function renderCostString(list) {
+    return list?.length ? list.map(c => `${c.qtd}x ${globalState.cache.allItems.get(c.itemId)?.nome||'Item'}`).join(', ') : "Grátis";
+}
 
-            t.update(ref, { "recursos.estabelecimentos": estabs, mochila });
-        });
-        window.renderReputacaoTab();
-    } catch (e) {}
-};
+window.openAssignModal = function(allyId) {
+    const r = globalState.selectedCharacterData.ficha.recursos;
+    const tpl = globalState.cache.allies.get(r.aliados.find(a=>a.uniqueId===allyId).templateId);
+    const valid = r.estabelecimentos.filter(b => {
+        const tb = globalState.cache.buildings.get(b.templateId);
+        const w = r.aliados.filter(a => a.assignedBuildingId === b.uniqueId).length;
+        return w < (tb.slotsTrabalho||1) && (!tpl.estabelecimentosPermitidos?.length || tpl.estabelecimentosPermitidos.includes(b.templateId));
+    });
 
-window.transferGlobalStorage = async function(from, to, itemId, amountRaw) {
-    const charId = globalState.selectedCharacterId;
-    if(!charId) return;
+    const m = document.createElement('div');
+    m.innerHTML = `
+        <div class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center">
+            <div class="bg-slate-800 p-6 rounded max-w-sm w-full">
+                <h3 class="text-white font-bold mb-4">Mudar Emprego</h3>
+                <button onclick="window.confirmAssign('${allyId}', null); this.parentElement.parentElement.remove()" class="btn bg-red-900 w-full mb-2">Desempregar</button>
+                ${valid.map(b => `<button onclick="window.confirmAssign('${allyId}', '${b.uniqueId}'); this.parentElement.parentElement.remove()" class="btn bg-slate-700 w-full mb-2">${globalState.cache.buildings.get(b.templateId).nome}</button>`).join('')}
+                <button onclick="this.parentElement.parentElement.remove()" class="btn w-full mt-2">Cancelar</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(m);
+}
 
-    try {
-        await runTransaction(db, async (t) => {
-            const refFicha = doc(db, "rpg_fichas", charId);
-            const d = (await t.get(refFicha)).data();
-            
-            let storageId = String(charId);
-            if (d.recursos && typeof d.recursos.armazemGeral === 'string' && d.recursos.armazemGeral.trim() !== '') {
-                storageId = d.recursos.armazemGeral.trim();
-            }
-
-            const storageRef = doc(db, "rpg_armazenamentos", storageId);
-            const storageSnap = await t.get(storageRef);
-            
-            const mochila = d.mochila || {};
-            let storageData = storageSnap.exists() ? storageSnap.data() : {};
-            const isNested = storageData.itens !== undefined;
-            let actualArmazem = isNested ? storageData.itens : storageData;
-            
-            let sourceObj = from === 'mochila' ? mochila : actualArmazem;
-            let destObj = to === 'mochila' ? mochila : actualArmazem;
-            
-            const available = sourceObj[itemId] || 0;
-            if (available <= 0) return;
-            const amount = amountRaw === 'all' ? available : Math.min(amountRaw, available);
-
-            sourceObj[itemId] -= amount;
-            if (sourceObj[itemId] <= 0) delete sourceObj[itemId];
-            destObj[itemId] = (destObj[itemId] || 0) + amount;
-            
-            if (isNested) storageData.itens = actualArmazem; else storageData = actualArmazem;
-
-            t.update(refFicha, { mochila: d.mochila });
-            t.set(storageRef, storageData, { merge: true });
-        });
-        window.renderReputacaoTab();
-    } catch(e) { alert(typeof e === 'string' ? e : "Falha na transferência."); }
-};
-
-window.collectAllToVault = async function() {
-    const charId = globalState.selectedCharacterId;
-    if(!charId) return;
-
-    try {
-        await runTransaction(db, async (t) => {
-            const refFicha = doc(db, "rpg_fichas", charId);
-            const d = (await t.get(refFicha)).data();
-            const recursos = d.recursos || {};
-            const estabs = recursos.estabelecimentos || [];
-            
-            let storageId = String(charId);
-            if (recursos && typeof recursos.armazemGeral === 'string' && recursos.armazemGeral.trim() !== '') {
-                storageId = recursos.armazemGeral.trim();
-            }
-
-            const storageRef = doc(db, "rpg_armazenamentos", storageId);
-            const storageSnap = await t.get(storageRef);
-            
-            let storageData = storageSnap.exists() ? storageSnap.data() : {};
-            const isNested = storageData.itens !== undefined;
-            let actualArmazem = isNested ? storageData.itens : storageData;
-
-            let collectedSomething = false;
-
-            estabs.forEach(b => {
-                const localVault = b.armazem || {};
-                for (let [itemId, qty] of Object.entries(localVault)) {
-                    actualArmazem[itemId] = (actualArmazem[itemId] || 0) + qty;
-                    collectedSomething = true;
-                }
-                b.armazem = {}; 
-            });
-            
-            if (!collectedSomething) throw "Não existem produções prontas nas propriedades locais.";
-            
-            if (isNested) storageData.itens = actualArmazem; else storageData = actualArmazem;
-
-            recursos.estabelecimentos = estabs;
-            t.update(refFicha, { recursos });
-            t.set(storageRef, storageData, { merge: true });
-        });
-        window.renderReputacaoTab();
-        alert("Todos os itens locais foram enviados ao Cofre Imperial infinito.");
-    } catch(e) { alert(typeof e === 'string' ? e : "Erro logístico ao coletar."); }
-};
+window.confirmAssign = async function(aId, bId) {
+    await runTransaction(db, async t => {
+        const ref = doc(db, "rpg_fichas", globalState.selectedCharacterId);
+        const d = (await t.get(ref)).data();
+        d.recursos.aliados.find(a => a.uniqueId === aId).assignedBuildingId = bId;
+        t.update(ref, { recursos: d.recursos });
+    });
+}
