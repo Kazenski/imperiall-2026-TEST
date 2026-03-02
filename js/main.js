@@ -21,6 +21,7 @@ import { renderReputacaoTab } from './tabs/reputacao.js';
 import { renderComercioTab } from './tabs/comercio.js';
 import { renderMapaTab } from './tabs/mapa.js';
 import './tabs/arena.js';
+import { renderAtualizacoesTab } from './tabs/atualizacoes.js';
 
 const dom = {};
 document.querySelectorAll('[id]').forEach(el => dom[el.id.replace(/-/g, '_')] = el);
@@ -109,6 +110,7 @@ window.showTab = function(tabId) {
         else if(tabId === 'comercio') { if(globalState.commerce) globalState.commerce.sellableCache = null; renderComercioTab(); }
         else if(tabId === 'mapa-movimento') { setTimeout(() => window.renderMapTab(), 100); }
         else if(tabId === 'arena-combate') { if (window.arena && window.arena.init) window.arena.init(); }
+        else if (tabId === 'atualizacoes-novidades-content') {renderAtualizacoesTab();
     } else {
         if (target) target.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500"><p>Selecione um personagem na barra lateral para acessar.</p></div>';
     }
