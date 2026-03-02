@@ -3,6 +3,7 @@ import { globalState, PLACEHOLDER_IMAGE_URL } from '../core/state.js';
 import { escapeHTML } from '../core/utils.js';
 import { calculateStatCascade, getFomeDebuffMultiplier } from '../core/calculos.js';
 
+// --- CONFIGURAÇÕES TÉCNICAS DO GRID ---
 const IMG_PLACEHOLDER_BASE64 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E";
 const HEX_SIZE = 17;
 const HEX_WIDTH = Math.sqrt(3) * HEX_SIZE;
@@ -25,7 +26,7 @@ window.arena = {
     targeting: null,
     turnActions: { movement: false, action: false, free: false },
     
-    // --- INICIALIZAÇÃO ---
+    // --- INICIALIZAÇÃO E SINCRONIZAÇÃO ---
     init: function() {
         if (this.unsub) { 
             this.unsub(); 
@@ -50,9 +51,9 @@ window.arena = {
             svg.addEventListener('mousedown', e => {
                 if(e.target.closest('#arena-ctx-menu')) return;
                 if (e.target.tagName !== 'image' && !e.target.closest('.token')) {
-                    this.drag.active = true;
-                    this.drag.startX = e.clientX - this.drag.panX;
-                    this.drag.startY = e.clientY - this.drag.panY;
+                    window.arena.drag.active = true;
+                    window.arena.drag.startX = e.clientX - window.arena.drag.panX;
+                    window.arena.drag.startY = e.clientY - window.arena.drag.panY;
                     svg.style.cursor = 'grabbing';
                 }
             });
@@ -112,123 +113,6 @@ window.arena = {
         });
     },
 
-    renderLayout: function() {
-        const container = document.getElementById('arena-combate-content');
-        if (!container) return;
-
-        container.innerHTML = `
-            <div class="bg-slate-950 p-2 rounded border border-slate-800 mb-2">
-                <div class="flex justify-between items-center mb-2">
-                    <div>
-                        <h2 class="text-amber-500 font-cinzel font-bold text-lg m-0 inline-block mr-2"><i class="fas fa-chess-board"></i> Arena Tática</h2>
-                        <span id="arena-status-msg" class="text-[10px] uppercase font-bold"></span>
-                    </div>
-                    <div class="flex gap-2 items-center">
-                        <span id="arena-round-display" class="bg-slate-800 px-3 py-1 rounded text-xs border border-slate-700 font-bold text-white">Rodada 1</span>
-                        <div id="player-action-hud" class="hidden flex gap-2">
-                            <button id="btn-act-move" class="action-btn" onclick="window.arena.toggleAction('movement')" title="Mover"><i class="fas fa-walking"></i></button>
-                            <button id="btn-act-main" class="action-btn" onclick="window.arena.toggleAction('action')" title="Ação"><i class="fas fa-fist-raised"></i></button>
-                            <button id="btn-act-free" class="action-btn" onclick="window.arena.toggleAction('free')" title="Livre"><i class="fas fa-comment"></i></button>
-                            <button class="action-btn bg-red-900/30 border-red-800 text-red-400" onclick="window.arena.endTurn()"><i class="fas fa-hourglass-end"></i></button>
-                        </div>
-                    </div>
-                </div>
-                <div id="arena-turn-list" class="turn-order-strip custom-scroll relative z-10 min-h-[70px]"></div>
-                <div id="arena-skill-tray" class="hidden p-2 bg-slate-900 border-t border-slate-700 rounded-b-lg">
-                    <div class="flex justify-between items-center mb-2">
-                        <span id="arena-skill-instruction" class="text-[10px] text-amber-400 font-bold uppercase animate-pulse"></span>
-                        <button onclick="window.arena.cancelTargeting()" class="text-red-400 text-xs px-2 py-1 rounded bg-red-900/20 border border-red-900">Cancelar</button>
-                    </div>
-                    <div id="arena-skill-list" class="flex gap-4 overflow-x-auto pb-2 min-h-[60px]"></div>
-                </div>
-            </div>
-
-            <div class="hex-grid-container relative" id="arena-viewport" style="height: 600px; overflow: hidden; background: #000;">
-                <svg id="arena-svg" width="100%" height="100%" style="overflow: visible; transition: transform 0.1s ease-out; cursor: grab;">
-                    <g id="arena-layer-map"></g>
-                    <g id="arena-layer-grid"></g>
-                    <g id="arena-layer-preview"></g> 
-                    <g id="arena-layer-auras"></g>
-                    <g id="arena-layer-tokens"></g>
-                </svg>
-                <div class="absolute bottom-4 right-4 flex flex-col gap-2 pointer-events-auto">
-                    <button onclick="window.arena.zoom(1.1)" class="w-8 h-8 rounded bg-slate-800 text-white font-bold border border-slate-600 shadow">+</button>
-                    <button onclick="window.arena.zoom(0.9)" class="w-8 h-8 rounded bg-slate-800 text-white font-bold border border-slate-600 shadow">-</button>
-                </div>
-            </div>
-
-            <div id="arena-combat-log" class="mt-2 h-32 overflow-y-auto font-mono text-[10px] bg-slate-950/80 p-2 rounded border border-slate-700 custom-scroll shadow-inner"></div>
-
-            <div id="arena-gm-panel" class="hidden mt-4 bg-slate-900/90 rounded-xl border border-amber-600/30 shadow-2xl overflow-hidden">
-                <div class="p-3 border-b border-slate-700 bg-slate-800 flex flex-wrap gap-2 items-center justify-between">
-                    <div class="flex gap-2">
-                        <button onclick="window.arena.setTool('select')" class="btn bg-blue-900/40 text-blue-200 text-[10px] uppercase font-bold border border-blue-700">Seleção</button>
-                        <button onclick="window.arena.setTool('wall_hard')" class="btn bg-red-900/40 text-red-200 text-[10px] uppercase font-bold border border-red-700">Muro</button>
-                        <button onclick="window.arena.setTool('wall_soft')" class="btn bg-orange-900/40 text-orange-200 text-[10px] uppercase font-bold border border-orange-700">Transp.</button>
-                        <button onclick="window.arena.setTool('erase')" class="btn bg-slate-700 text-slate-300 text-[10px] uppercase font-bold">Borracha</button>
-                        <button id="btn-arena-freemove" onclick="window.arena.toggleFreeMode()" class="btn bg-slate-700 text-slate-300 text-[10px] uppercase font-bold border border-slate-500 transition-all ml-2">Modo Livre</button>
-                    </div>
-                    <div class="flex gap-2 items-center">
-                        <button onclick="window.arena.clearArena()" class="btn bg-red-600 text-white text-[10px] font-bold uppercase">Limpar Tudo</button>
-                        <div class="w-px h-6 bg-slate-600 mx-1"></div>
-                        <button onclick="window.arena.nextTurn()" class="btn bg-emerald-600 text-white text-[10px] font-bold uppercase">Próx. Turno</button>
-                    </div>
-                </div>
-                <div class="p-3 border-b border-slate-700 bg-slate-800/50 flex gap-2 items-center justify-between w-full">
-                    <span id="arena-tool-display" class="text-[10px] text-amber-500 font-mono font-bold uppercase">Ferramenta: SELECIONAR</span>
-                    <div class="flex items-center gap-2 border border-slate-700 p-1 rounded bg-slate-900/50">
-                        <input type="text" id="arena-map-url" class="text-[10px] bg-slate-950 border-slate-700 w-32 rounded px-2 py-1 text-slate-300" placeholder="URL direta...">
-                        <button onclick="window.arena.updateMap()" class="btn btn-secondary py-1 px-2 text-[10px]">URL</button>
-                        <div class="w-px h-4 bg-slate-600 mx-1"></div>
-                        <input type="file" id="arena-map-upload" accept="image/*" class="hidden" onchange="window.arena.uploadMap(this)">
-                        <label for="arena-map-upload" class="btn btn-primary py-1 px-2 text-[10px] cursor-pointer flex items-center gap-1 m-0 shadow-lg transition hover:scale-105"><i class="fas fa-upload"></i> Upar</label>
-                    </div>
-                </div>
-                <div class="p-4 bg-slate-900 border-t border-slate-700">
-                    <div class="flex justify-between items-center mb-3">
-                        <span class="text-xs text-slate-400 font-bold uppercase">Spawn Rápido</span>
-                        <input type="text" id="arena-spawn-filter" placeholder="Buscar..." class="text-xs bg-slate-800 border border-slate-700 w-48 rounded px-2 py-1 outline-none focus:border-amber-500" onkeyup="window.arena.renderSpawnList()">
-                    </div>
-                    <div class="grid grid-cols-3 gap-3">
-                        <div class="bg-slate-950/50 rounded border border-slate-800 overflow-hidden">
-                            <div class="text-[9px] uppercase font-bold text-emerald-400 p-2 bg-emerald-900/20 text-center border-b border-emerald-900/30">Jogadores</div>
-                            <div id="spawn-list-players" class="spawn-list-container p-2 custom-scroll" style="height: 180px; overflow-y: auto;"></div>
-                        </div>
-                        <div class="bg-slate-950/50 rounded border border-slate-800 overflow-hidden">
-                            <div class="text-[9px] uppercase font-bold text-sky-400 p-2 bg-blue-900/20 text-center border-b border-blue-900/30">NPCs</div>
-                            <div id="spawn-list-npcs" class="spawn-list-container p-2 custom-scroll" style="height: 180px; overflow-y: auto;"></div>
-                        </div>
-                        <div class="bg-slate-950/50 rounded border border-slate-800 overflow-hidden">
-                            <div class="text-[9px] uppercase font-bold text-rose-400 p-2 bg-red-900/20 text-center border-b border-red-900/30">Monstros</div>
-                            <div id="spawn-list-monsters" class="spawn-list-container p-2 custom-scroll" style="height: 180px; overflow-y: auto;"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="arena-ctx-menu" class="fixed z-[9999] hidden bg-slate-900 border-2 border-amber-500 rounded shadow-2xl min-w-[220px] overflow-hidden"></div>
-
-            <div id="arena-attack-modal" class="fixed inset-0 z-[10000] bg-black/80 hidden items-center justify-center backdrop-blur-sm">
-                <div class="bg-slate-900 border-2 border-amber-500 rounded-xl p-6 max-w-sm w-full shadow-2xl transform transition-all">
-                    <h3 class="text-xl font-cinzel text-white text-center mb-4">Confirmar Ação</h3>
-                    <div class="bg-slate-800 p-4 rounded mb-6 text-center border border-slate-700">
-                        <div class="text-xs text-slate-400 uppercase mb-1">Habilidade</div>
-                        <div id="modal-skill-name" class="text-amber-400 font-bold text-lg mb-2">---</div>
-                        <div class="text-xs text-slate-400 uppercase mb-1">Alvo</div>
-                        <div id="modal-target-name" class="text-red-400 font-bold text-lg mb-2">---</div>
-                        <div class="mt-2 text-xs bg-blue-900/30 text-blue-300 py-1 px-2 rounded inline-block border border-blue-800">
-                            Custo: <span id="modal-skill-cost">0</span> MP
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <button onclick="window.arena.closeAttackModal()" class="btn bg-slate-700 hover:bg-slate-600 text-slate-300">Cancelar</button>
-                        <button id="btn-confirm-attack" class="btn bg-red-600 hover:bg-red-500 text-white font-bold shadow-[0_0_15px_rgba(220,38,38,0.5)] animate-pulse">ATACAR!</button>
-                    </div>
-                </div>
-            </div>
-        `;
-    },
-
     renderCombatLog: function(logs = []) {
         const logContainer = document.getElementById('arena-combat-log');
         if (!logContainer) return;
@@ -264,9 +148,37 @@ window.arena = {
         if(container) container.innerHTML = `<div id="arena-overlay-msg" class="absolute inset-0 flex items-center justify-center bg-slate-900/90 z-50 text-amber-500 font-cinzel text-xl font-bold p-10 text-center">${text}</div>`;
     },
 
+    // --- UI E HUD (AÇÃO) ---
     resetLocalActions: function() {
         window.arena.turnActions = { movement: false, action: false, free: false };
         window.arena.updateActionHUD();
+    },
+
+    updateActionHUD: function() {
+        const hud = document.getElementById('player-action-hud');
+        if (!hud || !window.arena.data) return;
+
+        const currentTurnId = window.arena.data.ordemIniciativa?.[window.arena.data.turnoIndex];
+        const isMyTurn = window.arena.isMaster || (currentTurnId && currentTurnId.startsWith(globalState.selectedCharacterId));
+
+        if (isMyTurn) {
+            hud.classList.remove('hidden');
+            hud.classList.add('flex');
+            
+            const updateBtn = (id, used) => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    if (used) btn.classList.add('used');
+                    else btn.classList.remove('used');
+                }
+            };
+            updateBtn('btn-act-move', window.arena.turnActions.movement);
+            updateBtn('btn-act-main', window.arena.turnActions.action);
+            updateBtn('btn-act-free', window.arena.turnActions.free);
+        } else {
+            hud.classList.add('hidden');
+            hud.classList.remove('flex');
+        }
     },
 
     checkMasterRole: function(sessionData) {
@@ -340,7 +252,7 @@ window.arena = {
 
         if (t.type === 'player' && t.originId) {
             const charId = t.originId;
-            const fichaData = globalState.cache.all_personagens.get(charId); 
+            const fichaData = globalState.cache.all_personagens.get(charId) || globalState.cache.personagens.get(charId); 
             
             if (fichaData) {
                 const cascade = calculateStatCascade(fichaData.ficha || fichaData, field, change);
@@ -1409,21 +1321,23 @@ window.arena = {
         label.classList.add('opacity-50', 'pointer-events-none');
 
         try {
-            // Usa compressor do global
-            const compressedBlob = await window.compressImage(file, 1920, 1080, 0.7);
+            let blobToUpload = file;
+            
+            // Import global compression (ou sobe direto se der erro)
+            if (typeof window.compressImage === 'function') {
+                blobToUpload = await window.compressImage(file, 1920, 1080, 0.7);
+            }
 
             const currentMapUrl = window.arena.data.mapaUrl;
             if (currentMapUrl && currentMapUrl.includes('firebasestorage')) {
                 try {
                     await deleteObject(ref(storage, currentMapUrl));
-                } catch(err) {
-                    console.warn("[Arena] Erro ao deletar antigo", err);
-                }
+                } catch(err) {}
             }
 
             const fileName = `mapa_${Date.now()}.jpg`;
             const mapRef = ref(storage, `mapas_arena/${sessionId}/${fileName}`);
-            const snapshot = await uploadBytes(mapRef, compressedBlob);
+            const snapshot = await uploadBytes(mapRef, blobToUpload);
             const newUrl = await getDownloadURL(snapshot.ref);
 
             await updateDoc(doc(db, "rpg_sessions", sessionId), { "arena_state.mapaUrl": newUrl });
@@ -1486,5 +1400,123 @@ window.arena = {
         window.arena.tool = t; 
         const d = document.getElementById('arena-tool-display'); 
         if(d) d.textContent = `Ferramenta: ${t.toUpperCase()}`; 
+    },
+
+    // --- HTML INJECTOR DO LAYOUT PRINCIPAL ---
+    renderLayout: function() {
+        const container = document.getElementById('arena-combate-content');
+        if (!container) return;
+
+        container.innerHTML = `
+            <div class="bg-slate-950 p-2 rounded border border-slate-800 mb-2">
+                <div class="flex justify-between items-center mb-2">
+                    <div>
+                        <h2 class="text-amber-500 font-cinzel font-bold text-lg m-0 inline-block mr-2"><i class="fas fa-chess-board"></i> Arena Tática</h2>
+                        <span id="arena-status-msg" class="text-[10px] uppercase font-bold"></span>
+                    </div>
+                    <div class="flex gap-2 items-center">
+                        <span id="arena-round-display" class="bg-slate-800 px-3 py-1 rounded text-xs border border-slate-700 font-bold text-white">Rodada 1</span>
+                        <div id="player-action-hud" class="hidden gap-2">
+                            <button id="btn-act-move" class="action-btn" onclick="window.arena.toggleAction('movement')"><i class="fas fa-walking"></i></button>
+                            <button id="btn-act-main" class="action-btn" onclick="window.arena.toggleAction('action')"><i class="fas fa-fist-raised"></i></button>
+                            <button id="btn-act-free" class="action-btn" onclick="window.arena.toggleAction('free')"><i class="fas fa-comment"></i></button>
+                            <button class="action-btn bg-red-900/30 border-red-800 text-red-400" onclick="window.arena.endTurn()"><i class="fas fa-hourglass-end"></i></button>
+                        </div>
+                    </div>
+                </div>
+                <div id="arena-turn-list" class="turn-order-strip custom-scroll relative z-10 min-h-[70px]"></div>
+                <div id="arena-skill-tray" class="hidden p-2 bg-slate-900 border-t border-slate-700 rounded-b-lg">
+                    <div class="flex justify-between items-center mb-2">
+                        <span id="arena-skill-instruction" class="text-[10px] text-amber-400 font-bold uppercase animate-pulse"></span>
+                        <button onclick="window.arena.cancelTargeting()" class="text-red-400 text-xs px-2 py-1 rounded bg-red-900/20 border border-red-900">Cancelar</button>
+                    </div>
+                    <div id="arena-skill-list" class="flex gap-4 overflow-x-auto pb-2 min-h-[60px]"></div>
+                </div>
+            </div>
+
+            <div class="hex-grid-container relative" id="arena-viewport" style="height: 600px; overflow: hidden; background: #000;">
+                <svg id="arena-svg" width="100%" height="100%" style="overflow: visible; transition: transform 0.1s ease-out; cursor: grab;">
+                    <g id="arena-layer-map"></g>
+                    <g id="arena-layer-grid"></g>
+                    <g id="arena-layer-preview"></g> 
+                    <g id="arena-layer-auras"></g>
+                    <g id="arena-layer-tokens"></g>
+                </svg>
+                <div class="absolute bottom-4 right-4 flex flex-col gap-2 pointer-events-auto">
+                    <button onclick="window.arena.zoom(1.1)" class="w-8 h-8 rounded bg-slate-800 text-white font-bold border border-slate-600 shadow">+</button>
+                    <button onclick="window.arena.zoom(0.9)" class="w-8 h-8 rounded bg-slate-800 text-white font-bold border border-slate-600 shadow">-</button>
+                </div>
+            </div>
+
+            <div id="arena-combat-log" class="mt-2 h-32 overflow-y-auto font-mono text-[10px] bg-slate-950/80 p-2 rounded border border-slate-700 custom-scroll shadow-inner"></div>
+
+            <div id="arena-gm-panel" class="hidden mt-4 bg-slate-900/90 rounded-xl border border-amber-600/30 shadow-2xl overflow-hidden">
+                <div class="p-3 border-b border-slate-700 bg-slate-800 flex flex-wrap gap-2 items-center justify-between">
+                    <div class="flex gap-2">
+                        <button onclick="window.arena.setTool('select')" class="btn bg-blue-900/40 text-blue-200 text-[10px] uppercase font-bold border border-blue-700">Seleção</button>
+                        <button onclick="window.arena.setTool('wall_hard')" class="btn bg-red-900/40 text-red-200 text-[10px] uppercase font-bold border border-red-700">Muro</button>
+                        <button onclick="window.arena.setTool('wall_soft')" class="btn bg-orange-900/40 text-orange-200 text-[10px] uppercase font-bold border border-orange-700">Transp.</button>
+                        <button onclick="window.arena.setTool('erase')" class="btn bg-slate-700 text-slate-300 text-[10px] uppercase font-bold">Borracha</button>
+                        <button id="btn-arena-freemove" onclick="window.arena.toggleFreeMode()" class="btn bg-slate-700 text-slate-300 text-[10px] uppercase font-bold border border-slate-500 transition-all ml-2">Modo Livre</button>
+                    </div>
+                    <div class="flex gap-2 items-center">
+                        <button onclick="window.arena.clearArena()" class="btn bg-red-600 text-white text-[10px] font-bold uppercase">Limpar Tudo</button>
+                        <div class="w-px h-6 bg-slate-600 mx-1"></div>
+                        <button onclick="window.arena.nextTurn()" class="btn bg-emerald-600 text-white text-[10px] font-bold uppercase">Próx. Turno</button>
+                    </div>
+                </div>
+                <div class="p-3 border-b border-slate-700 bg-slate-800/50 flex gap-2 items-center justify-between w-full">
+                    <span id="arena-tool-display" class="text-[10px] text-amber-500 font-mono font-bold uppercase">Ferramenta: SELECIONAR</span>
+                    <div class="flex items-center gap-2 border border-slate-700 p-1 rounded bg-slate-900/50">
+                        <input type="text" id="arena-map-url" class="text-[10px] bg-slate-950 border-slate-700 w-32 rounded px-2 py-1 text-slate-300" placeholder="URL direta...">
+                        <button onclick="window.arena.updateMap()" class="btn btn-secondary py-1 px-2 text-[10px]">URL</button>
+                        <div class="w-px h-4 bg-slate-600 mx-1"></div>
+                        <input type="file" id="arena-map-upload" accept="image/*" class="hidden" onchange="window.arena.uploadMap(this)">
+                        <label for="arena-map-upload" class="btn btn-primary py-1 px-2 text-[10px] cursor-pointer flex items-center gap-1 m-0 shadow-lg transition hover:scale-105"><i class="fas fa-upload"></i> Upar</label>
+                    </div>
+                </div>
+                <div class="p-4 bg-slate-900 border-t border-slate-700">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-xs text-slate-400 font-bold uppercase">Spawn Rápido</span>
+                        <input type="text" id="arena-spawn-filter" placeholder="Buscar..." class="text-xs bg-slate-800 border border-slate-700 w-48 rounded px-2 py-1 outline-none focus:border-amber-500" onkeyup="window.arena.renderSpawnList()">
+                    </div>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="bg-slate-950/50 rounded border border-slate-800 overflow-hidden">
+                            <div class="text-[9px] uppercase font-bold text-emerald-400 p-2 bg-emerald-900/20 text-center border-b border-emerald-900/30">Jogadores</div>
+                            <div id="spawn-list-players" class="spawn-list-container p-2 custom-scroll" style="height: 180px; overflow-y: auto;"></div>
+                        </div>
+                        <div class="bg-slate-950/50 rounded border border-slate-800 overflow-hidden">
+                            <div class="text-[9px] uppercase font-bold text-sky-400 p-2 bg-blue-900/20 text-center border-b border-blue-900/30">NPCs</div>
+                            <div id="spawn-list-npcs" class="spawn-list-container p-2 custom-scroll" style="height: 180px; overflow-y: auto;"></div>
+                        </div>
+                        <div class="bg-slate-950/50 rounded border border-slate-800 overflow-hidden">
+                            <div class="text-[9px] uppercase font-bold text-rose-400 p-2 bg-red-900/20 text-center border-b border-red-900/30">Monstros</div>
+                            <div id="spawn-list-monsters" class="spawn-list-container p-2 custom-scroll" style="height: 180px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="arena-ctx-menu" class="fixed z-[9999] hidden bg-slate-900 border-2 border-amber-500 rounded shadow-2xl min-w-[220px] overflow-hidden"></div>
+
+            <div id="arena-attack-modal" class="fixed inset-0 z-[10000] bg-black/80 hidden items-center justify-center backdrop-blur-sm">
+                <div class="bg-slate-900 border-2 border-amber-500 rounded-xl p-6 max-w-sm w-full shadow-2xl transform transition-all">
+                    <h3 class="text-xl font-cinzel text-white text-center mb-4">Confirmar Ação</h3>
+                    <div class="bg-slate-800 p-4 rounded mb-6 text-center border border-slate-700">
+                        <div class="text-xs text-slate-400 uppercase mb-1">Habilidade</div>
+                        <div id="modal-skill-name" class="text-amber-400 font-bold text-lg mb-2">---</div>
+                        <div class="text-xs text-slate-400 uppercase mb-1">Alvo</div>
+                        <div id="modal-target-name" class="text-red-400 font-bold text-lg mb-2">---</div>
+                        <div class="mt-2 text-xs bg-blue-900/30 text-blue-300 py-1 px-2 rounded inline-block border border-blue-800">
+                            Custo: <span id="modal-skill-cost">0</span> MP
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <button onclick="window.arena.closeAttackModal()" class="btn bg-slate-700 hover:bg-slate-600 text-slate-300">Cancelar</button>
+                        <button id="btn-confirm-attack" class="btn bg-red-600 hover:bg-red-500 text-white font-bold shadow-[0_0_15px_rgba(220,38,38,0.5)] animate-pulse">ATACAR!</button>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 };
