@@ -1,11 +1,9 @@
-// ARQUIVO: js/tabs/reputacao.js
-
-import { db, doc, updateDoc, runTransaction, deleteField } from '../core/firebase.js';
+import { db, doc, getDoc, setDoc, updateDoc, runTransaction, deleteField } from '../core/firebase.js';
 import { globalState, PLACEHOLDER_IMAGE_URL } from '../core/state.js';
 import { calculateReputationUsage, calculateReputationDetails } from '../core/calculos.js';
 import { escapeHTML } from '../core/utils.js';
 
-const COLET_COOLDOWN_MS = 10 * 60 * 1000; // 10 minutos por ciclo
+const COLET_COOLDOWN_MS = 10 * 60 * 1000; // 10 minutos (padrão do sistema)
 
 // --- GESTÃO DE ESTADO DA INTERFACE ---
 window.switchRepTab = function(tabName) {
@@ -41,8 +39,8 @@ function calculateStorageCapacity(ficha) {
     return armazemCap;
 }
 
-// --- RENDERIZADOR PRINCIPAL ---
-export function renderReputacaoTab() {
+// --- RENDERIZADOR PRINCIPAL (AGORA ASYNC PARA BUSCAR A COLEÇÃO RPG_ARMAZENAMENTOS) ---
+export async function renderReputacaoTab() {
     const container = document.getElementById('recursos-reputacao-content');
     if (!container) return;
 
@@ -62,6 +60,20 @@ export function renderReputacaoTab() {
         const repUsage = calculateReputationUsage(ficha);
         const repDetails = calculateReputationDetails(ficha);
         const maxStorage = calculateStorageCapacity(ficha);
+
+        // BUSCA O ARMAZÉM GERAL NA COLEÇÃO rpg_armazenamentos
+        const storageId = (ficha.recursos && typeof ficha.recursos.armazemGeral === 'string') ? ficha.recursos.armazemGeral : charData.id;
+        let armazemGeral = {};
+        try {
+            const storageSnap = await getDoc(doc(db, "rpg_armazenamentos", storageId));
+            if (storageSnap.exists()) {
+                const snapData = storageSnap.data();
+                // Suporta tanto o objeto direto quanto salvo dentro de uma chave "itens"
+                armazemGeral = snapData.itens !== undefined ? snapData.itens : snapData;
+            }
+        } catch (e) {
+            console.error("Erro ao carregar coleção rpg_armazenamentos:", e);
+        }
 
         // Define a área da esquerda baseada na aba ativa
         let leftContentHtml = '';
@@ -138,7 +150,7 @@ export function renderReputacaoTab() {
 
         if (activeTab === 'storage') {
             renderStorageMochila(ficha);
-            renderStorageVault(ficha, maxStorage);
+            renderStorageVault(armazemGeral, maxStorage);
         } else {
             renderRepGrid(ficha);
             renderRepRightPanel(ficha, repUsage);
@@ -235,7 +247,7 @@ function renderRepRightPanel(ficha, repUsage) {
         purchaseMatsHtml += `</div></div>`;
     }
 
-    // PRODUÇÃO E CONSUMO POR CICLO (Visualização nítida)
+    // PRODUÇÃO E CONSUMO POR CICLO
     let opsBox = '';
     if ((tpl.producao?.length || 0) > 0 || (tpl.consumo?.length || 0) > 0) {
         opsBox = `<div class="space-y-4 mt-2">`;
@@ -264,13 +276,13 @@ function renderRepRightPanel(ficha, repUsage) {
         opsBox += `</div>`;
     }
 
-    // CONTEÚDO DINÂMICO (Abas Internas: Dados vs Inventário do Prédio)
+    // CONTEÚDO DINÂMICO
     let dynamicBody = '';
     if (activeTab === 'buildings' && isOwned && innerTab === 'inventory') {
         const armazem = bData.armazem || {};
         const armazemIds = Object.keys(armazem);
         if (armazemIds.length === 0) {
-            dynamicBody = `<div class="flex flex-col items-center justify-center py-16 opacity-30 italic text-slate-500 text-xs"><i class="fas fa-box-open text-4xl mb-2"></i> Sem loots para coletar.</div>`;
+            dynamicBody = `<div class="flex flex-col items-center justify-center py-16 opacity-30 italic text-slate-500 text-xs"><i class="fas fa-box-open text-4xl mb-2"></i> Sem loots locais para coletar.</div>`;
         } else {
             dynamicBody = `<div class="grid grid-cols-2 gap-3">`;
             armazemIds.forEach(id => {
@@ -312,10 +324,6 @@ function renderRepRightPanel(ficha, repUsage) {
 
     panel.innerHTML = `
         <div class="flex flex-col h-full animate-fade-in">
-            <div class="absolute top-4 right-4 text-slate-500 hover:text-white cursor-help z-10" title="Manual Imperial: Adquira propriedades pagando Reputação e Materiais. Em 'Produção', veja os custos para operar. Clique em 'Iniciar Ciclo' para gerar loot, que ficará no 'Armazém' aguardando o seu saque.">
-                <i class="fas fa-question-circle text-xl"></i>
-            </div>
-
             <div class="p-8 border-b border-slate-700 bg-slate-900/50 flex flex-col items-center shrink-0">
                 <div class="w-32 h-32 rounded-2xl bg-black border-2 ${isOwned ? 'border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.2)]' : 'border-slate-600'} overflow-hidden mb-4 transition-transform hover:scale-105">
                     <img src="${tpl.imagemUrl || PLACEHOLDER_IMAGE_URL}" class="w-full h-full object-cover">
@@ -350,7 +358,7 @@ function renderRepRightPanel(ficha, repUsage) {
                             <i class="fas fa-times-circle mr-1 text-sm"></i> ${activeTab === 'allies' ? 'Dispensar Aliado' : 'Vender Propriedade'}
                         </button>
                        </div>`
-                    : `<button onclick="window.buyRepItem('${selectedId}', '${activeTab}', ${tpl.reputacaoCusto || tpl.reputacaoCustoBase || 0})" 
+                    : `<button onclick="window.buyRepItem('${selectedId}', '${activeTab}', ${costRep})" 
                         class="w-full ${canAffordRep && canAffordMats ? 'bg-amber-600 hover:bg-amber-500 text-black shadow-lg hover:scale-[1.02]' : 'bg-slate-700 text-slate-500 cursor-not-allowed'} py-3.5 rounded-xl text-[11px] font-black uppercase transition-all"
                         ${!(canAffordRep && canAffordMats) ? 'disabled' : ''}>
                         <i class="fas fa-shopping-cart mr-2 text-sm"></i> Adquirir Recurso
@@ -361,9 +369,10 @@ function renderRepRightPanel(ficha, repUsage) {
     `;
 }
 
-// 5. RENDERIZADORES DO ARMAZÉM GLOBAL (Nova Aba de Sincronização)
+// 5. RENDERIZADORES DO ARMAZÉM GLOBAL (rpg_armazenamentos)
 function renderStorageMochila(ficha) {
     const container = document.getElementById('storage-mochila-container');
+    if (!container) return;
     const mochila = ficha.mochila || {};
     const itemIds = Object.keys(mochila).filter(id => mochila[id] > 0);
 
@@ -402,23 +411,24 @@ function renderStorageMochila(ficha) {
     container.innerHTML = html;
 }
 
-function renderStorageVault(ficha, maxStorage) {
+function renderStorageVault(armazemGeral, maxStorage) {
     const panel = document.getElementById('rep-inspect-panel');
-    const armazemGeral = ficha.recursos?.armazemGeral || {};
-    const itemIds = Object.keys(armazemGeral).filter(id => armazemGeral[id] > 0);
+    if (!panel) return;
     
+    // Tratamento de segurança, ignora campos não numéricos que possam vir do BD
+    const itemIds = Object.keys(armazemGeral).filter(id => typeof armazemGeral[id] === 'number' && armazemGeral[id] > 0);
     let currentOccupied = 0;
     itemIds.forEach(id => currentOccupied += armazemGeral[id]);
 
     let vaultHtml = `
-        <div class="absolute top-4 right-4 text-slate-500 hover:text-white cursor-help z-10" title="Cofre Central: Utilize as setas direcionais para mover itens da sua Mochila para o Armazém Imperial e vice-versa. O botão inferior recolhe automaticamente todos os loots que estão presos nas suas propriedades.">
+        <div class="absolute top-4 right-4 text-slate-500 hover:text-white cursor-help z-10" title="Cofre Central: Utilize as setas para mover itens da sua Mochila para o Armazém Imperial. O botão verde recolhe automaticamente todos os loots gerados pelas propriedades locais.">
             <i class="fas fa-question-circle text-xl"></i>
         </div>
 
         <div class="p-6 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center shrink-0">
             <div>
                 <h3 class="font-cinzel text-xl text-sky-400 leading-tight mb-1"><i class="fas fa-warehouse mr-2"></i>Armazém Imperial</h3>
-                <p class="text-[9px] text-slate-500 uppercase font-black tracking-widest">Estoque Central da Facção</p>
+                <p class="text-[9px] text-slate-500 uppercase font-black tracking-widest">Estoque Central do Personagem</p>
             </div>
             <div class="text-right">
                 <span class="text-[9px] text-slate-400 uppercase font-bold">Capacidade Máx</span>
@@ -456,7 +466,7 @@ function renderStorageVault(ficha, maxStorage) {
         </div>
         <div class="p-4 bg-slate-900 border-t border-slate-700 shadow-[0_-10px_20px_rgba(0,0,0,0.3)]">
             <button onclick="window.collectAllToVault()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3.5 rounded-xl text-[10px] uppercase tracking-widest transition-all shadow-lg hover:scale-[1.02]">
-                <i class="fas fa-truck-loading mr-2 text-sm"></i> Recolher Todas Produções Locais
+                <i class="fas fa-truck-loading mr-2 text-sm"></i> Recolher Todas Produções Locais p/ Cofre
             </button>
         </div>
     `;
@@ -464,8 +474,7 @@ function renderStorageVault(ficha, maxStorage) {
     panel.innerHTML = vaultHtml;
 }
 
-
-// --- LÓGICA DO FIREBASE (TRANSAÇÕES) ---
+// --- LÓGICA DO FIREBASE E TRANSAÇÕES MULTI-COLEÇÃO ---
 
 window.buyRepItem = async function(templateId, type, costRep) {
     const charId = globalState.selectedCharacterId;
@@ -473,7 +482,7 @@ window.buyRepItem = async function(templateId, type, costRep) {
                 (type === 'allies' ? globalState.cache.allies.get(templateId) : 
                 globalState.cache.itens.get(templateId)));
 
-    if (!confirm(`Desejas adquirir "${tpl.nome}"?\nReputação e materiais da mochila serão consumidos.`)) return;
+    if (!confirm(`Desejas adquirir "${tpl.nome}"?\nReputação e materiais físicos serão consumidos da sua mochila.`)) return;
 
     try {
         await runTransaction(db, async (t) => {
@@ -511,7 +520,7 @@ window.buyRepItem = async function(templateId, type, costRep) {
                 list.push({ templateId: templateId, active: true });
                 recursos.aliados = list;
             } else if (type === 'storage') {
-                // Expansões de carga viram itens de posse
+                // Expansões de carga viram itens na mochila
                 mochila[templateId] = (mochila[templateId] || 0) + 1;
             }
 
@@ -535,9 +544,9 @@ window.collectBuilding = async function(templateId) {
             const mochila = d.mochila || {};
             const consumos = tpl.consumo || [];
             
-            // Valida Manutenção
+            // Valida Manutenção na mochila
             for (let c of consumos) {
-                if ((mochila[c.itemId] || 0) < (c.quantidade || c.quantidadeBase)) throw "Falta de recursos de manutenção na mochila para iniciar o ciclo de operação.";
+                if ((mochila[c.itemId] || 0) < (c.quantidade || c.quantidadeBase)) throw "Falta de recursos de manutenção na mochila para iniciar o ciclo.";
             }
 
             // Consome Manutenção
@@ -546,7 +555,7 @@ window.collectBuilding = async function(templateId) {
                 if (mochila[c.itemId] <= 0) delete mochila[c.itemId];
             });
 
-            // Gera Loots no Armazém Local
+            // Gera Loots no Armazém Local da Propriedade
             const armazem = b.armazem || {};
             (tpl.producao || []).forEach(p => {
                 armazem[p.itemId] = (armazem[p.itemId] || 0) + (p.quantidade || p.quantidadeBase);
@@ -578,7 +587,6 @@ window.sellBuilding = async function(templateId, type) {
     } catch (e) { console.error(e); }
 };
 
-// Funções Exclusivas de Sincronização de Cofre
 window.withdrawLocalBuildingItem = async function(templateId, itemId, amountRaw) {
     const charId = globalState.selectedCharacterId;
     try {
@@ -605,79 +613,103 @@ window.withdrawLocalBuildingItem = async function(templateId, itemId, amountRaw)
     } catch (e) { alert("Erro ao sacar loot local."); }
 };
 
+// Sincronização direta com rpg_armazenamentos
 window.transferGlobalStorage = async function(from, to, itemId, amountRaw) {
     const charId = globalState.selectedCharacterId;
     try {
         await runTransaction(db, async (t) => {
-            const ref = doc(db, "rpg_fichas", charId);
-            const d = (await t.get(ref)).data();
+            const refFicha = doc(db, "rpg_fichas", charId);
+            const fichaSnap = await t.get(refFicha);
+            const d = fichaSnap.data();
+            
+            // Busca o documento de armazenamento da coleção rpg_armazenamentos
+            const storageId = (d.recursos && typeof d.recursos.armazemGeral === 'string') ? d.recursos.armazemGeral : charId;
+            const storageRef = doc(db, "rpg_armazenamentos", storageId);
+            const storageSnap = await t.get(storageRef);
             
             const mochila = d.mochila || {};
-            const recursos = d.recursos || {};
-            const armazem = recursos.armazemGeral || {};
+            let storageData = storageSnap.exists() ? storageSnap.data() : {};
             
-            let sourceObj = from === 'mochila' ? mochila : armazem;
-            let destObj = to === 'mochila' ? mochila : armazem;
+            // Verifica se está envelopado num objeto 'itens'
+            const isNested = storageData.itens !== undefined;
+            let actualArmazem = isNested ? storageData.itens : storageData;
+            
+            let sourceObj = from === 'mochila' ? mochila : actualArmazem;
+            let destObj = to === 'mochila' ? mochila : actualArmazem;
             
             const available = sourceObj[itemId] || 0;
             if (available <= 0) return;
             
             const amount = amountRaw === 'all' ? available : Math.min(amountRaw, available);
 
-            // Se for mover PARA o Armazém, valida capacidade
+            // Validação de Capacidade se estiver enviando para o Cofre
             if (to === 'armazem') {
                 const maxCap = calculateStorageCapacity(d);
                 let currentOcc = 0;
-                Object.values(armazem).forEach(v => currentOcc += v);
+                Object.values(actualArmazem).forEach(v => { if (typeof v === 'number') currentOcc += v; });
                 if (currentOcc + amount > maxCap) {
                     throw `Espaço insuficiente no Armazém Imperial. (Máx: ${maxCap})`;
                 }
             }
             
+            // Transferência
             sourceObj[itemId] -= amount;
             if (sourceObj[itemId] <= 0) delete sourceObj[itemId];
             destObj[itemId] = (destObj[itemId] || 0) + amount;
             
-            if (from === 'mochila') t.update(ref, { mochila: sourceObj, "recursos.armazemGeral": destObj });
-            else t.update(ref, { mochila: destObj, "recursos.armazemGeral": sourceObj });
+            if (isNested) storageData.itens = actualArmazem; else storageData = actualArmazem;
+
+            t.update(refFicha, { mochila: d.mochila });
+            t.set(storageRef, storageData, { merge: true });
         });
         window.renderReputacaoTab();
-    } catch(e) { alert(typeof e === 'string' ? e : "Falha na transferência."); }
+    } catch(e) { alert(typeof e === 'string' ? e : "Falha na transferência para o armazém."); }
 };
 
 window.collectAllToVault = async function() {
     const charId = globalState.selectedCharacterId;
     try {
         await runTransaction(db, async (t) => {
-            const ref = doc(db, "rpg_fichas", charId);
-            const d = (await t.get(ref)).data();
+            const refFicha = doc(db, "rpg_fichas", charId);
+            const fichaSnap = await t.get(refFicha);
+            const d = fichaSnap.data();
             const recursos = d.recursos || {};
             const estabs = recursos.estabelecimentos || [];
-            const armazemGeral = recursos.armazemGeral || {};
+            
+            const storageId = (typeof recursos.armazemGeral === 'string') ? recursos.armazemGeral : charId;
+            const storageRef = doc(db, "rpg_armazenamentos", storageId);
+            const storageSnap = await t.get(storageRef);
+            
+            let storageData = storageSnap.exists() ? storageSnap.data() : {};
+            const isNested = storageData.itens !== undefined;
+            let actualArmazem = isNested ? storageData.itens : storageData;
+
             let collectedSomething = false;
             
             const maxCap = calculateStorageCapacity(d);
             let currentOcc = 0;
-            Object.values(armazemGeral).forEach(v => currentOcc += v);
+            Object.values(actualArmazem).forEach(v => { if (typeof v === 'number') currentOcc += v; });
 
             estabs.forEach(b => {
                 const localVault = b.armazem || {};
                 for (let [itemId, qty] of Object.entries(localVault)) {
                     if (currentOcc + qty > maxCap) {
-                        throw `Espaço insuficiente no Armazém Central para recolher todos os itens! Aumente a sua capacidade.`;
+                        throw `Espaço insuficiente no Armazém Central para recolher todos os itens! Aumente a sua capacidade comprando expansões.`;
                     }
-                    armazemGeral[itemId] = (armazemGeral[itemId] || 0) + qty;
+                    actualArmazem[itemId] = (actualArmazem[itemId] || 0) + qty;
                     currentOcc += qty;
                     collectedSomething = true;
                 }
-                b.armazem = {}; 
+                b.armazem = {}; // Limpa o armazém local
             });
             
             if (!collectedSomething) throw "Não existem produções prontas nas suas propriedades locais.";
             
-            recursos.armazemGeral = armazemGeral;
+            if (isNested) storageData.itens = actualArmazem; else storageData = actualArmazem;
+
             recursos.estabelecimentos = estabs;
-            t.update(ref, { recursos });
+            t.update(refFicha, { recursos });
+            t.set(storageRef, storageData, { merge: true });
         });
         window.renderReputacaoTab();
         alert("Excelente Gestão Imperial! Todos os itens foram centralizados no seu Cofre.");
