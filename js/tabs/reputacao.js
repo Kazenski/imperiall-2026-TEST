@@ -18,6 +18,31 @@ function optimizeCoins(totalCopper) {
 if (!globalState.transferCart) globalState.transferCart = { toStorage: {}, toMochila: {} };
 if (!globalState.storageFilter) globalState.storageFilter = 'todos';
 
+window.listenToStorage = function(charId) {
+    if (globalState.storageUnsubscribe) {
+        globalState.storageUnsubscribe();
+        globalState.storageUnsubscribe = null;
+    }
+    if (!charId) return;
+
+    // Escuta em tempo real as mudanças no armazém deste personagem
+    globalState.storageUnsubscribe = onSnapshot(doc(db, "rpg_armazenamentos", charId), (docSnap) => {
+        if (docSnap.exists()) {
+            globalState.currentStorage = docSnap.data().itens || {};
+        } else {
+            globalState.currentStorage = {};
+        }
+        
+        // Atualiza a tela se a aba de armazenamento estiver visível
+        if (globalState.recursosUI && globalState.recursosUI.abaAtiva === 'armazenamento') {
+            if (typeof window.renderStorageTab === 'function') {
+                const dynContainer = document.getElementById('rep-dynamic-content');
+                if(dynContainer) window.renderStorageTab(dynContainer);
+            }
+        }
+    });
+};
+
 // NOME CORRIGIDO DE ACORDO COM O main.js
 export function renderReputacaoTab() {
     const container = document.getElementById('recursos-reputacao-content');
@@ -29,6 +54,8 @@ export function renderReputacaoTab() {
         return;
     }
 
+    if (!globalState.storageUnsubscribe) window.listenToStorage(charData.id || globalState.selectedCharacterId);
+    
     const ficha = charData.ficha;
     const recursos = ficha.recursos || { estabelecimentos: [], aliados: [], estoqueTemporario: {} };
     const estoqueTemp = recursos.estoqueTemporario || {};
