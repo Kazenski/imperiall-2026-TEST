@@ -1279,12 +1279,14 @@ input[type=range]::-webkit-slider-runnable-track {
 
 /* Animação do Dano Flutuante (Efeito RPG) */
 @keyframes floatDamage {
-    0% { opacity: 0; transform: translateY(0) scale(0.5); }
-    20% { opacity: 1; transform: translateY(-20px) scale(1.3); }
-    70% { opacity: 1; transform: translateY(-40px) scale(1); }
-    100% { opacity: 0; transform: translateY(-60px) scale(0.8); }
+    0% { opacity: 0; transform: translateY(10px) scale(0.5); }
+    20% { opacity: 1; transform: translateY(-15px) scale(1.3); }
+    70% { opacity: 1; transform: translateY(-30px) scale(1); }
+    100% { opacity: 0; transform: translateY(-40px) scale(0.8); }
 }
 .animate-float-up {
     animation: floatDamage 2s ease-out forwards;
-    text-shadow: 0 0 10px rgba(0,0,0,1), 0 0 20px rgba(0,0,0,0.8);
+    text-shadow: 0px 4px 10px rgba(0,0,0,1), 0px 0px 4px rgba(0,0,0,0.8);
+    z-index: 9999 !important;
+    pointer-events: none;
 }
