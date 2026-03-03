@@ -1,5 +1,12 @@
-// Gera automaticamente a lista ['imagens/mapas1.webp', ..., 'imagens/mapas6.webp']
-const mapasDoMundo = Array.from({ length: 6 }, (_, i) => `imagens/mapas${i + 1}.webp`);
+// Lista explícita das imagens dos mapas
+const mapasDoMundo = [
+    "imagens/mapas1.webp",
+    "imagens/mapas2.webp",
+    "imagens/mapas3.webp",
+    "imagens/mapas4.webp",
+    "imagens/mapas5.webp",
+    "imagens/mapas6.webp"
+];
 
 export function renderConhecaMundoTab() {
     const container = document.getElementById('conheca-mundo-content');
@@ -23,12 +30,12 @@ export function renderConhecaMundoTab() {
             
             <header class="mb-10 text-center w-full border-b border-slate-800 pb-8">
                 <h1 class="text-4xl md:text-5xl font-black font-cinzel text-amber-500 drop-shadow-md tracking-widest mb-3">A Gênese de Imperiall</h1>
-                <p class="text-slate-400 text-sm md:text-base italic max-w-2xl mx-auto">
+                <p class="text-slate-400 text-sm md:text-base italic w-full mx-auto">
                     "Antes dos mortais pisarem na terra, os deuses já traçavam o destino entre oceanos e lendas..."
                 </p>
             </header>
 
-            <div class="max-w-5xl mx-auto bg-slate-900/60 p-8 md:p-12 rounded-2xl border border-slate-800 shadow-2xl mb-16 relative">
+            <div class="w-full bg-slate-900/60 p-8 md:p-12 rounded-2xl border border-slate-800 shadow-2xl mb-16 relative">
                 <i class="fas fa-quote-left absolute top-6 left-6 text-slate-700 text-3xl opacity-50"></i>
                 
                 <div class="space-y-6 text-slate-300 text-base md:text-lg leading-relaxed font-serif relative z-10 text-justify">
@@ -49,7 +56,7 @@ export function renderConhecaMundoTab() {
                         <strong class="text-amber-500 font-cinzel tracking-wider">Imperiall</strong>, o Leviatã da Ganância, governa um vasto continente habitado por seres medíocres cujo único propósito é acumular mais e mais. Este continente é banhado pelos oceanos Gélido, Lendário e Kraken. As criaturas de Imperiall são, em sua maioria, humanóides e similares. Sua arma símbolo é uma espada de duas mãos. Os habitantes de Imperiall são frequentemente consumidos pela ambição e pela busca incessante por riqueza e poder, refletindo a própria natureza gananciosa de seu criador. Eles veem Imperiall como um exemplo a ser seguido, acreditando que a acumulação de riquezas é a chave para a verdadeira grandeza.
                     </p>
                     
-                    <div class="w-24 h-px bg-slate-700 mx-auto my-8"></div>
+                    <div class="w-full max-w-2xl h-px bg-slate-700 mx-auto my-10"></div>
                     
                     <p>
                         No entanto, a paz e a ordem estabelecidas pelos Leviatãs foram ameaçadas quando quatro grandes dragões foram controlados por quatro seres malignos contra sua vontade. Esses dragões, outrora guardiões do equilíbrio, tornaram-se instrumentos de destruição e caos. Para restaurar a harmonia, três defensores lendários, conhecidos como <strong>Templários</strong>, surgiram. Eles eram guerreiros de grande poder e sabedoria, escolhidos pela própria Deusa Gallandra para enfrentar essa ameaça.
@@ -61,12 +68,12 @@ export function renderConhecaMundoTab() {
                 </div>
             </div>
 
-            <div class="max-w-7xl mx-auto w-full">
+            <div class="w-full">
                 <div class="flex items-center justify-between mb-6 border-b border-slate-800 pb-3">
                     <h2 class="text-2xl font-cinzel font-bold text-slate-200 tracking-widest"><i class="fas fa-map-marked-alt text-amber-500 mr-3"></i> Cartografia Conhecida</h2>
                 </div>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
                     ${mapasHTML}
                 </div>
             </div>
