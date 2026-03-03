@@ -1,3 +1,5 @@
+// ARQUIVO: js/inicio/inicio.js
+
 import { db } from '../core/firebase.js';
 import { collection, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { escapeHTML } from '../core/utils.js';
@@ -17,7 +19,7 @@ export async function renderInicioTab() {
     container.innerHTML = `
         <div class="relative w-full h-full overflow-hidden bg-[#020617] fade-in">
             
-            <div id="inicio-main-bg" class="absolute inset-0 bg-cover bg-top transition-all duration-1000 ease-in-out opacity-0" style="background-image: url('${defaultBg}');">
+            <div id="inicio-main-bg" class="absolute inset-0 bg-cover bg-[center_20%] transition-all duration-1000 ease-in-out opacity-0" style="background-image: url('${defaultBg}');">
                 <div class="absolute inset-0 bg-gradient-to-t from-[#020617] via-transparent to-transparent opacity-95"></div>
                 <div class="absolute inset-0 bg-gradient-to-r from-[#020617] via-transparent to-[#020617] opacity-60"></div>
             </div>
@@ -99,7 +101,7 @@ function renderSmallCards() {
             <div class="shrink-0 snap-start cursor-pointer group w-64 md:w-[22rem] h-36 md:h-44 relative rounded-xl overflow-hidden shadow-[0_5px_15px_rgba(0,0,0,0.8)] border-2 border-slate-700 hover:border-amber-500 transition-all duration-300 transform hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(245,158,11,0.4)]"
                  onclick="window.inicio.changeBackground('${imgUrl}', ${index})">
                 
-                <img src="${imgUrl}" class="w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-700">
+                <img src="${imgUrl}" class="w-full h-full object-cover object-[center_20%] group-hover:scale-110 transition-transform duration-700">
                 
                 <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
                 
