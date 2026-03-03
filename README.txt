@@ -69,10 +69,10 @@ Aqui está a visão geral da nossa futura arquitetura:
  ┃  ┃ 
  ┃  ┣ 📂 oMundo 
  ┃  ┃  ┃
- ┃  ┃  ┣ 📜 conhecaMundo.js  
- ┃  ┃  ┣ 📜 osDeuses.js 
- ┃  ┃  ┣ 📜 lendasMundo.js 
- ┃  ┃  ┣ 📜 npcsGeral.js 
+ ┃  ┃  ┣ 📜 conhecaMundo.js  (Aba 1: Aqui terá a história hardcoded do mundo e mapas da pasta mapas)
+ ┃  ┃  ┣ 📜 osDeuses.js    (Aba 2: Aqui teremos o compendium das entidades do mundo)
+ ┃  ┃  ┣ 📜 lendasMundo.js    (Aba 3: Ctema/mestres)
+ ┃  ┃  ┣ 📜 npcsGeral.js    (Aba 4: Ctema/mestres)
  ┃  ┃  
  ┃  ┣ 📂 atualizacoes
  ┃  ┃  ┃
