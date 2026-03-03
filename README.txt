@@ -66,6 +66,13 @@ Aqui está a visão geral da nossa futura arquitetura:
  ┃  ┃  ┣ 📜 simularFicha.js     (Aba 1: Aqui o jogador pode simular seu personagem antes de criá-lo)
  ┃  ┃  ┣ 📜 fichaPersonagem.js     (Aba 2: Aqui abre toda lógica das tabs "📂 tabs" citada acima)
  ┃  ┃  ┗ 📜 galeriaImagens.js     (Aba 3: Compendium de imagens do sistema/mestres)
+ ┃  ┃ 
+ ┃  ┣ 📂 oMundo 
+ ┃  ┃  ┃
+ ┃  ┃  ┣ 📜 conhecaMundo.js  
+ ┃  ┃  ┣ 📜 osDeuses.js 
+ ┃  ┃  ┣ 📜 lendasMundo.js 
+ ┃  ┃  ┣ 📜 npcsGeral.js 
  ┃  ┃  
  ┃  ┣ 📂 atualizacoes
  ┃  ┃  ┃
@@ -77,9 +84,10 @@ Aqui está a visão geral da nossa futura arquitetura:
  ┃  ┃
  ┗ 📂 imagens
     ┃
-    ┣ 📂 backgroungInicio     (Aba 1: Página de abertura oficial do site)
+    ┣ 📂 backgroungInicio     (pasta para APENAS salvar a imagem de background separada)
     ┃  ┃
     ┃  ┗ 📜 background-inicio.png    (Imagem padrão esperada para o background da página inicial)
     ┃ 
     ┣ 📂 trash     (a ser implementado)
     ┃
+    ┣ 📂 mapas    (imagens do mapa geral)
