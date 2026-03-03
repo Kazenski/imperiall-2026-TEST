@@ -187,7 +187,7 @@ window.showTab = function(tabId) {
         if (target) target.innerHTML = '<div class="flex h-full items-center justify-center text-slate-500"><p>Selecione um personagem na barra lateral para acessar.</p></div>';
     }
 };
-
+ 
 // --- AUTENTICAÇÃO E LOGIN ---
 dom.btn_login?.addEventListener('click', () => {
     signInWithEmailAndPassword(auth, dom.auth_email.value, dom.auth_password.value)
