@@ -175,7 +175,7 @@ function renderCarouselOrGrid() {
         items.forEach((hab, idx) => {
             const desc = hab.descricaoEfeito || hab.efeito || 'Não informado.';
             
-            // AGORA COM ROUNDED-FULL E EFEITOS MAIS SUAVES
+            // AQUI ESTÁ A MUDANÇA: 'rounded-full' transforma a imagem num círculo perfeito
             const imgHTML = hab.imagemUrl
                 ? `<img src="${hab.imagemUrl}" alt="Icon" class="w-20 h-20 rounded-full object-cover border-2 border-slate-500 shadow-md shrink-0 cursor-pointer hover:scale-105 hover:border-amber-400 transition-all" onclick="window.simulador.openImage('${hab.imagemUrl}')">`
                 : `<div class="w-20 h-20 rounded-full border-2 border-slate-600 bg-slate-800 flex items-center justify-center shrink-0 shadow-md"><i class="fas fa-magic text-3xl text-slate-500"></i></div>`;
