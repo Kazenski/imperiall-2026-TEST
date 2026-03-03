@@ -1,12 +1,17 @@
 // ARQUIVO: js/inicio/inicio.js
 
-import { db } from '../core/firebase.js';
+import { db } from '../core/firebase.js'; // Não precisamos mais do storage aqui!
 import { collection, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { escapeHTML } from '../core/utils.js';
 
 let slides = [];
-const defaultBg = "https://firebasestorage.googleapis.com/v0/b/kazenski-a1bb2.firebasestorage.app/o/chronarion-o-guardiapso-eterno-2-1-AR0bRoBR0JSynbnW.png?alt=media&token=0edcfa74-69d4-4504-b84b-7c4d0fbc4d46";
+
+// CAMINHO LOCAL DA IMAGEM
+// Certifique-se de que a imagem na sua pasta imagens/backgroundInicio tem este nome exato:
+const defaultBg = "imagens/backgroundInicio/background-inicio.png"; 
+
 let bgTimeout;
+let isViewingCard = false;
 
 export async function renderInicioTab() {
     const container = document.getElementById('inicio-content');
@@ -15,7 +20,7 @@ export async function renderInicioTab() {
     container.innerHTML = `
         <div class="relative w-full h-full overflow-hidden bg-[#020617] fade-in">
             
-            <div id="inicio-main-bg" class="absolute inset-0 bg-cover bg-center transition-all duration-1000 ease-in-out" style="background-image: url('${defaultBg}');">
+            <div id="inicio-main-bg" class="absolute inset-0 bg-cover bg-center transition-all duration-1000 ease-in-out opacity-0" style="background-image: url('${defaultBg}');">
                 <div class="absolute inset-0 bg-gradient-to-t from-[#020617] via-transparent to-transparent opacity-95"></div>
                 <div class="absolute inset-0 bg-gradient-to-r from-[#020617] via-transparent to-[#020617] opacity-60"></div>
             </div>
@@ -40,7 +45,7 @@ export async function renderInicioTab() {
                     <h3 class="text-amber-500 font-cinzel font-bold tracking-widest text-sm md:text-base uppercase drop-shadow-[0_2px_2px_rgba(0,0,0,1)]">
                         <i class="fas fa-scroll mr-2"></i> Crônicas do Mundo
                     </h3>
-                    <span class="text-xs text-slate-400 italic">Selecione para visualizar</span>
+                    <span class="text-xs text-slate-400 italic drop-shadow-md">Selecione para visualizar</span>
                 </div>
                 
                 <div id="inicio-cards-container" class="flex gap-6 overflow-x-auto pb-4 pt-2 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style="scroll-behavior: smooth;">
@@ -49,11 +54,19 @@ export async function renderInicioTab() {
                     </div>
                 </div>
             </div>
-
         </div>
     `;
 
-    await fetchNoticias();
+    // Revela a imagem de fundo suavemente após o layout carregar (Efeito Fade-in)
+    setTimeout(() => {
+        const bgEl = document.getElementById('inicio-main-bg');
+        if (bgEl && !isViewingCard) {
+            bgEl.classList.remove('opacity-0');
+            bgEl.classList.add('opacity-100');
+        }
+    }, 50);
+
+    fetchNoticias();
 }
 
 async function fetchNoticias() {
@@ -69,7 +82,7 @@ async function fetchNoticias() {
         if (slides.length > 0) {
             renderSmallCards();
         } else {
-            cardsContainer.innerHTML = `<div class="text-slate-400 italic text-sm">Nenhuma crônica registrada no momento.</div>`;
+            cardsContainer.innerHTML = `<div class="text-slate-400 italic text-sm drop-shadow-md">Nenhuma crônica registrada no momento.</div>`;
         }
     } catch (error) {
         console.error("Erro ao buscar notícias: ", error);
@@ -105,7 +118,7 @@ function renderSmallCards() {
     });
 }
 
-// Funções globais de manipulação do Início
+// Manipulação do Início (Clique nas notícias)
 window.inicio = {
     changeBackground: function(imgUrl, index) {
         const bgEl = document.getElementById('inicio-main-bg');
@@ -116,10 +129,14 @@ window.inicio = {
 
         if (!bgEl) return;
 
-        // Troca a imagem de fundo com transição suave
+        isViewingCard = true; // Impede que o fade-in natural roube a cena
+
+        // Troca a imagem de fundo
         bgEl.style.backgroundImage = `url('${imgUrl}')`;
+        bgEl.classList.remove('opacity-0');
+        bgEl.classList.add('opacity-100');
         
-        // Preenche e exibe as informações textuais da notícia clicada
+        // Exibe os textos
         const slide = slides[index];
         if (slide) {
             titleEl.textContent = slide.titulo || '';
@@ -131,16 +148,15 @@ window.inicio = {
             } else {
                 btnEl.style.display = 'none';
             }
-            // Revela a caixa de texto
             infoEl.classList.remove('opacity-0', 'translate-y-4');
             infoEl.classList.add('opacity-100', 'translate-y-0');
         }
 
-        // Limpa qualquer timeout pendente
         clearTimeout(bgTimeout);
 
-        // Define o timer para voltar à imagem padrão após 20 segundos
+        // Volta ao fundo Padrão (Local) após 20 segundos
         bgTimeout = setTimeout(() => {
+            isViewingCard = false;
             if (bgEl) bgEl.style.backgroundImage = `url('${defaultBg}')`;
             if (infoEl) {
                 infoEl.classList.remove('opacity-100', 'translate-y-0');
