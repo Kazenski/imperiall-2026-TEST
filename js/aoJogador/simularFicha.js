@@ -3,7 +3,7 @@ import { escapeHTML } from '../core/utils.js';
 
 const simState = {
     tab: 'race', // 'race', 'class', 'ability', 'profession'
-    indices: { race: 0, class: 0, profession: 0 }, // 'ability' removido daqui pois agora é um Grid
+    indices: { race: 0, class: 0, profession: 0 },
     data: { races: [], classes: [], abilities: [], professions: [] },
     previousStats: {} 
 };
@@ -148,7 +148,7 @@ function renderCarouselOrGrid() {
     if (simState.tab === 'class') items = simState.data.classes;
     if (simState.tab === 'profession') items = simState.data.professions;
 
-    // --- LÓGICA EXCLUSIVA PARA HABILIDADES (GRID) ---
+    // --- GRID DE HABILIDADES ---
     if (simState.tab === 'ability') {
         items = simState.data.abilities;
         const clsName = simState.data.classes[simState.indices.class]?.nome || 'Nenhuma';
@@ -170,25 +170,33 @@ function renderCarouselOrGrid() {
             return;
         }
 
-        // Renderiza o Grid de Habilidades
-        let gridHTML = `<div class="w-full grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6 animate-fade-in mt-4">`;
+        // Grid com items alinhados ao topo
+        let gridHTML = `<div class="w-full grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6 animate-fade-in mt-4 items-start">`;
         
-        items.forEach(hab => {
+        items.forEach((hab, idx) => {
             const desc = hab.descricaoEfeito || hab.efeito || 'Não informado.';
             const imgHTML = hab.imagemUrl
                 ? `<img src="${hab.imagemUrl}" alt="Icon" class="w-20 h-20 rounded-2xl object-cover border border-slate-600 shadow-md shrink-0 cursor-pointer hover:scale-105 transition-transform" onclick="window.simulador.openImage('${hab.imagemUrl}')">`
                 : `<div class="w-20 h-20 rounded-2xl border border-slate-600 bg-slate-800 flex items-center justify-center shrink-0 shadow-md"><i class="fas fa-magic text-3xl text-slate-500"></i></div>`;
 
+            // A lógica de Ler Mais para forçar a simetria (line-clamp-5)
             gridHTML += `
-                <div class="bg-slate-800/80 p-5 md:p-6 rounded-2xl border border-slate-600/50 shadow-xl flex items-start gap-5 hover:border-amber-500/60 transition-colors group">
-                    ${imgHTML}
-                    <div class="flex-1 flex flex-col min-w-0">
-                        <h4 class="font-cinzel text-xl text-blue-400 font-bold mb-2 border-b border-slate-700/50 pb-1 truncate" title="${escapeHTML(hab.nome)}">${escapeHTML(hab.nome)}</h4>
-                        <p class="text-slate-300 text-sm leading-relaxed">${escapeHTML(desc).replace(/\n/g, '<br>')}</p>
-                    </div>
-                    <div class="bg-slate-900 p-3 md:p-4 rounded-xl border border-slate-700 shadow-inner flex flex-col items-center justify-center shrink-0 min-w-[70px]">
-                        <span class="text-[10px] text-slate-400 font-cinzel tracking-widest uppercase mb-1">Dado</span>
-                        <span class="text-3xl font-black text-amber-500 drop-shadow-md group-hover:scale-110 transition-transform">${escapeHTML(hab.efeitoDanoBaseUsoHabilidade || 'N/A')}</span>
+                <div class="bg-slate-800/80 p-5 md:p-6 rounded-2xl border border-slate-600/50 shadow-xl flex items-start gap-5 hover:border-amber-500/60 transition-colors group h-full flex-col">
+                    <div class="flex items-start gap-5 w-full">
+                        ${imgHTML}
+                        <div class="flex-1 flex flex-col min-w-0">
+                            <h4 class="font-cinzel text-xl text-blue-400 font-bold mb-2 border-b border-slate-700/50 pb-1 truncate" title="${escapeHTML(hab.nome)}">${escapeHTML(hab.nome)}</h4>
+                            <div class="relative">
+                                <p id="hab-desc-${idx}" class="text-slate-300 text-sm leading-relaxed line-clamp-5 transition-all duration-300 overflow-hidden">${escapeHTML(desc).replace(/\n/g, '<br>')}</p>
+                                <button onclick="window.simulador.toggleReadMore('hab-desc-${idx}', this)" class="text-amber-500 hover:text-amber-400 text-xs font-bold uppercase tracking-widest mt-2 focus:outline-none flex items-center gap-1">
+                                    Ler Mais <i class="fas fa-chevron-down"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="bg-slate-900 p-3 rounded-xl border border-slate-700 shadow-inner flex flex-col items-center justify-center shrink-0 min-w-[70px]">
+                            <span class="text-[10px] text-slate-400 font-cinzel tracking-widest uppercase mb-1">Dado</span>
+                            <span class="text-2xl font-black text-amber-500 drop-shadow-md group-hover:scale-110 transition-transform">${escapeHTML(hab.efeitoDanoBaseUsoHabilidade || 'N/A')}</span>
+                        </div>
                     </div>
                 </div>
             `;
@@ -196,10 +204,10 @@ function renderCarouselOrGrid() {
         gridHTML += `</div>`;
 
         area.innerHTML = extraHeader + gridHTML;
-        return; // Encerra aqui se for habilidade (não renderiza nav buttons ou card único)
+        return;
     }
 
-    // --- LÓGICA DE CARROSSEL PARA RAÇAS, CLASSES E PROFISSÕES ---
+    // --- CARROSSEL ---
     
     if (simState.tab === 'profession') {
         extraHeader = `
@@ -270,7 +278,7 @@ function generateCardHTML(item, type) {
     if (isRace) {
         const hasLendas = !!item.lendasConhecidas;
         specificContentHTML += `
-            <div class="w-full grid grid-cols-1 ${hasLendas ? 'lg:grid-cols-2' : ''} gap-6 h-full items-start">
+            <div class="w-full grid grid-cols-1 ${hasLendas ? 'lg:grid-cols-2' : ''} gap-6 h-full items-stretch">
                 <div class="bg-slate-900/40 p-6 md:p-8 rounded-2xl border border-slate-700/50 flex flex-col shadow-inner h-full">
                     <h4 class="font-cinzel text-xl mb-4 text-blue-400 flex items-center gap-3 border-b border-slate-700/50 pb-3"><i class="fas fa-landmark text-slate-500"></i> Cultura e Sociedade</h4>
                     <p class="text-slate-300 text-base leading-loose flex-grow">${escapeHTML(item.culturaSociedade || '').replace(/\n/g, '<br>')}</p>
@@ -297,16 +305,17 @@ function generateCardHTML(item, type) {
             { k: 'Fácil', v: item.facilidade }
         ].filter(a => a.v >= 2);
 
+        // FORÇA LARGURA 100% MESMO SE HOUVER OU NÃO ATRIBUTOS
         specificContentHTML += `
-            <div class="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 h-full items-start">
-                <div class="w-full bg-slate-900/40 p-6 md:p-8 rounded-2xl border border-slate-700/50 shadow-inner h-full">
+            <div class="w-full flex flex-col gap-6 h-full items-stretch">
+                <div class="w-full bg-slate-900/40 p-6 md:p-8 rounded-2xl border border-slate-700/50 shadow-inner flex-grow">
                     <h4 class="font-cinzel text-xl mb-4 text-blue-400 border-b border-slate-700/50 pb-3 flex items-center gap-3"><i class="fas fa-scroll text-slate-500"></i> Descrição</h4>
                     <p class="text-slate-300 text-base leading-loose">${escapeHTML(desc).replace(/\n/g, '<br>')}</p>
                 </div>
         `;
         if (attrs.length > 0) {
             specificContentHTML += `
-                <div class="w-full bg-slate-900/60 p-6 md:p-8 rounded-2xl border border-slate-700 shadow-inner h-full flex flex-col">
+                <div class="w-full bg-slate-900/60 p-6 md:p-8 rounded-2xl border border-slate-700 shadow-inner">
                     <h4 class="font-cinzel text-xl mb-5 text-emerald-400 flex items-center gap-3 border-b border-slate-700/50 pb-3"><i class="fas fa-chart-radar text-slate-500"></i> Atributos em Foco</h4>
                     <div class="flex flex-wrap gap-3 mt-2">
                         ${attrs.map(a => `<span class="bg-slate-950 border border-emerald-900/50 text-slate-200 px-4 py-2 rounded-xl text-sm shadow-md font-medium tracking-wide cursor-default">${a.k} <span class="text-amber-400 font-bold ml-2">${a.v}</span></span>`).join('')}
@@ -320,14 +329,13 @@ function generateCardHTML(item, type) {
     if (!isRace && !isClass) {
         // Profissões
         specificContentHTML += `
-            <div class="w-full bg-slate-900/40 p-6 md:p-8 rounded-2xl border border-slate-700/50 shadow-inner h-full">
+            <div class="w-full bg-slate-900/40 p-6 md:p-8 rounded-2xl border border-slate-700/50 shadow-inner h-full flex-grow">
                 <h4 class="font-cinzel text-xl mb-4 text-blue-400 border-b border-slate-700/50 pb-3 flex items-center gap-3"><i class="fas fa-scroll text-slate-500"></i> Descrição</h4>
                 <p class="text-slate-300 text-base leading-loose">${escapeHTML(desc).replace(/\n/g, '<br>')}</p>
             </div>
         `;
     }
 
-    // O Card agora abraça toda a largura livre (w-full) em vez de ficar espremido no meio.
     return `
         <div class="simulador-card w-full p-6 md:p-10 lg:p-12 rounded-[2.5rem] border border-slate-600/50 shadow-2xl flex flex-col gap-8 items-start mx-auto">
             
@@ -335,7 +343,7 @@ function generateCardHTML(item, type) {
             
             <div class="w-full flex flex-col xl:flex-row gap-8 xl:gap-12 items-stretch">
                 ${leftImgHTML}
-                <div class="flex-1 w-full flex flex-col gap-6 items-start">
+                <div class="flex-1 w-full flex flex-col gap-6 items-start h-full">
                     ${specificContentHTML}
                 </div>
             </div>
@@ -370,6 +378,17 @@ window.simulador = {
             img.src = src;
             modal.classList.remove('hidden');
             modal.classList.add('flex');
+        }
+    },
+    toggleReadMore: function(descId, btn) {
+        const descEl = document.getElementById(descId);
+        if(!descEl) return;
+        if (descEl.classList.contains('line-clamp-5')) {
+            descEl.classList.remove('line-clamp-5');
+            btn.innerHTML = 'Mostrar Menos <i class="fas fa-chevron-up"></i>';
+        } else {
+            descEl.classList.add('line-clamp-5');
+            btn.innerHTML = 'Ler Mais <i class="fas fa-chevron-down"></i>';
         }
     }
 };
