@@ -58,8 +58,30 @@ window.renderBlankPage = function(title) {
 
 // --- FUNÇÃO GLOBAL PARA EXIBIR UMA DAS 16 ABAS ---
 window.showTab = function(tabId) {
+    
     // SALVA A ÚLTIMA ABA ACESSADA NO CACHE DO NAVEGADOR
     localStorage.setItem('ultimaAbaAcessada', tabId);
+
+    // Controle de Exibição das Barras Laterais para a Tela de Início Absoluta
+    const mainSidebar = document.getElementById('main-sidebar');
+    const subMenuBar = document.getElementById('sub-menu-bar');
+    const contentContainer = document.getElementById('content-container');
+
+    if (tabId === 'inicio-content' || tabId === 'inicio') {
+        if (mainSidebar) mainSidebar.classList.add('hidden');
+        if (subMenuBar) subMenuBar.classList.add('hidden');
+        if (contentContainer) {
+            contentContainer.classList.remove('p-6');
+            contentContainer.classList.add('p-0'); // Remove padding para ocupar 100% da tela
+        }
+    } else {
+        if (mainSidebar) mainSidebar.classList.remove('hidden');
+        if (subMenuBar) subMenuBar.classList.remove('hidden');
+        if (contentContainer) {
+            contentContainer.classList.remove('p-0');
+            contentContainer.classList.add('p-6'); // Devolve o padding padrão
+        }
+    }
 
     // 1. Esconde todas as abas e ARRANCA a classe 'active'
     document.querySelectorAll('.tab-content').forEach(c => {

@@ -1,176 +1,151 @@
-import { db } from '../core/firebase.js'; // Importe a sua instância de bd configurada
-import { collection, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+// ARQUIVO: js/inicio/inicio.js
 
-// Variáveis de controlo do carrossel
+import { db } from '../core/firebase.js';
+import { collection, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { escapeHTML } from '../core/utils.js';
+
 let slides = [];
-let currentIndex = 0;
-let autoSlideInterval;
+const defaultBg = "https://firebasestorage.googleapis.com/v0/b/kazenski-a1bb2.firebasestorage.app/o/chronarion-o-guardiapso-eterno-2-1-AR0bRoBR0JSynbnW.png?alt=media&token=0edcfa74-69d4-4504-b84b-7c4d0fbc4d46";
+let bgTimeout;
 
 export async function renderInicioTab() {
     const container = document.getElementById('inicio-content');
     if (!container) return;
 
-    // Estrutura HTML base com a imagem de fundo imersiva
     container.innerHTML = `
-        <div class="w-full h-full relative overflow-hidden flex flex-col fade-in">
-            <div class="absolute inset-0 z-0">
-                <img src="gs://kazenski-a1bb2.firebasestorage.app/chronarion-o-guardiapso-eterno-2-1-AR0bRoBR0JSynbnW.png" alt="Background" class="w-full h-full object-cover opacity-30 mix-blend-overlay pointer-events-none">
-                <div class="absolute inset-0 bg-gradient-to-b from-slate-900 via-transparent to-slate-900"></div>
-                <div class="absolute inset-0 bg-gradient-to-r from-slate-900 via-transparent to-slate-900"></div>
+        <div class="relative w-full h-full overflow-hidden bg-[#020617] fade-in">
+            
+            <div id="inicio-main-bg" class="absolute inset-0 bg-cover bg-center transition-all duration-1000 ease-in-out" style="background-image: url('${defaultBg}');">
+                <div class="absolute inset-0 bg-gradient-to-t from-[#020617] via-transparent to-transparent opacity-95"></div>
+                <div class="absolute inset-0 bg-gradient-to-r from-[#020617] via-transparent to-[#020617] opacity-60"></div>
             </div>
 
-            <div class="relative z-10 pt-10 pb-4 text-center">
-                <h1 class="font-cinzel text-4xl md:text-5xl font-bold text-amber-500 drop-shadow-lg tracking-widest">Bem-vindo a Imperiall</h1>
-                <p class="text-slate-300 mt-2 text-sm md:text-base italic">Fique a par das últimas notícias e atualizações do reino.</p>
+            <div class="relative z-10 flex flex-col justify-center h-[65%] px-10 md:px-24 pointer-events-none">
+                <h1 class="text-6xl md:text-8xl lg:text-[8rem] font-cinzel font-black text-amber-500 tracking-widest drop-shadow-[0_5px_15px_rgba(0,0,0,0.8)] leading-none">
+                    IMPERIALL <br> <span class="text-white drop-shadow-[0_5px_15px_rgba(0,0,0,0.8)]">RPG</span>
+                </h1>
+                <p class="text-lg md:text-2xl text-slate-300 mt-6 drop-shadow-[0_2px_4px_rgba(0,0,0,1)] max-w-3xl leading-relaxed italic">
+                    "Em um mundo despedaçado por lendas antigas, o seu destino aguarda ser forjado. Bem-vindo à nova era."
+                </p>
             </div>
 
-            <div class="component-wrapper relative z-10 flex-grow">
-                <div class="carousel-container" id="main-carousel-container">
-                    <div class="flex justify-center items-center h-full w-full">
-                        <div class="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+            <div id="inicio-news-info" class="absolute top-1/3 right-10 md:right-24 z-20 text-right max-w-lg opacity-0 translate-y-4 transition-all duration-700 pointer-events-none">
+                <h2 id="inicio-news-title" class="font-cinzel text-4xl md:text-5xl font-bold text-white drop-shadow-[0_4px_10px_rgba(0,0,0,1)] mb-4"></h2>
+                <p id="inicio-news-subtitle" class="text-slate-200 text-base md:text-lg drop-shadow-[0_2px_5px_rgba(0,0,0,1)] leading-relaxed"></p>
+                <a id="inicio-news-btn" href="#" target="_blank" class="inline-block mt-6 px-8 py-3 bg-amber-600 hover:bg-amber-400 text-black font-bold uppercase tracking-widest text-sm rounded transition-colors pointer-events-auto shadow-[0_0_15px_rgba(245,158,11,0.5)]">Ler Mais</a>
+            </div>
+
+            <div class="absolute bottom-0 left-0 w-full z-30 pb-6 px-10 md:px-24 bg-gradient-to-t from-[#020617] to-transparent pt-10">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-amber-500 font-cinzel font-bold tracking-widest text-sm md:text-base uppercase drop-shadow-[0_2px_2px_rgba(0,0,0,1)]">
+                        <i class="fas fa-scroll mr-2"></i> Crônicas do Mundo
+                    </h3>
+                    <span class="text-xs text-slate-400 italic">Selecione para visualizar</span>
+                </div>
+                
+                <div id="inicio-cards-container" class="flex gap-6 overflow-x-auto pb-4 pt-2 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style="scroll-behavior: smooth;">
+                    <div class="flex items-center justify-center w-full h-32">
+                        <div class="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
                     </div>
                 </div>
-                <div class="carousel-nav" id="main-carousel-nav"></div>
             </div>
+
         </div>
     `;
 
-    // Limpa qualquer intervalo anterior para evitar loops duplicados se o utilizador sair e voltar à aba
-    clearInterval(autoSlideInterval);
-    
-    // Busca os dados e inicializa
     await fetchNoticias();
-    
-    // Adiciona Event Listeners para Pausar no Hover
-    const carouselContainerEl = document.getElementById('main-carousel-container');
-    if (carouselContainerEl) {
-        carouselContainerEl.addEventListener('mouseenter', () => clearInterval(autoSlideInterval));
-        carouselContainerEl.addEventListener('mouseleave', startAutoSlide);
-    }
 }
 
 async function fetchNoticias() {
-    const carouselContainer = document.getElementById('main-carousel-container');
-    if (!carouselContainer) return;
+    const cardsContainer = document.getElementById('inicio-cards-container');
+    if (!cardsContainer) return;
 
     try {
-        const noticiasCollectionRef = collection(db, "rpg_noticias");
-        const q = query(noticiasCollectionRef, where('ativa', '==', true), orderBy('ordem'));
+        const q = query(collection(db, "rpg_noticias"), where('ativa', '==', true), orderBy('ordem'));
         const snapshot = await getDocs(q);
         
-        slides = snapshot.docs.map(doc => doc.data());
+        slides = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         
         if (slides.length > 0) {
-            renderSlides();
-            startAutoSlide();
+            renderSmallCards();
         } else {
-            carouselContainer.innerHTML = `<div class="text-slate-300 text-center font-cinzel text-xl p-8 bg-black/50 rounded-xl border border-slate-700 backdrop-blur-sm">Nenhuma notícia ativa encontrada nos arquivos.</div>`;
+            cardsContainer.innerHTML = `<div class="text-slate-400 italic text-sm">Nenhuma crônica registrada no momento.</div>`;
         }
     } catch (error) {
         console.error("Erro ao buscar notícias: ", error);
-        carouselContainer.innerHTML = `<div class="text-red-400 text-center font-cinzel text-xl p-8 bg-black/50 rounded-xl border border-red-900/50 backdrop-blur-sm">Falha ao comunicar com os corvos mensageiros (Erro ao carregar notícias).</div>`;
+        cardsContainer.innerHTML = `<div class="text-red-500 text-sm">Erro ao acessar os arquivos das crônicas.</div>`;
     }
 }
 
-function renderSlides() {
-    const carouselContainer = document.getElementById('main-carousel-container');
-    const carouselNav = document.getElementById('main-carousel-nav');
-    if (!carouselContainer || !carouselNav) return;
+function renderSmallCards() {
+    const container = document.getElementById('inicio-cards-container');
+    if (!container) return;
 
-    carouselContainer.innerHTML = '';
-    carouselNav.innerHTML = '';
+    container.innerHTML = '';
     
     slides.forEach((slide, index) => {
-        const slideDiv = document.createElement('div');
-        slideDiv.classList.add('carousel-slide');
-        slideDiv.style.backgroundImage = `url('${slide.imagemURL || 'https://placehold.co/1200x800/1e293b/a1a1aa?text=Imperiall+News'}')`;
-        slideDiv.dataset.index = index;
-
-        const contentDiv = document.createElement('div');
-        contentDiv.classList.add('slide-content');
+        const imgUrl = slide.imagemURL || 'https://placehold.co/600x400/1e293b/a1a1aa?text=Imperiall';
         
-        const titleEl = document.createElement('h2');
-        titleEl.classList.add('slide-title', 'font-cinzel');
-        titleEl.textContent = slide.titulo || '';
-        contentDiv.appendChild(titleEl);
+        const cardHTML = `
+            <div class="shrink-0 snap-start cursor-pointer group w-64 md:w-[22rem] h-36 md:h-44 relative rounded-xl overflow-hidden shadow-[0_5px_15px_rgba(0,0,0,0.8)] border-2 border-slate-700 hover:border-amber-500 transition-all duration-300 transform hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(245,158,11,0.4)]"
+                 onclick="window.inicio.changeBackground('${imgUrl}', ${index})">
+                
+                <img src="${imgUrl}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+                
+                <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
+                
+                <div class="absolute bottom-3 left-4 right-4">
+                    <span class="text-amber-500 text-[10px] font-bold tracking-widest uppercase mb-1 block drop-shadow-md">Atualização</span>
+                    <h4 class="text-white font-cinzel font-bold text-sm md:text-base leading-tight drop-shadow-md line-clamp-2">${escapeHTML(slide.titulo || 'Nova Atualização')}</h4>
+                </div>
+            </div>
+        `;
+        
+        container.innerHTML += cardHTML;
+    });
+}
 
-        const subtitleEl = document.createElement('p');
-        subtitleEl.classList.add('slide-subtitle');
-        subtitleEl.textContent = slide.subtitulo || '';
-        contentDiv.appendChild(subtitleEl);
+// Funções globais de manipulação do Início
+window.inicio = {
+    changeBackground: function(imgUrl, index) {
+        const bgEl = document.getElementById('inicio-main-bg');
+        const infoEl = document.getElementById('inicio-news-info');
+        const titleEl = document.getElementById('inicio-news-title');
+        const subtitleEl = document.getElementById('inicio-news-subtitle');
+        const btnEl = document.getElementById('inicio-news-btn');
 
-        if (slide.linkBotao && slide.textoBotao) {
-            const buttonLink = document.createElement('a');
-            buttonLink.classList.add('slide-button', 'font-cinzel');
-            buttonLink.href = slide.linkBotao;
-            buttonLink.textContent = slide.textoBotao;
-            buttonLink.target = '_blank';
-            contentDiv.appendChild(buttonLink);
+        if (!bgEl) return;
+
+        // Troca a imagem de fundo com transição suave
+        bgEl.style.backgroundImage = `url('${imgUrl}')`;
+        
+        // Preenche e exibe as informações textuais da notícia clicada
+        const slide = slides[index];
+        if (slide) {
+            titleEl.textContent = slide.titulo || '';
+            subtitleEl.textContent = slide.subtitulo || '';
+            if (slide.linkBotao) {
+                btnEl.href = slide.linkBotao;
+                btnEl.textContent = slide.textoBotao || 'Ler Mais';
+                btnEl.style.display = 'inline-block';
+            } else {
+                btnEl.style.display = 'none';
+            }
+            // Revela a caixa de texto
+            infoEl.classList.remove('opacity-0', 'translate-y-4');
+            infoEl.classList.add('opacity-100', 'translate-y-0');
         }
 
-        slideDiv.appendChild(contentDiv);
-        carouselContainer.appendChild(slideDiv);
+        // Limpa qualquer timeout pendente
+        clearTimeout(bgTimeout);
 
-        const navDot = document.createElement('div');
-        navDot.classList.add('nav-dot');
-        navDot.dataset.index = index;
-        navDot.addEventListener('click', () => {
-            showSlide(index);
-            resetAutoSlide();
-        });
-        carouselNav.appendChild(navDot);
-    });
-    
-    showSlide(0);
-}
-
-function showSlide(index) {
-    const allSlides = document.querySelectorAll('.carousel-slide');
-    const allNavDots = document.querySelectorAll('.nav-dot');
-    
-    allSlides.forEach(slide => slide.classList.remove('active')); 
-    allNavDots.forEach(dot => dot.classList.remove('active'));
-
-    if (allSlides.length > 0) {
-        if(allSlides[index]) allSlides[index].classList.add('active');
-        if(allNavDots[index]) allNavDots[index].classList.add('active');
-        
-        allSlides.forEach((slide, i) => {
-            const offset = i - index;
-            let transform = '';
-            let zIndex = 0;
-            
-            if (offset === 0) {
-                transform = 'translateX(0) scale(1) rotateY(0deg)';
-                zIndex = 3;
-            } else if (offset > 0) { 
-                transform = `translateX(${offset * 30}%) scale(${1 - offset * 0.2}) rotateY(-10deg)`;
-                zIndex = 3 - offset;
-            } else { 
-                transform = `translateX(${offset * 30}%) scale(${1 + offset * 0.2}) rotateY(10deg)`;
-                zIndex = 3 + offset;
+        // Define o timer para voltar à imagem padrão após 20 segundos
+        bgTimeout = setTimeout(() => {
+            if (bgEl) bgEl.style.backgroundImage = `url('${defaultBg}')`;
+            if (infoEl) {
+                infoEl.classList.remove('opacity-100', 'translate-y-0');
+                infoEl.classList.add('opacity-0', 'translate-y-4');
             }
-            slide.style.transform = transform;
-            slide.style.zIndex = zIndex;
-        });
+        }, 20000);
     }
-    currentIndex = index;
-}
-
-function nextSlide() {
-    if (slides.length === 0) return;
-    let nextIndex = (currentIndex + 1) % slides.length;
-    showSlide(nextIndex);
-}
-
-function startAutoSlide() {
-    if (slides.length > 1) {
-        clearInterval(autoSlideInterval);
-        autoSlideInterval = setInterval(nextSlide, 5000);
-    }
-}
-
-function resetAutoSlide() {
-    clearInterval(autoSlideInterval);
-    startAutoSlide();
-}
+};
