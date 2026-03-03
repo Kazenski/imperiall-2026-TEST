@@ -23,6 +23,7 @@ import { renderMapaTab } from './tabs/mapa.js';
 import './tabs/arena.js';
 import { renderAtualizacoesTab } from './atualizacoes/atualizacoes.js';
 import { renderSimularFichaTab } from './aoJogador/simularFicha.js';
+import { renderInicioTab } from './inicio/inicio.js';
 
 const dom = {};
 document.querySelectorAll('[id]').forEach(el => dom[el.id.replace(/-/g, '_')] = el);
@@ -57,6 +58,9 @@ window.renderBlankPage = function(title) {
 
 // --- FUNÇÃO GLOBAL PARA EXIBIR UMA DAS 16 ABAS ---
 window.showTab = function(tabId) {
+    // SALVA A ÚLTIMA ABA ACESSADA NO CACHE DO NAVEGADOR
+    localStorage.setItem('ultimaAbaAcessada', tabId);
+
     // 1. Esconde todas as abas e ARRANCA a classe 'active'
     document.querySelectorAll('.tab-content').forEach(c => {
         c.classList.add('hidden');
@@ -102,6 +106,13 @@ window.showTab = function(tabId) {
         target.innerHTML = ''; 
         if (typeof renderSimularFichaTab === 'function') renderSimularFichaTab();
         return;
+    }
+
+    // Aba de Início
+    if (tabId === 'inicio-content' || tabId === 'inicio') {
+        target.innerHTML = ''; 
+        if (typeof renderInicioTab === 'function') renderInicioTab();
+        return; 
     }
 
     if (tabId === 'painel-fichas') {
@@ -150,8 +161,7 @@ dom.btn_logout?.addEventListener('click', () => signOut(auth));
 // --- ARQUITETURA DE MENUS DO MESTRE ---
 const MASTER_ARCHITECTURE = {
     'Início': [
-        { id: 'blank', icon: 'fa-home', label: 'Página Inicial', render: () => window.renderBlankPage('Página Inicial') }
-    ],
+        { id: 'inicio', icon: 'fa-home', label: 'Página Inicial', render: () => window.showTab('inicio-content') }    ],
     'O Mundo': [
         { id: 'blank', icon: 'fa-globe', label: 'Conheça o mundo', render: () => window.renderBlankPage('Conheça o mundo') },
         { id: 'blank', icon: 'fa-bolt', label: 'Os Deuses', render: () => window.renderBlankPage('Os Deuses') },
@@ -202,15 +212,21 @@ const FICHA_TABS = [
     { id: 'arena-combate', icon: 'fa-chess-board', label: 'Arena de Combate', render: () => window.showTab('arena-combate') }
 ];
 
-window.openFichaPersonagemMenu = function() {
+window.openFichaPersonagemMenu = function(autoClick = true) {
+    localStorage.setItem('ultimoMenuAcessado', 'Ficha'); // Salva o menu no cache
     populateSidebar(FICHA_TABS, true);
-    setTimeout(() => {
-        const botoesSidebar = document.querySelectorAll('#sub-menu-bar button');
-        if(botoesSidebar[1]) botoesSidebar[1].click();
-    }, 10);
+    
+    if (autoClick) {
+        setTimeout(() => {
+            const botoesSidebar = document.querySelectorAll('#sub-menu-bar button');
+            if(botoesSidebar[1]) botoesSidebar[1].click();
+        }, 10);
+    }
 };
 
-window.setMasterContext = function(menuName) {
+window.setMasterContext = function(menuName, autoClick = true) {
+    localStorage.setItem('ultimoMenuAcessado', menuName); // Salva o menu no cache
+    
     document.querySelectorAll('#global-top-nav button.master-nav-btn').forEach(b => {
         b.classList.toggle('border-amber-500', b.textContent.trim().startsWith(menuName));
         b.classList.toggle('text-amber-500', b.textContent.trim().startsWith(menuName));
@@ -222,10 +238,12 @@ window.setMasterContext = function(menuName) {
 
     if (MASTER_ARCHITECTURE[menuName]) {
         populateSidebar(MASTER_ARCHITECTURE[menuName], false);
-        setTimeout(() => {
-            const firstBtn = document.querySelector('#sub-menu-bar button');
-            if (firstBtn) firstBtn.click();
-        }, 10);
+        if (autoClick) {
+            setTimeout(() => {
+                const firstBtn = document.querySelector('#sub-menu-bar button');
+                if (firstBtn) firstBtn.click();
+            }, 10);
+        }
     }
 };
 
@@ -321,8 +339,29 @@ onAuthStateChanged(auth, async (user) => {
         if (typeof setupCraftingListeners === 'function') setupCraftingListeners();
         if (typeof setupExtracaoListeners === 'function') setupExtracaoListeners();
 
-        window.setMasterContext('Ao Jogador');
-        setTimeout(() => window.openFichaPersonagemMenu(), 200);
+        // RECUPERA MEMÓRIA DO CACHE OU DEFAULTS PARA O INÍCIO
+        const ultimoMenu = localStorage.getItem('ultimoMenuAcessado') || 'Início';
+        const ultimaAba = localStorage.getItem('ultimaAbaAcessada') || 'inicio-content';
+
+        if (ultimoMenu === 'Ficha') {
+            // Simula a seleção visual do "Ao Jogador" no topo, mas carrega o menu da Ficha
+            document.querySelectorAll('#global-top-nav button.master-nav-btn').forEach(b => {
+                const isJogador = b.textContent.trim().startsWith('Ao Jogador');
+                b.classList.toggle('border-amber-500', isJogador);
+                b.classList.toggle('text-amber-500', isJogador);
+                b.classList.toggle('bg-slate-800', !isJogador);
+                b.classList.toggle('bg-amber-600', isJogador);
+                b.classList.toggle('text-black', isJogador);
+                b.classList.toggle('text-slate-300', !isJogador);
+            });
+            window.openFichaPersonagemMenu(false); // false = previne o auto-clique
+        } else {
+            window.setMasterContext(ultimoMenu, false); // false = previne o auto-clique
+        }
+
+        // Abre exatamente a aba que o utilizador estava a ver antes de dar F5
+        setTimeout(() => window.showTab(ultimaAba), 200);
+        
     } else {
         globalState.currentUser = null;
         globalState.isAdmin = false;

@@ -71,3 +71,7 @@ Aqui está a visão geral da nossa futura arquitetura:
    ┃
    ┃ ┣ 📜 atualizacoes.js     (Aba 1: Aqui teremos as atualizações do sistema)
    ┃
+   ┣ 📂 inicio
+   ┃
+   ┃ ┣ 📜 inicio.js     (Aba 1: Página de abertura oficial do site)
+   ┃
