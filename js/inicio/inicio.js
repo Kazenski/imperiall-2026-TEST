@@ -5,7 +5,7 @@ import { escapeHTML } from '../core/utils.js';
 let slides = [];
 
 // CAMINHO LOCAL DA IMAGEM
-const defaultBg = "imagens/backgroundInicio/background.png"; 
+const defaultBg = "imagens/backgroundInicio/background-inicio.png"; 
 
 let bgTimeout;
 let isViewingCard = false;
