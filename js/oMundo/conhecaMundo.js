@@ -1,11 +1,11 @@
 // Lista explícita das imagens dos mapas
 const mapasDoMundo = [
-    "imagens/mapas1.webp",
-    "imagens/mapas2.webp",
-    "imagens/mapas3.webp",
-    "imagens/mapas4.webp",
-    "imagens/mapas5.webp",
-    "imagens/mapas6.webp"
+    "imagens/mapas/mapas1.webp",
+    "imagens/mapas/mapas2.webp",
+    "imagens/mapas/mapas3.webp",
+    "imagens/mapas/mapas4.webp",
+    "imagens/mapas/mapas5.webp",
+    "imagens/mapas/mapas6.webp"
 ];
 
 export function renderConhecaMundoTab() {
