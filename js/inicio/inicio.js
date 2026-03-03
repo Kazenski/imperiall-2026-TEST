@@ -1,14 +1,11 @@
-// ARQUIVO: js/inicio/inicio.js
-
-import { db } from '../core/firebase.js'; // Não precisamos mais do storage aqui!
+import { db } from '../core/firebase.js';
 import { collection, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { escapeHTML } from '../core/utils.js';
 
 let slides = [];
 
 // CAMINHO LOCAL DA IMAGEM
-// Certifique-se de que a imagem na sua pasta imagens/backgroundInicio tem este nome exato:
-const defaultBg = "imagens/backgroundInicio/background-inicio.png"; 
+const defaultBg = "imagens/backgroundInicio/background.png"; 
 
 let bgTimeout;
 let isViewingCard = false;
@@ -20,7 +17,7 @@ export async function renderInicioTab() {
     container.innerHTML = `
         <div class="relative w-full h-full overflow-hidden bg-[#020617] fade-in">
             
-            <div id="inicio-main-bg" class="absolute inset-0 bg-cover bg-center transition-all duration-1000 ease-in-out opacity-0" style="background-image: url('${defaultBg}');">
+            <div id="inicio-main-bg" class="absolute inset-0 bg-cover bg-top transition-all duration-1000 ease-in-out opacity-0" style="background-image: url('${defaultBg}');">
                 <div class="absolute inset-0 bg-gradient-to-t from-[#020617] via-transparent to-transparent opacity-95"></div>
                 <div class="absolute inset-0 bg-gradient-to-r from-[#020617] via-transparent to-[#020617] opacity-60"></div>
             </div>
@@ -57,7 +54,6 @@ export async function renderInicioTab() {
         </div>
     `;
 
-    // Revela a imagem de fundo suavemente após o layout carregar (Efeito Fade-in)
     setTimeout(() => {
         const bgEl = document.getElementById('inicio-main-bg');
         if (bgEl && !isViewingCard) {
@@ -103,7 +99,7 @@ function renderSmallCards() {
             <div class="shrink-0 snap-start cursor-pointer group w-64 md:w-[22rem] h-36 md:h-44 relative rounded-xl overflow-hidden shadow-[0_5px_15px_rgba(0,0,0,0.8)] border-2 border-slate-700 hover:border-amber-500 transition-all duration-300 transform hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(245,158,11,0.4)]"
                  onclick="window.inicio.changeBackground('${imgUrl}', ${index})">
                 
-                <img src="${imgUrl}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+                <img src="${imgUrl}" class="w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-700">
                 
                 <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
                 
@@ -118,7 +114,6 @@ function renderSmallCards() {
     });
 }
 
-// Manipulação do Início (Clique nas notícias)
 window.inicio = {
     changeBackground: function(imgUrl, index) {
         const bgEl = document.getElementById('inicio-main-bg');
@@ -129,14 +124,12 @@ window.inicio = {
 
         if (!bgEl) return;
 
-        isViewingCard = true; // Impede que o fade-in natural roube a cena
+        isViewingCard = true;
 
-        // Troca a imagem de fundo
         bgEl.style.backgroundImage = `url('${imgUrl}')`;
         bgEl.classList.remove('opacity-0');
         bgEl.classList.add('opacity-100');
         
-        // Exibe os textos
         const slide = slides[index];
         if (slide) {
             titleEl.textContent = slide.titulo || '';
@@ -154,7 +147,6 @@ window.inicio = {
 
         clearTimeout(bgTimeout);
 
-        // Volta ao fundo Padrão (Local) após 20 segundos
         bgTimeout = setTimeout(() => {
             isViewingCard = false;
             if (bgEl) bgEl.style.backgroundImage = `url('${defaultBg}')`;
