@@ -3,7 +3,7 @@ import { escapeHTML } from '../core/utils.js';
 
 const simState = {
     tab: 'race', // 'race', 'class', 'ability', 'profession'
-    indices: { race: 0, class: 0, ability: 0, profession: 0 },
+    indices: { race: 0, class: 0, profession: 0 }, // 'ability' removido daqui pois agora é um Grid
     data: { races: [], classes: [], abilities: [], professions: [] },
     previousStats: {} 
 };
@@ -19,33 +19,33 @@ export function renderSimularFichaTab() {
     updateAbilitiesForCurrentClass();
 
     container.innerHTML = `
-        <div class="w-full h-full fade-in flex flex-col p-4 md:p-6 overflow-y-auto custom-scroll relative pb-12">
+        <div class="w-full h-full fade-in flex flex-col p-6 lg:p-10 overflow-y-auto custom-scroll relative pb-16">
             
-            <header class="mb-5 w-full flex flex-col xl:flex-row items-center justify-between border-b border-slate-700 pb-5 gap-6">
+            <header class="mb-6 w-full flex flex-col xl:flex-row items-center justify-between border-b border-slate-700 pb-6 gap-8">
                 <div class="flex-1 w-full text-center xl:text-left">
-                    <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold font-cinzel mb-2 text-blue-400 drop-shadow-md">
+                    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold font-cinzel mb-2 text-blue-400 drop-shadow-md">
                         Forja do Aventureiro
                     </h1>
-                    <p class="text-slate-400 text-xs md:text-sm max-w-2xl leading-relaxed mx-auto xl:mx-0">
-                        Simule combinações, acompanhe o impacto nos atributos e crie o seu herói épico.
+                    <p class="text-slate-400 text-sm md:text-base max-w-3xl leading-relaxed mx-auto xl:mx-0">
+                        Simule combinações, acompanhe o impacto nos atributos e tenha uma visão completa do arsenal do seu próximo herói épico.
                     </p>
                 </div>
                 <div id="simulador-summary" class="w-full xl:w-auto shrink-0 flex justify-center relative z-50"></div>
             </header>
 
-            <div class="flex justify-center border-b border-slate-600 mb-6 flex-wrap w-full gap-2 md:gap-4">
-                <button onclick="window.simulador.setTab('race')" id="sim-tab-race" class="sim-tab font-cinzel text-sm md:text-base px-5 md:px-8 py-2.5 transition-colors duration-200 border-b-4 border-blue-500 text-blue-400 font-bold tracking-widest outline-none">1. Raça</button>
-                <button onclick="window.simulador.setTab('class')" id="sim-tab-class" class="sim-tab font-cinzel text-sm md:text-base px-5 md:px-8 py-2.5 transition-colors duration-200 border-b-4 border-transparent text-slate-400 hover:text-slate-200 tracking-widest outline-none">2. Classe</button>
-                <button onclick="window.simulador.setTab('ability')" id="sim-tab-ability" class="sim-tab font-cinzel text-sm md:text-base px-5 md:px-8 py-2.5 transition-colors duration-200 border-b-4 border-transparent text-slate-400 hover:text-slate-200 tracking-widest outline-none">3. Habilidades</button>
-                <button onclick="window.simulador.setTab('profession')" id="sim-tab-profession" class="sim-tab font-cinzel text-sm md:text-base px-5 md:px-8 py-2.5 transition-colors duration-200 border-b-4 border-transparent text-slate-400 hover:text-slate-200 tracking-widest outline-none">4. Profissões</button>
+            <div class="flex justify-center border-b border-slate-600 mb-8 flex-wrap w-full gap-4">
+                <button onclick="window.simulador.setTab('race')" id="sim-tab-race" class="sim-tab font-cinzel text-base md:text-lg px-6 md:px-10 py-3 transition-colors duration-200 border-b-4 border-blue-500 text-blue-400 font-bold tracking-widest outline-none">1. Raça</button>
+                <button onclick="window.simulador.setTab('class')" id="sim-tab-class" class="sim-tab font-cinzel text-base md:text-lg px-6 md:px-10 py-3 transition-colors duration-200 border-b-4 border-transparent text-slate-400 hover:text-slate-200 tracking-widest outline-none">2. Classe</button>
+                <button onclick="window.simulador.setTab('ability')" id="sim-tab-ability" class="sim-tab font-cinzel text-base md:text-lg px-6 md:px-10 py-3 transition-colors duration-200 border-b-4 border-transparent text-slate-400 hover:text-slate-200 tracking-widest outline-none">3. Habilidades</button>
+                <button onclick="window.simulador.setTab('profession')" id="sim-tab-profession" class="sim-tab font-cinzel text-base md:text-lg px-6 md:px-10 py-3 transition-colors duration-200 border-b-4 border-transparent text-slate-400 hover:text-slate-200 tracking-widest outline-none">4. Profissões</button>
             </div>
 
             <div id="simulador-carousel-area" class="w-full flex-grow flex flex-col items-center"></div>
         </div>
 
         <div id="simulador-image-modal" class="fixed inset-0 bg-black/95 hidden items-center justify-center z-[100] p-4 cursor-pointer animate-fade-in" onclick="this.classList.add('hidden'); this.classList.remove('flex');">
-            <button class="absolute top-6 right-8 text-slate-300 hover:text-amber-400 text-4xl transition-colors outline-none">&times;</button>
-            <img id="simulador-modal-img" src="" class="max-w-[90vw] max-h-[90vh] rounded-xl border-4 border-slate-700 shadow-2xl object-contain">
+            <button class="absolute top-6 right-8 text-slate-300 hover:text-amber-400 text-5xl transition-colors outline-none">&times;</button>
+            <img id="simulador-modal-img" src="" class="max-w-[95vw] max-h-[95vh] rounded-2xl border-4 border-slate-700 shadow-2xl object-contain">
         </div>
     `;
 
@@ -61,13 +61,12 @@ function updateAbilitiesForCurrentClass() {
     } else {
         simState.data.abilities = [];
     }
-    simState.indices.ability = 0;
 }
 
 function renderUI() {
     renderSummary();
     renderTabs();
-    renderCarousel();
+    renderCarouselOrGrid();
 }
 
 function renderSummary() {
@@ -95,24 +94,24 @@ function renderSummary() {
             const icon = diff > 0 ? 'fa-arrow-up' : 'fa-arrow-down';
             const signal = diff > 0 ? '+' : '';
             
-            diffHTML = `<div class="absolute -top-10 right-0 left-0 flex justify-center ${color} font-black text-2xl md:text-3xl animate-float-up pointer-events-none z-[9999]">
-                            <span class="flex items-center gap-1"><i class="fas ${icon} text-base"></i> ${signal}${diff}</span>
+            diffHTML = `<div class="absolute -top-12 right-0 left-0 flex justify-center ${color} font-black text-2xl md:text-3xl animate-float-up pointer-events-none z-[9999]">
+                            <span class="flex items-center gap-1"><i class="fas ${icon} text-lg"></i> ${signal}${diff}</span>
                         </div>`;
         }
 
         return `
-            <div class="relative bg-slate-800/90 p-2 md:p-3 rounded-xl text-center shadow-md border border-slate-700/50 flex-1 min-w-[60px] lg:min-w-[75px]">
+            <div class="relative bg-slate-800/90 p-3 md:p-4 rounded-xl text-center shadow-lg border border-slate-700/50 flex-1 min-w-[70px] lg:min-w-[85px]">
                 ${diffHTML}
-                <div class="text-[9px] md:text-[11px] font-cinzel text-blue-400 tracking-widest font-bold mb-0.5">${label}</div>
-                <div class="text-xl md:text-3xl font-black text-white leading-none">${val}</div>
+                <div class="text-[10px] md:text-xs font-cinzel text-blue-400 tracking-widest font-bold mb-1">${label}</div>
+                <div class="text-2xl md:text-4xl font-black text-white leading-none">${val}</div>
             </div>
         `;
     };
 
     summaryContainer.innerHTML = `
-        <div class="bg-slate-900/80 backdrop-blur-md p-3 md:p-4 rounded-2xl border border-slate-700/60 shadow-xl flex flex-col md:flex-row items-center gap-4 relative mt-2">
-            <h2 class="font-cinzel text-slate-400 tracking-widest uppercase md:border-r border-slate-700 md:pr-4 text-[11px] font-bold shrink-0">Status</h2>
-            <div class="flex flex-wrap md:flex-nowrap justify-center gap-2 sm:gap-3 w-full overflow-visible">
+        <div class="bg-slate-900/80 backdrop-blur-md p-4 md:p-5 rounded-2xl border border-slate-700/60 shadow-xl flex flex-col md:flex-row items-center gap-5 relative">
+            <h2 class="font-cinzel text-slate-400 tracking-widest uppercase md:border-r border-slate-700 md:pr-5 text-xs font-bold shrink-0">Status</h2>
+            <div class="flex flex-wrap md:flex-nowrap justify-center gap-2 sm:gap-4 w-full overflow-visible">
                 ${attrHTML('hp', 'HP', newStats.hp)}
                 ${attrHTML('mp', 'MP', newStats.mp)}
                 ${attrHTML('atk', 'ATK', newStats.atk)}
@@ -137,7 +136,7 @@ function renderTabs() {
     }
 }
 
-function renderCarousel() {
+function renderCarouselOrGrid() {
     const area = document.getElementById('simulador-carousel-area');
     if (!area) return;
 
@@ -147,34 +146,72 @@ function renderCarousel() {
 
     if (simState.tab === 'race') items = simState.data.races;
     if (simState.tab === 'class') items = simState.data.classes;
+    if (simState.tab === 'profession') items = simState.data.professions;
+
+    // --- LÓGICA EXCLUSIVA PARA HABILIDADES (GRID) ---
     if (simState.tab === 'ability') {
         items = simState.data.abilities;
         const clsName = simState.data.classes[simState.indices.class]?.nome || 'Nenhuma';
+        
         extraHeader = `
-            <div class="text-center mb-5 w-full">
-                <h4 class="font-cinzel text-sm text-slate-400 mb-1">Habilidades da Classe</h4>
-                <p class="text-3xl font-bold text-amber-500 mb-2 drop-shadow-sm">${escapeHTML(clsName)}</p>
-                <div class="bg-blue-900/20 border border-blue-500/30 p-3 rounded-xl max-w-2xl mx-auto">
-                    <p class="text-xs md:text-sm text-slate-300 italic">
+            <div class="text-center mb-6 w-full">
+                <h4 class="font-cinzel text-lg text-slate-400 mb-1">Grimório de Habilidades</h4>
+                <p class="text-4xl font-bold text-amber-500 mb-4 drop-shadow-md">${escapeHTML(clsName)}</p>
+                <div class="bg-blue-900/20 border border-blue-500/30 p-4 rounded-xl max-w-3xl mx-auto inline-block">
+                    <p class="text-sm text-slate-300 italic">
                         Quantidade inicial: <strong class="text-amber-400">1d6</strong> | Nível máximo: <strong class="text-amber-400">1d20</strong>.
                     </p>
                 </div>
             </div>
         `;
-        placeholder = `<div class="text-center text-slate-400 py-12 w-full bg-slate-800/50 rounded-2xl border border-slate-700 border-dashed text-sm md:text-base max-w-2xl mx-auto">Nenhuma habilidade encontrada para esta classe.</div>`;
+
+        if (items.length === 0) {
+            area.innerHTML = extraHeader + `<div class="text-center text-slate-400 py-16 w-full bg-slate-800/50 rounded-[2rem] border border-slate-700 border-dashed text-lg">Nenhuma habilidade encontrada para esta classe.</div>`;
+            return;
+        }
+
+        // Renderiza o Grid de Habilidades
+        let gridHTML = `<div class="w-full grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6 animate-fade-in mt-4">`;
+        
+        items.forEach(hab => {
+            const desc = hab.descricaoEfeito || hab.efeito || 'Não informado.';
+            const imgHTML = hab.imagemUrl
+                ? `<img src="${hab.imagemUrl}" alt="Icon" class="w-20 h-20 rounded-2xl object-cover border border-slate-600 shadow-md shrink-0 cursor-pointer hover:scale-105 transition-transform" onclick="window.simulador.openImage('${hab.imagemUrl}')">`
+                : `<div class="w-20 h-20 rounded-2xl border border-slate-600 bg-slate-800 flex items-center justify-center shrink-0 shadow-md"><i class="fas fa-magic text-3xl text-slate-500"></i></div>`;
+
+            gridHTML += `
+                <div class="bg-slate-800/80 p-5 md:p-6 rounded-2xl border border-slate-600/50 shadow-xl flex items-start gap-5 hover:border-amber-500/60 transition-colors group">
+                    ${imgHTML}
+                    <div class="flex-1 flex flex-col min-w-0">
+                        <h4 class="font-cinzel text-xl text-blue-400 font-bold mb-2 border-b border-slate-700/50 pb-1 truncate" title="${escapeHTML(hab.nome)}">${escapeHTML(hab.nome)}</h4>
+                        <p class="text-slate-300 text-sm leading-relaxed">${escapeHTML(desc).replace(/\n/g, '<br>')}</p>
+                    </div>
+                    <div class="bg-slate-900 p-3 md:p-4 rounded-xl border border-slate-700 shadow-inner flex flex-col items-center justify-center shrink-0 min-w-[70px]">
+                        <span class="text-[10px] text-slate-400 font-cinzel tracking-widest uppercase mb-1">Dado</span>
+                        <span class="text-3xl font-black text-amber-500 drop-shadow-md group-hover:scale-110 transition-transform">${escapeHTML(hab.efeitoDanoBaseUsoHabilidade || 'N/A')}</span>
+                    </div>
+                </div>
+            `;
+        });
+        gridHTML += `</div>`;
+
+        area.innerHTML = extraHeader + gridHTML;
+        return; // Encerra aqui se for habilidade (não renderiza nav buttons ou card único)
     }
+
+    // --- LÓGICA DE CARROSSEL PARA RAÇAS, CLASSES E PROFISSÕES ---
+    
     if (simState.tab === 'profession') {
-        items = simState.data.professions;
         extraHeader = `
-            <div class="text-center mb-5 w-full">
-                <div class="bg-amber-900/20 border border-amber-500/30 p-4 rounded-xl max-w-2xl mx-auto">
-                    <p class="text-xs md:text-sm text-slate-300 italic leading-relaxed">
+            <div class="text-center mb-6 w-full">
+                <div class="bg-amber-900/20 border border-amber-500/30 p-4 rounded-xl max-w-3xl mx-auto inline-block">
+                    <p class="text-sm md:text-base text-slate-300 italic leading-relaxed">
                         Requer Guilda ou Mestre. <strong class="text-amber-500">Permitido registrar apenas a partir do Nível 5.</strong>
                     </p>
                 </div>
             </div>
         `;
-        placeholder = `<div class="text-center text-slate-400 py-12 w-full bg-slate-800/50 rounded-2xl border border-slate-700 border-dashed text-sm md:text-base max-w-2xl mx-auto">Nenhuma profissão encontrada.</div>`;
+        placeholder = `<div class="text-center text-slate-400 py-16 w-full bg-slate-800/50 rounded-[2rem] border border-slate-700 border-dashed text-lg">Nenhuma profissão encontrada.</div>`;
     }
 
     if (items.length === 0) {
@@ -186,15 +223,15 @@ function renderCarousel() {
     const currentItem = items[currentIndex];
 
     const navHTML = `
-        <div class="flex items-center justify-center mb-6 gap-4 w-full">
-            <button onclick="window.simulador.prev()" class="p-2.5 px-3.5 bg-slate-800 text-slate-300 rounded-lg hover:bg-amber-500 hover:text-black border border-slate-600 transition-all shadow-md focus:outline-none">
-                <i class="fas fa-chevron-left text-base"></i>
+        <div class="flex items-center justify-center mb-8 gap-6 w-full">
+            <button onclick="window.simulador.prev()" class="p-3 px-4 bg-slate-800 text-slate-300 rounded-xl hover:bg-amber-500 hover:text-black border border-slate-600 transition-all shadow-md focus:outline-none">
+                <i class="fas fa-chevron-left text-xl"></i>
             </button>
-            <div class="font-mono text-lg md:text-xl text-slate-200 font-bold min-w-[80px] text-center bg-slate-900 px-4 py-1.5 rounded-lg border border-slate-700 shadow-inner">
-                ${currentIndex + 1} <span class="text-slate-500 text-sm md:text-base mx-1">/</span> ${items.length}
+            <div class="font-mono text-2xl text-slate-200 font-bold min-w-[100px] text-center bg-slate-900 px-5 py-2 rounded-xl border border-slate-700 shadow-inner">
+                ${currentIndex + 1} <span class="text-slate-500 text-lg mx-1">/</span> ${items.length}
             </div>
-            <button onclick="window.simulador.next()" class="p-2.5 px-3.5 bg-slate-800 text-slate-300 rounded-lg hover:bg-amber-500 hover:text-black border border-slate-600 transition-all shadow-md focus:outline-none">
-                <i class="fas fa-chevron-right text-base"></i>
+            <button onclick="window.simulador.next()" class="p-3 px-4 bg-slate-800 text-slate-300 rounded-xl hover:bg-amber-500 hover:text-black border border-slate-600 transition-all shadow-md focus:outline-none">
+                <i class="fas fa-chevron-right text-xl"></i>
             </button>
         </div>
     `;
@@ -211,20 +248,17 @@ function renderCarousel() {
 }
 
 function generateCardHTML(item, type) {
-    const isAbility = type === 'ability';
     const isClass = type === 'class';
     const isRace = type === 'race';
-    const desc = (isAbility ? (item.descricaoEfeito || item.efeito) : (item.descricao || item.habilidadeEspecialClasse)) || 'Não informado.';
+    const desc = item.descricao || item.habilidadeEspecialClasse || 'Não informado.';
     
     let leftImgHTML = '';
-    
-    // IMAGEM MAIOR (+20%): de 14rem para 17rem/20rem
-    if (!isAbility && item.imagemUrl) {
+    if (item.imagemUrl) {
         leftImgHTML = `
-            <div class="w-full sm:w-[15rem] xl:w-[18rem] shrink-0 mx-auto xl:mx-0 simulador-img-wrapper cursor-pointer group" onclick="window.simulador.openImage('${item.imagemUrl}')">
+            <div class="w-full sm:w-[18rem] xl:w-[24rem] shrink-0 mx-auto xl:mx-0 simulador-img-wrapper cursor-pointer group" onclick="window.simulador.openImage('${item.imagemUrl}')">
                 <div class="simulador-img-glow"></div>
                 <img src="${item.imagemUrl}" alt="${escapeHTML(item.nome)}" class="simulador-img aspect-[4/5]">
-                <div class="absolute bottom-3 right-3 bg-black/70 p-2.5 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity z-20 backdrop-blur-sm text-sm">
+                <div class="absolute bottom-4 right-4 bg-black/70 p-3 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity z-20 backdrop-blur-sm text-lg">
                     <i class="fas fa-expand-arrows-alt"></i>
                 </div>
             </div>
@@ -235,59 +269,22 @@ function generateCardHTML(item, type) {
 
     if (isRace) {
         const hasLendas = !!item.lendasConhecidas;
-        const cultColSpan = hasLendas ? "flex-1" : "w-full"; 
-
         specificContentHTML += `
-            <div class="w-full flex flex-col md:flex-row gap-5 items-stretch">
-                <div class="${cultColSpan} bg-slate-900/40 p-5 rounded-2xl border border-slate-700/50 flex flex-col shadow-inner">
-                    <h4 class="font-cinzel text-base md:text-lg mb-3 text-blue-400 flex items-center gap-2 border-b border-slate-700/50 pb-2"><i class="fas fa-landmark text-slate-500 text-sm"></i> Cultura e Sociedade</h4>
-                    <p class="text-slate-300 text-sm md:text-base leading-relaxed flex-grow">${escapeHTML(item.culturaSociedade || '').replace(/\n/g, '<br>')}</p>
+            <div class="w-full grid grid-cols-1 ${hasLendas ? 'lg:grid-cols-2' : ''} gap-6 h-full items-start">
+                <div class="bg-slate-900/40 p-6 md:p-8 rounded-2xl border border-slate-700/50 flex flex-col shadow-inner h-full">
+                    <h4 class="font-cinzel text-xl mb-4 text-blue-400 flex items-center gap-3 border-b border-slate-700/50 pb-3"><i class="fas fa-landmark text-slate-500"></i> Cultura e Sociedade</h4>
+                    <p class="text-slate-300 text-base leading-loose flex-grow">${escapeHTML(item.culturaSociedade || '').replace(/\n/g, '<br>')}</p>
                 </div>
         `;
         if (hasLendas) {
             specificContentHTML += `
-                <div class="flex-1 bg-amber-900/10 p-5 rounded-2xl border border-amber-900/30 flex flex-col shadow-inner">
-                    <h4 class="font-cinzel text-base md:text-lg mb-3 text-amber-500 flex items-center gap-2 border-b border-amber-900/40 pb-2"><i class="fas fa-book-dead text-slate-500 text-sm"></i> Lendas Conhecidas</h4>
-                    <p class="text-amber-100/80 text-sm md:text-base leading-relaxed italic flex-grow">${escapeHTML(item.lendasConhecidas).replace(/\n/g, '<br>')}</p>
+                <div class="bg-amber-900/10 p-6 md:p-8 rounded-2xl border border-amber-900/30 flex flex-col shadow-inner h-full">
+                    <h4 class="font-cinzel text-xl mb-4 text-amber-500 flex items-center gap-3 border-b border-amber-900/40 pb-3"><i class="fas fa-book-dead text-slate-500"></i> Lendas Conhecidas</h4>
+                    <p class="text-amber-100/80 text-base leading-loose italic flex-grow">${escapeHTML(item.lendasConhecidas).replace(/\n/g, '<br>')}</p>
                 </div>
             `;
         }
-        specificContentHTML += `</div>`; // Fechar a grid row
-    }
-
-    if (isAbility) {
-        // Habilidade: Caixa de D20 ao lado do Ícone (em Elipse/Círculo) e a Descrição
-        let abilityImageHTML = item.imagemUrl ? `
-            <img src="${item.imagemUrl}" alt="Ícone da Habilidade" class="w-16 h-16 md:w-24 md:h-24 rounded-full object-cover border-2 border-amber-500 shadow-xl shrink-0">
-        ` : '';
-
-        specificContentHTML += `
-            <div class="w-full flex flex-col md:flex-row gap-6">
-                <div class="w-full md:w-auto bg-slate-900 p-6 rounded-2xl border border-slate-700 shadow-inner flex flex-col items-center justify-center min-w-[180px] shrink-0">
-                    <h4 class="font-cinzel text-xs md:text-sm text-slate-400 uppercase tracking-widest mb-2 text-center block">Valor do D20</h4>
-                    <p class="text-5xl font-black text-amber-500 drop-shadow-[0_0_12px_rgba(245,158,11,0.6)]">${escapeHTML(item.efeitoDanoBaseUsoHabilidade || 'N/A')}</p>
-                </div>
-                
-                <div class="flex-1 bg-slate-900/40 p-5 md:p-6 rounded-2xl border border-slate-700/50 shadow-inner flex flex-col sm:flex-row items-start gap-5">
-                    ${abilityImageHTML}
-                    <div class="flex-1">
-                        <h4 class="font-cinzel text-base md:text-lg mb-3 text-blue-400 border-b border-slate-700/50 pb-2 flex items-center gap-2"><i class="fas fa-magic text-slate-500 text-sm"></i> Descrição do Efeito</h4>
-                        <p class="text-slate-300 text-sm md:text-base leading-relaxed">${escapeHTML(desc).replace(/\n/g, '<br>')}</p>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    if (!isRace && !isAbility) {
-        // Classes e Profissões (Coluna Única responsiva ao lado da imagem)
-        specificContentHTML += `
-            <div class="w-full flex flex-col gap-5 h-full">
-                <div class="w-full bg-slate-900/40 p-5 md:p-6 rounded-2xl border border-slate-700/50 shadow-inner ${isClass ? '' : 'flex-grow'}">
-                    <h4 class="font-cinzel text-base md:text-lg mb-3 text-blue-400 border-b border-slate-700/50 pb-2 flex items-center gap-2"><i class="fas fa-scroll text-slate-500 text-sm"></i> Descrição</h4>
-                    <p class="text-slate-300 text-sm md:text-base leading-relaxed">${escapeHTML(desc).replace(/\n/g, '<br>')}</p>
-                </div>
-        `;
+        specificContentHTML += `</div>`;
     }
 
     if (isClass) {
@@ -300,30 +297,45 @@ function generateCardHTML(item, type) {
             { k: 'Fácil', v: item.facilidade }
         ].filter(a => a.v >= 2);
 
+        specificContentHTML += `
+            <div class="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 h-full items-start">
+                <div class="w-full bg-slate-900/40 p-6 md:p-8 rounded-2xl border border-slate-700/50 shadow-inner h-full">
+                    <h4 class="font-cinzel text-xl mb-4 text-blue-400 border-b border-slate-700/50 pb-3 flex items-center gap-3"><i class="fas fa-scroll text-slate-500"></i> Descrição</h4>
+                    <p class="text-slate-300 text-base leading-loose">${escapeHTML(desc).replace(/\n/g, '<br>')}</p>
+                </div>
+        `;
         if (attrs.length > 0) {
             specificContentHTML += `
-                <div class="w-full bg-slate-900/60 p-5 md:p-6 rounded-2xl border border-slate-700 shadow-inner flex-grow">
-                    <h4 class="font-cinzel text-base md:text-lg mb-4 text-emerald-400 flex items-center gap-2 border-b border-slate-700/50 pb-2"><i class="fas fa-chart-radar text-slate-500 text-sm"></i> Atributos em Foco</h4>
-                    <div class="flex flex-wrap gap-2.5 mt-2">
-                        ${attrs.map(a => `<span class="bg-slate-950 border border-emerald-900/50 text-slate-200 px-3 py-1.5 rounded-lg text-xs md:text-sm shadow-md font-medium tracking-wide cursor-default">${a.k} <span class="text-amber-400 font-bold ml-1">${a.v}</span></span>`).join('')}
+                <div class="w-full bg-slate-900/60 p-6 md:p-8 rounded-2xl border border-slate-700 shadow-inner h-full flex flex-col">
+                    <h4 class="font-cinzel text-xl mb-5 text-emerald-400 flex items-center gap-3 border-b border-slate-700/50 pb-3"><i class="fas fa-chart-radar text-slate-500"></i> Atributos em Foco</h4>
+                    <div class="flex flex-wrap gap-3 mt-2">
+                        ${attrs.map(a => `<span class="bg-slate-950 border border-emerald-900/50 text-slate-200 px-4 py-2 rounded-xl text-sm shadow-md font-medium tracking-wide cursor-default">${a.k} <span class="text-amber-400 font-bold ml-2">${a.v}</span></span>`).join('')}
                     </div>
                 </div>
             `;
         }
-        specificContentHTML += `</div>`; // Fecha a div flex-col que envolve Desc + Atributos
-    } else if (!isRace && !isAbility) {
-        specificContentHTML += `</div>`; // Fecha se for profissão
+        specificContentHTML += `</div>`;
     }
 
-    // CARDS AGORA USAM MAX-W-7XL para expandir muito mais no ecrã e utilizar o espaço livre
+    if (!isRace && !isClass) {
+        // Profissões
+        specificContentHTML += `
+            <div class="w-full bg-slate-900/40 p-6 md:p-8 rounded-2xl border border-slate-700/50 shadow-inner h-full">
+                <h4 class="font-cinzel text-xl mb-4 text-blue-400 border-b border-slate-700/50 pb-3 flex items-center gap-3"><i class="fas fa-scroll text-slate-500"></i> Descrição</h4>
+                <p class="text-slate-300 text-base leading-loose">${escapeHTML(desc).replace(/\n/g, '<br>')}</p>
+            </div>
+        `;
+    }
+
+    // O Card agora abraça toda a largura livre (w-full) em vez de ficar espremido no meio.
     return `
-        <div class="simulador-card w-full max-w-7xl p-6 md:p-8 lg:p-10 rounded-[2rem] border border-slate-600/50 shadow-2xl flex flex-col gap-6 items-start mx-auto">
+        <div class="simulador-card w-full p-6 md:p-10 lg:p-12 rounded-[2.5rem] border border-slate-600/50 shadow-2xl flex flex-col gap-8 items-start mx-auto">
             
-            <h3 class="font-cinzel text-2xl sm:text-3xl md:text-4xl font-bold text-white border-b-2 border-slate-700/80 pb-3 tracking-wide w-full drop-shadow-md text-center xl:text-left">${escapeHTML(item.nome || 'Desconhecido')}</h3>
+            <h3 class="font-cinzel text-3xl sm:text-4xl md:text-5xl font-bold text-white border-b-2 border-slate-700/80 pb-4 tracking-wide w-full drop-shadow-md text-center xl:text-left">${escapeHTML(item.nome || 'Desconhecido')}</h3>
             
-            <div class="w-full flex flex-col xl:flex-row gap-6 xl:gap-10 items-stretch">
+            <div class="w-full flex flex-col xl:flex-row gap-8 xl:gap-12 items-stretch">
                 ${leftImgHTML}
-                <div class="flex-1 w-full flex flex-col gap-4 items-start">
+                <div class="flex-1 w-full flex flex-col gap-6 items-start">
                     ${specificContentHTML}
                 </div>
             </div>
@@ -338,14 +350,14 @@ window.simulador = {
         renderUI();
     },
     next: function() {
-        const max = simState.data[simState.tab === 'ability' ? 'abilities' : simState.tab === 'profession' ? 'professions' : simState.tab === 'race' ? 'races' : 'classes'].length;
+        const max = simState.data[simState.tab === 'profession' ? 'professions' : simState.tab === 'race' ? 'races' : 'classes'].length;
         if(max <= 1) return;
         simState.indices[simState.tab] = (simState.indices[simState.tab] + 1) % max;
         if(simState.tab === 'class') updateAbilitiesForCurrentClass();
         renderUI();
     },
     prev: function() {
-        const max = simState.data[simState.tab === 'ability' ? 'abilities' : simState.tab === 'profession' ? 'professions' : simState.tab === 'race' ? 'races' : 'classes'].length;
+        const max = simState.data[simState.tab === 'profession' ? 'professions' : simState.tab === 'race' ? 'races' : 'classes'].length;
         if(max <= 1) return;
         simState.indices[simState.tab] = (simState.indices[simState.tab] - 1 + max) % max;
         if(simState.tab === 'class') updateAbilitiesForCurrentClass();
