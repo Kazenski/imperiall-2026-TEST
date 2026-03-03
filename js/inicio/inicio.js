@@ -1,5 +1,3 @@
-// ARQUIVO: js/inicio/inicio.js
-
 import { db } from '../core/firebase.js';
 import { collection, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { escapeHTML } from '../core/utils.js';
@@ -19,7 +17,7 @@ export async function renderInicioTab() {
     container.innerHTML = `
         <div class="relative w-full h-full overflow-hidden bg-[#020617] fade-in">
             
-            <div id="inicio-main-bg" class="absolute inset-0 bg-cover bg-[center_20%] transition-all duration-1000 ease-in-out opacity-0" style="background-image: url('${defaultBg}');">
+            <div id="inicio-main-bg" class="absolute inset-0 bg-cover transition-all duration-1000 ease-in-out opacity-0" style="background-image: url('${defaultBg}'); background-position: center 20%;">
                 <div class="absolute inset-0 bg-gradient-to-t from-[#020617] via-transparent to-transparent opacity-95"></div>
                 <div class="absolute inset-0 bg-gradient-to-r from-[#020617] via-transparent to-[#020617] opacity-60"></div>
             </div>
@@ -128,7 +126,9 @@ window.inicio = {
 
         isViewingCard = true;
 
+        // Quando clicamos, a imagem da notícia também carrega com os 20% do topo
         bgEl.style.backgroundImage = `url('${imgUrl}')`;
+        bgEl.style.backgroundPosition = 'center 20%';
         bgEl.classList.remove('opacity-0');
         bgEl.classList.add('opacity-100');
         
@@ -151,7 +151,10 @@ window.inicio = {
 
         bgTimeout = setTimeout(() => {
             isViewingCard = false;
-            if (bgEl) bgEl.style.backgroundImage = `url('${defaultBg}')`;
+            if (bgEl) {
+                bgEl.style.backgroundImage = `url('${defaultBg}')`;
+                bgEl.style.backgroundPosition = 'center 20%';
+            }
             if (infoEl) {
                 infoEl.classList.remove('opacity-100', 'translate-y-0');
                 infoEl.classList.add('opacity-0', 'translate-y-4');
