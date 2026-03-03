@@ -22,7 +22,7 @@ import { renderComercioTab } from './tabs/comercio.js';
 import { renderMapaTab } from './tabs/mapa.js';
 import './tabs/arena.js';
 import { renderAtualizacoesTab } from './atualizacoes/atualizacoes.js';
-import { renderSimularFichaTab } from './tabs/simularFicha.js';
+import { renderSimularFichaTab } from './aoJogador/simularFicha.js';
 
 const dom = {};
 document.querySelectorAll('[id]').forEach(el => dom[el.id.replace(/-/g, '_')] = el);
