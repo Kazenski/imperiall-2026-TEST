@@ -220,7 +220,7 @@ function renderCardHTML(data) {
             
             ${adminBtns}
 
-            <div class="relative w-full h-48 md:h-64 overflow-hidden">
+            <div class="relative w-full h-48 md:h-64 overflow-hidden shrink-0">
                 ${bgHtml}
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/50 to-transparent"></div>
                 <div class="absolute bottom-4 left-4 md:left-8 z-10 pr-32 md:pr-40">
@@ -238,39 +238,54 @@ function renderCardHTML(data) {
                 ${overlayImgHtml}
             </div>
 
-            <div class="p-6 md:p-8 flex flex-col gap-6 bg-slate-900">
+            <div class="p-6 md:p-8 flex flex-col bg-slate-900">
                 
-                <div class="w-full flex flex-col gap-4 border-b border-slate-700 pb-6">
-                    <div>
-                        <h3 class="text-xl text-amber-500 font-bold font-cinzel mb-2">${escapeHTML(data.tituloLateral)}</h3>
-                        <p class="text-slate-400 text-sm italic leading-relaxed">"${escapeHTML(data.paragrafoIntro)}"</p>
-                    </div>
+                <div class="w-full flex flex-col gap-2">
+                    <h3 class="text-xl text-amber-500 font-bold font-cinzel">${escapeHTML(data.tituloLateral)}</h3>
+                    <p class="intro-text text-slate-400 text-sm italic leading-relaxed line-clamp-3">"${escapeHTML(data.paragrafoIntro)}"</p>
+                    
                     ${data.status === 'Em Manutenção' ? `
-                    <div class="bg-red-900/20 border border-red-500/30 p-4 rounded relative overflow-hidden mt-2">
+                    <div class="bg-red-900/20 border border-red-500/30 p-4 rounded relative overflow-hidden mt-4 shrink-0">
                         <i class="fas fa-exclamation-triangle absolute -top-2 -right-2 text-6xl text-red-500 opacity-10"></i>
                         <h4 class="text-red-400 font-bold text-xs uppercase mb-1">Aviso do Sistema</h4>
                         <p class="text-slate-300 text-xs">Os servidores podem sofrer instabilidade. Salve seu progresso.</p>
                     </div>` : ''}
                 </div>
 
-                <div class="w-full grid md:grid-cols-2 gap-8 pt-2">
+                <div class="expandable-content hidden flex-col gap-8 mt-6 border-t border-slate-700 pt-6 w-full animate-fade-in shrink-0">
                     
-                    <div class="flex flex-col">
+                    <div class="flex flex-col w-full">
                         <h4 class="text-lg font-bold text-slate-200 mb-4 flex items-center"><i class="fas fa-clipboard-list text-amber-500 mr-2"></i> Notas da Versão</h4>
-                        <ul class="space-y-2 mb-6">${mudancasHTML}</ul>
+                        <ul class="space-y-2">${mudancasHTML}</ul>
                     </div>
                     
-                    <div class="flex flex-col">
-                        ${data.detalhes ? `
-                        <div class="mb-6">
-                            <button onclick="this.nextElementSibling.classList.toggle('hidden'); this.querySelector('i').classList.toggle('fa-chevron-down'); this.querySelector('i').classList.toggle('fa-chevron-up');" class="text-amber-500 hover:text-amber-400 text-sm font-bold flex items-center gap-2 transition-colors outline-none">
-                                <i class="fas fa-chevron-down"></i> Ler Detalhes Técnicos
-                            </button>
-                            <div class="hidden mt-4 p-4 bg-black/40 rounded border border-slate-700 text-slate-300 text-sm whitespace-pre-wrap animate-fade-in">${escapeHTML(data.detalhes)}</div>
-                        </div>` : ''}
-                    </div>
+                    ${data.detalhes ? `
+                    <div class="flex flex-col w-full">
+                        <h4 class="text-lg font-bold text-slate-200 mb-4 flex items-center"><i class="fas fa-microchip text-amber-500 mr-2"></i> Detalhes Técnicos</h4>
+                        <div class="p-4 bg-black/40 rounded border border-slate-700 text-slate-300 text-sm whitespace-pre-wrap">${escapeHTML(data.detalhes)}</div>
+                    </div>` : ''}
 
                 </div>
+
+                <button onclick="
+                    const content = this.previousElementSibling; 
+                    const intro = this.parentElement.querySelector('.intro-text'); 
+                    if(content.classList.contains('hidden')){ 
+                        content.classList.remove('hidden'); 
+                        content.classList.add('flex'); 
+                        if(intro) intro.classList.remove('line-clamp-3'); 
+                        this.innerHTML = '<i class=&quot;fas fa-chevron-up&quot;></i> Mostrar menos'; 
+                    } else { 
+                        content.classList.add('hidden'); 
+                        content.classList.remove('flex'); 
+                        if(intro) intro.classList.add('line-clamp-3'); 
+                        this.innerHTML = '<i class=&quot;fas fa-chevron-down&quot;></i> Ler mais'; 
+                        this.parentElement.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                " class="text-amber-500 hover:text-amber-400 text-sm font-bold flex items-center justify-center gap-2 mt-6 pt-4 border-t border-slate-800 transition-colors outline-none w-full shrink-0">
+                    <i class="fas fa-chevron-down"></i> Ler mais
+                </button>
+
             </div>
         </div>
     `;
