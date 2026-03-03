@@ -22,6 +22,7 @@ import { renderComercioTab } from './tabs/comercio.js';
 import { renderMapaTab } from './tabs/mapa.js';
 import './tabs/arena.js';
 import { renderAtualizacoesTab } from './atualizacoes/atualizacoes.js';
+import { renderSimularFichaTab } from './tabs/simularFicha.js';
 
 const dom = {};
 document.querySelectorAll('[id]').forEach(el => dom[el.id.replace(/-/g, '_')] = el);
@@ -96,6 +97,13 @@ window.showTab = function(tabId) {
         return; // Sai imediatamente!
     }
 
+    // Aba de Simular Ficha (Livre para todos, sem personagem)
+    if (tabId === 'simular-ficha-content' || tabId === 'simular-ficha') {
+        target.innerHTML = ''; 
+        if (typeof renderSimularFichaTab === 'function') renderSimularFichaTab();
+        return;
+    }
+
     if (tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
@@ -167,7 +175,7 @@ const MASTER_ARCHITECTURE = {
         { id: 'blank', icon: 'fa-scroll', label: 'Lore personagens', render: () => window.renderBlankPage('Lore personagens') }
     ],
     'Ao Jogador': [
-        { id: 'blank', icon: 'fa-flask', label: 'Simular Ficha', render: () => window.renderBlankPage('Simular Ficha') },
+        { id: 'simular-ficha', icon: 'fa-flask', label: 'Simular Ficha', render: () => window.showTab('simular-ficha-content') },
         { id: 'ficha-menu', icon: 'fa-id-card', label: 'Ficha de Personagem', render: () => window.openFichaPersonagemMenu() },
         { id: 'blank', icon: 'fa-images', label: 'Galeria de Imagens', render: () => window.renderBlankPage('Galeria de Imagens') }
     ],
