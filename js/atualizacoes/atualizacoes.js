@@ -238,31 +238,38 @@ function renderCardHTML(data) {
                 ${overlayImgHtml}
             </div>
 
-            <div class="p-6 md:p-8 grid md:grid-cols-3 gap-8 bg-slate-900">
-                <div class="md:col-span-1 border-b md:border-b-0 md:border-r border-slate-700 pb-6 md:pb-0 md:pr-6 flex flex-col gap-6">
+            <div class="p-6 md:p-8 flex flex-col gap-6 bg-slate-900">
+                
+                <div class="w-full flex flex-col gap-4 border-b border-slate-700 pb-6">
                     <div>
-                        <h3 class="text-xl text-amber-500 font-bold font-cinzel mb-3 border-b border-slate-700 pb-2">${escapeHTML(data.tituloLateral)}</h3>
+                        <h3 class="text-xl text-amber-500 font-bold font-cinzel mb-2">${escapeHTML(data.tituloLateral)}</h3>
                         <p class="text-slate-400 text-sm italic leading-relaxed">"${escapeHTML(data.paragrafoIntro)}"</p>
                     </div>
                     ${data.status === 'Em Manutenção' ? `
-                    <div class="bg-red-900/20 border border-red-500/30 p-4 rounded relative overflow-hidden mt-4">
+                    <div class="bg-red-900/20 border border-red-500/30 p-4 rounded relative overflow-hidden mt-2">
                         <i class="fas fa-exclamation-triangle absolute -top-2 -right-2 text-6xl text-red-500 opacity-10"></i>
                         <h4 class="text-red-400 font-bold text-xs uppercase mb-1">Aviso do Sistema</h4>
                         <p class="text-slate-300 text-xs">Os servidores podem sofrer instabilidade. Salve seu progresso.</p>
                     </div>` : ''}
                 </div>
 
-                <div class="md:col-span-2 flex flex-col">
-                    <h4 class="text-lg font-bold text-slate-200 mb-4 flex items-center"><i class="fas fa-clipboard-list text-amber-500 mr-2"></i> Notas da Versão</h4>
-                    <ul class="space-y-2 mb-6">${mudancasHTML}</ul>
+                <div class="w-full grid md:grid-cols-2 gap-8 pt-2">
                     
-                    ${data.detalhes ? `
-                    <div class="mb-6">
-                        <button onclick="this.nextElementSibling.classList.toggle('hidden'); this.querySelector('i').classList.toggle('fa-chevron-down'); this.querySelector('i').classList.toggle('fa-chevron-up');" class="text-amber-500 hover:text-amber-400 text-sm font-bold flex items-center gap-2 transition-colors outline-none">
-                            <i class="fas fa-chevron-down"></i> Ler Detalhes Técnicos
-                        </button>
-                        <div class="hidden mt-4 p-4 bg-black/40 rounded border border-slate-700 text-slate-300 text-sm whitespace-pre-wrap animate-fade-in">${escapeHTML(data.detalhes)}</div>
-                    </div>` : ''}
+                    <div class="flex flex-col">
+                        <h4 class="text-lg font-bold text-slate-200 mb-4 flex items-center"><i class="fas fa-clipboard-list text-amber-500 mr-2"></i> Notas da Versão</h4>
+                        <ul class="space-y-2 mb-6">${mudancasHTML}</ul>
+                    </div>
+                    
+                    <div class="flex flex-col">
+                        ${data.detalhes ? `
+                        <div class="mb-6">
+                            <button onclick="this.nextElementSibling.classList.toggle('hidden'); this.querySelector('i').classList.toggle('fa-chevron-down'); this.querySelector('i').classList.toggle('fa-chevron-up');" class="text-amber-500 hover:text-amber-400 text-sm font-bold flex items-center gap-2 transition-colors outline-none">
+                                <i class="fas fa-chevron-down"></i> Ler Detalhes Técnicos
+                            </button>
+                            <div class="hidden mt-4 p-4 bg-black/40 rounded border border-slate-700 text-slate-300 text-sm whitespace-pre-wrap animate-fade-in">${escapeHTML(data.detalhes)}</div>
+                        </div>` : ''}
+                    </div>
+
                 </div>
             </div>
         </div>
