@@ -336,7 +336,7 @@ const MASTER_ARCHITECTURE = {
         { id: 'lore-personagens', icon: 'fa-scroll', label: 'Lore Personagens', render: () => window.showTab('lore-personagens-content') }
     ],
     'Painel Admin': [
-        { id: 'backoffice', icon: 'fa-database', label: 'Backoffice', render: () => window.showTab('backoffice-content'), requiresAdmin: true }
+        { id: 'backoffice', icon: 'fa-database', label: 'Backoffice', render: () => window.showTab('backoffice-content'), requiresAdmin: true },
         { id: 'backups', icon: 'fa-server', label: 'Backups', render: () => window.showTab('backups-content'), requiresAdmin: true }
     ],
     'Ao Jogador': [
