@@ -44,7 +44,7 @@ import { renderCadastroConstelacoesTab } from './admin/cadastroConstelacoes.js';
 import { renderCadastroCraftTab } from './admin/cadastroCraft.js';
 import { renderCadastroDeusesTab } from './admin/cadastroDeuses.js';
 import { renderCadastroEgoTab } from './admin/cadastroEgo.js';
-
+import { renderCadastroLojasTab } from './admin/cadastroLojas.js';
 
 const dom = {};
 document.querySelectorAll('[id]').forEach(el => dom[el.id.replace(/-/g, '_')] = el);
@@ -298,6 +298,13 @@ window.showTab = function(tabId) {
         return;
     }
 
+    // Aba "Engine Econômica / Lojas" (Admin)
+    if (tabId === 'cadastro-lojas-content' || tabId === 'cadastro-lojas') {
+        target.innerHTML = ''; 
+        if (typeof renderCadastroLojasTab === 'function') renderCadastroLojasTab();
+        return;
+    }
+
     if (tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
@@ -373,7 +380,9 @@ const MASTER_ARCHITECTURE = {
         { id: 'cadastro-constelacoes', icon: 'fa-project-diagram', label: 'Matriz de Estrelas', render: () => window.showTab('cadastro-constelacoes-content'), requiresAdmin: true },
         { id: 'cadastro-craft', icon: 'fa-tools', label: 'Engenharia Craft', render: () => window.showTab('cadastro-craft-content'), requiresAdmin: true },
         { id: 'cadastro-deuses', icon: 'fa-om', label: 'Panteão Divino', render: () => window.showTab('cadastro-deuses-content'), requiresAdmin: true },
-        { id: 'cadastro-ego', icon: 'fa-gavel', label: 'Forja Espiritual', render: () => window.showTab('cadastro-ego-content'), requiresAdmin: true }
+        { id: 'cadastro-ego', icon: 'fa-gavel', label: 'Forja Espiritual', render: () => window.showTab('cadastro-ego-content'), requiresAdmin: true },
+        { id: 'cadastro-lojas', icon: 'fa-coins', label: 'Engine Econômica', render: () => window.showTab('cadastro-lojas-content'), requiresAdmin: true }
+        
     ],
     'Ao Jogador': [
         { id: 'simular-ficha', icon: 'fa-flask', label: 'Simular Ficha', render: () => window.showTab('simular-ficha-content') },
