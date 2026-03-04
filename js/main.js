@@ -432,30 +432,37 @@ onAuthStateChanged(auth, async (user) => {
             const userSnap = await getDoc(userRef);
             if (userSnap.exists()) {
                 role = userSnap.data().role || 'jogador';
-                globalState.userRole = role; // Guarda no estado global
             }
+            
+            // Força o role para admin se o email bater com o ADMIN_EMAIL configurado no state.js
+            if (globalState.isAdmin) {
+                role = 'admin';
+            }
+            
+            globalState.userRole = role; // Guarda no estado global
         } catch (err) {
             console.error("Erro ao buscar permissões do utilizador:", err);
         }
 
         // Manipula visualmente o botão do topo "Ao Mestre"
-        const btnAoMestre = Array.from(document.querySelectorAll('.master-nav-btn')).find(b => b.textContent.includes('Ao Mestre'));
+        // Procura em todos os botões do menu superior aquele que tem o texto "Mestre"
+        const btnAoMestre = Array.from(document.querySelectorAll('.master-nav-btn')).find(b => b.textContent.trim().includes('Mestre'));
         
         if (btnAoMestre) {
             if (role === 'mestre' || role === 'admin') {
                 btnAoMestre.classList.remove('hidden'); // Exibe o botão
                 
-                // Remove as cores padrões cinzentas/âmbar
+                // Remove as cores padrões cinzentas/âmbar do Tailwind
                 btnAoMestre.classList.remove('text-slate-300', 'hover:bg-slate-700', 'hover:text-amber-500');
                 
-                // Aplica o tema Vermelho imponente de Mestre
-                btnAoMestre.classList.add('text-red-500', 'hover:bg-red-950/50', 'hover:text-red-400');
+                // Aplica o tema Vermelho imponente de Mestre (Texto vermelho, hover vermelho escuro)
+                btnAoMestre.classList.add('text-red-500', 'hover:bg-red-950', 'hover:text-red-400');
                 
-                // Se for Admin Supremo, adiciona o brilho dourado extra
+                // Se for Admin Supremo, adiciona o brilho dourado extra (box-shadow)
                 if (role === 'admin') {
-                    btnAoMestre.classList.add('shadow-[0_0_15px_rgba(245,158,11,0.6)]', 'border-b', 'border-amber-500/50');
+                    btnAoMestre.classList.add('shadow-[0_0_15px_rgba(245,158,11,0.6)]', 'border', 'border-amber-500/50');
                 } else {
-                    btnAoMestre.classList.remove('shadow-[0_0_15px_rgba(245,158,11,0.6)]', 'border-b', 'border-amber-500/50');
+                    btnAoMestre.classList.remove('shadow-[0_0_15px_rgba(245,158,11,0.6)]', 'border', 'border-amber-500/50');
                 }
             } else {
                 btnAoMestre.classList.add('hidden'); // Jogadores normais não veem este botão

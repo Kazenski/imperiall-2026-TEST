@@ -1,7 +1,7 @@
 import { db } from '../core/firebase.js';
 import { collection, getDocs, doc, onSnapshot, updateDoc, deleteDoc, increment, deleteField, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { escapeHTML } from '../core/utils.js';
-import { COINS } from '../core/state.js'; // IMPORTA AS MOEDAS DIRETAMENTE DO STATE!
+import { COINS } from '../core/state.js';
 
 let gmState = { 
     targetId: null, 
@@ -24,8 +24,8 @@ export async function renderComandosMestreTab() {
                 
                 <div class="flex-grow w-full max-w-md bg-slate-950 p-3 rounded-xl border border-slate-800">
                     <label for="gm-target-select" class="text-xs font-cinzel text-slate-400 uppercase tracking-widest block mb-1">Foco Divino (Alvo)</label>
-                    <select id="gm-target-select" class="w-full bg-transparent text-amber-400 font-bold focus:outline-none cursor-pointer" onchange="window.gmTools.selectTarget(this.value)">
-                        <option value="">-- Carregando Personagens --</option>
+                    <select id="gm-target-select" class="w-full bg-transparent text-amber-500 font-bold focus:outline-none cursor-pointer" onchange="window.gmTools.selectTarget(this.value)">
+                        <option value="" class="text-slate-400">-- Carregando Personagens --</option>
                     </select>
                 </div>
             </header>
@@ -64,9 +64,9 @@ export async function renderComandosMestreTab() {
                         <div class="bg-slate-800/50 border border-slate-700 p-6 rounded-2xl">
                             <h3 class="font-cinzel text-xl text-white mb-6 border-b border-slate-600 pb-2">Origem</h3>
                             <div class="space-y-6">
-                                <div><label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Raça do Personagem</label><select id="gm-raca" class="w-full bg-slate-900 border border-slate-600 p-3 rounded text-white"></select></div>
-                                <div><label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Classe Principal</label><select id="gm-classe" class="w-full bg-slate-900 border border-slate-600 p-3 rounded text-white"></select></div>
-                                <div><label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Especialização (Subclasse)</label><select id="gm-subclasse" class="w-full bg-slate-900 border border-slate-600 p-3 rounded text-white"></select></div>
+                                <div><label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Raça do Personagem</label><select id="gm-raca" class="w-full bg-slate-900 border border-slate-600 p-3 rounded text-slate-300"></select></div>
+                                <div><label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Classe Principal</label><select id="gm-classe" class="w-full bg-slate-900 border border-slate-600 p-3 rounded text-slate-300"></select></div>
+                                <div><label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Especialização (Subclasse)</label><select id="gm-subclasse" class="w-full bg-slate-900 border border-slate-600 p-3 rounded text-slate-300"></select></div>
                             </div>
                         </div>
                     </div>
@@ -79,7 +79,7 @@ export async function renderComandosMestreTab() {
                         <div class="lg:col-span-3 flex flex-col gap-4">
                             <input type="text" id="gm-item-search" placeholder="Procurar item pelo nome..." class="w-full bg-slate-900 border border-slate-600 p-4 rounded-xl text-white focus:border-emerald-500 focus:outline-none" onkeyup="window.gmTools.renderItems()">
                             
-                            <div id="gm-item-grid" class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 xl:grid-cols-8 gap-3 max-h-[400px] overflow-y-auto custom-scroll p-2 bg-slate-950 rounded-xl border border-slate-800">
+                            <div id="gm-item-grid" class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 xl:grid-cols-12 gap-2 max-h-[400px] overflow-y-auto custom-scroll p-3 bg-slate-950 rounded-xl border border-slate-800">
                                 </div>
                         </div>
                         
@@ -105,12 +105,12 @@ export async function renderComandosMestreTab() {
                         <div class="lg:col-span-3 flex flex-col gap-4">
                             <div class="flex gap-4">
                                 <input type="text" id="gm-skill-search" placeholder="Procurar técnica..." class="flex-grow bg-slate-900 border border-slate-600 p-4 rounded-xl text-white focus:border-purple-500 focus:outline-none" onkeyup="window.gmTools.renderSkills()">
-                                <select id="gm-skill-class-filter" class="w-1/3 bg-slate-900 border border-slate-600 p-4 rounded-xl text-white focus:outline-none" onchange="window.gmTools.renderSkills()">
+                                <select id="gm-skill-class-filter" class="w-1/3 bg-slate-900 border border-slate-600 p-4 rounded-xl text-slate-300 focus:outline-none" onchange="window.gmTools.renderSkills()">
                                     <option value="">Todas as Classes</option>
                                 </select>
                             </div>
                             
-                            <div id="gm-skill-grid" class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 xl:grid-cols-8 gap-3 max-h-[400px] overflow-y-auto custom-scroll p-2 bg-slate-950 rounded-xl border border-slate-800">
+                            <div id="gm-skill-grid" class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 xl:grid-cols-12 gap-2 max-h-[400px] overflow-y-auto custom-scroll p-3 bg-slate-950 rounded-xl border border-slate-800">
                                 </div>
                         </div>
                         
@@ -235,7 +235,7 @@ async function loadGMCaches() {
         const fill = (id, list) => {
             const el = document.getElementById(id);
             if (!el) return;
-            el.innerHTML = '<option value="">-- Indefinido --</option>';
+            el.innerHTML = '<option value="" class="text-slate-500">-- Indefinido --</option>';
             list.forEach(i => el.add(new Option(i.nome, i.id)));
         };
         fill('gm-raca', rc);
@@ -244,7 +244,7 @@ async function loadGMCaches() {
 
         const skillFilter = document.getElementById('gm-skill-class-filter');
         if (skillFilter) {
-            skillFilter.innerHTML = '<option value="">Todas as Classes</option>';
+            skillFilter.innerHTML = '<option value="" class="text-slate-500">Todas as Classes</option>';
             cl.forEach(c => skillFilter.add(new Option(c.nome, c.id)));
         }
     } catch(e) {
@@ -256,10 +256,9 @@ function startPlayerListener() {
     const sel = document.getElementById('gm-target-select');
     if (!sel) return;
 
-    // Escuta em tempo real todas as fichas
     onSnapshot(query(collection(db, "rpg_fichas"), orderBy("nome")), (snap) => {
         const oldVal = sel.value;
-        sel.innerHTML = '<option value="">-- Selecione o Jogador Alvo --</option>';
+        sel.innerHTML = '<option value="" class="text-slate-500">-- Selecione o Jogador Alvo --</option>';
         snap.forEach(d => {
             const data = d.data();
             sel.add(new Option(`${data.nome} (${data.jogador || '?'})`, d.id));
@@ -323,7 +322,6 @@ function setupGMTabs() {
     nav.addEventListener('click', (e) => {
         const btn = e.target.closest('.gm-tab-btn');
         if(btn) {
-            // Remove estilos ativos de todos
             document.querySelectorAll('.gm-tab-btn').forEach(b => {
                 b.classList.remove('active', 'text-amber-500', 'border-amber-500/50', 'bg-slate-800');
                 b.classList.add('text-slate-400', 'border-transparent', 'bg-slate-900');
@@ -331,10 +329,8 @@ function setupGMTabs() {
                      b.classList.remove('bg-red-950/20', 'text-red-500');
                 }
             });
-            // Esconde conteudos
             document.querySelectorAll('.gm-tab-content').forEach(c => c.classList.add('hidden'));
             
-            // Ativa clicado
             const isDanger = btn.dataset.tab === 'gm-perigo';
             btn.classList.add('active');
             btn.classList.remove('text-slate-400', 'border-transparent', 'bg-slate-900');
@@ -370,20 +366,21 @@ function renderGMItems() {
         const imgUrl = item.imagemUrl || "https://firebasestorage.googleapis.com/v0/b/kazenski-a1bb2.firebasestorage.app/o/atualizacoes_sistema%2Fenvio.png?alt=media";
         
         const div = document.createElement('div');
-        div.className = `aspect-square bg-slate-900 rounded-lg border-2 cursor-pointer relative overflow-hidden group transition-all transform hover:scale-105 ${isSelected ? 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'border-slate-700 hover:border-slate-500'}`;
+        // QUADRADINHO PEQUENO
+        div.className = `aspect-square bg-slate-900 rounded border cursor-pointer relative overflow-hidden group transition-all transform hover:scale-110 ${isSelected ? 'border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] z-10 scale-105' : 'border-slate-700 hover:border-slate-400'}`;
         div.title = item.nome;
         
         div.innerHTML = `
-            <img src="${imgUrl}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity">
-            <div class="absolute inset-0 flex items-center justify-center text-slate-600 text-2xl" style="display:none"><i class="fas fa-cube"></i></div>
-            <div class="absolute bottom-0 left-0 w-full bg-black/80 text-white text-[9px] text-center p-0.5 truncate">${escapeHTML(item.nome)}</div>
+            <img src="${imgUrl}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity">
+            <div class="absolute inset-0 flex items-center justify-center text-slate-600 text-lg" style="display:none"><i class="fas fa-cube"></i></div>
+            <div class="absolute bottom-0 left-0 w-full bg-black/90 text-white text-[8px] text-center p-0.5 truncate leading-none">${escapeHTML(item.nome)}</div>
         `;
 
         div.onclick = () => {
             gmState.selectedItemId = item.id;
             document.getElementById('gm-item-preview-name').textContent = item.nome;
             document.getElementById('gm-selected-item-id').value = item.id;
-            renderGMItems();
+            renderGMItems(); // Re-renderiza para atualizar o contorno visual
         };
 
         container.appendChild(div);
@@ -413,7 +410,6 @@ function renderGMSkills() {
         const classObj = gmState.caches.classes.find(c => c.id === classFilter);
         if (classObj && s.classe === classObj.nome) nameMatchLegacy = true;
 
-        // Verifica também nas restrições nativas da ficha de habilidades
         const restrictionClassMatch = Array.isArray(s.restricaoClasses) && s.restricaoClasses.includes(classFilter);
 
         return directMatch || arrayMatch || legacyArrayMatch || stringMatch || nameMatchLegacy || restrictionClassMatch;
@@ -429,20 +425,21 @@ function renderGMSkills() {
         const imgUrl = skill.imagemUrl || "https://placehold.co/400x400/1e293b/a1a1aa?text=Skill";
         
         const div = document.createElement('div');
-        div.className = `aspect-square bg-slate-900 rounded-full border-2 cursor-pointer relative overflow-hidden group transition-all transform hover:scale-105 ${isSelected ? 'border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]' : 'border-slate-700 hover:border-slate-500'}`;
+        // BOLINHA PEQUENA
+        div.className = `aspect-square bg-slate-900 rounded-full border cursor-pointer relative overflow-hidden group transition-all transform hover:scale-110 ${isSelected ? 'border-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)] z-10 scale-105' : 'border-slate-700 hover:border-slate-400'}`;
         div.title = `${skill.nome}\n(Custo: ${skill.gastoMpUso?.lvl1 || 0} MP)`;
         
         div.innerHTML = `
-            <img src="${imgUrl}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity">
-            <div class="absolute inset-0 flex items-center justify-center text-slate-600 text-2xl" style="display:none"><i class="fas fa-magic"></i></div>
-            <div class="absolute bottom-0 left-0 w-full bg-black/80 text-amber-400 font-bold text-[8px] text-center pb-1 pt-0.5 truncate">${escapeHTML(skill.nome)}</div>
+            <img src="${imgUrl}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity">
+            <div class="absolute inset-0 flex items-center justify-center text-slate-600 text-lg" style="display:none"><i class="fas fa-magic"></i></div>
+            <div class="absolute bottom-0 left-0 w-full bg-black/90 text-amber-400 font-bold text-[7px] text-center pb-1 pt-0.5 truncate leading-none">${escapeHTML(skill.nome)}</div>
         `;
 
         div.onclick = () => {
             gmState.selectedSkillId = skill.id;
             document.getElementById('gm-skill-preview-name').textContent = skill.nome;
             document.getElementById('gm-selected-skill-id').value = skill.id;
-            renderGMSkills();
+            renderGMSkills(); // Re-renderiza para atualizar o contorno visual
         };
 
         container.appendChild(div);
@@ -496,11 +493,22 @@ window.gmTools = {
         
         if(!skillId) return alert("Selecione uma magia na galeria.");
 
+        // PROMPT DE NÍVEL DA HABILIDADE
+        const levelInput = prompt(`Em que NÍVEL deseja conceder esta habilidade ao personagem?\n(Apenas números. Se cancelar, usará nível 1)`, "1");
+        
+        if (levelInput === null) return; // Se o GM cancelar o prompt, aborta a operação.
+
+        // Converte para número e garante que é válido (pelo menos nível 1)
+        let skillLevel = parseInt(levelInput, 10);
+        if (isNaN(skillLevel) || skillLevel < 1) {
+            skillLevel = 1;
+        }
+
         try {
             await updateDoc(doc(db, "rpg_fichas", gmState.targetId), {
-                [`habilidades.${skillId}`]: { nivel: 1, status: 'Concedido pelo Mestre' }
+                [`habilidades.${skillId}`]: { nivel: skillLevel, status: 'Concedido pelo Mestre' }
             });
-            alert("Conhecimento infundido na mente do alvo!");
+            alert(`Conhecimento infundido! A habilidade agora está no Nível ${skillLevel}.`);
         } catch(e) { alert("Falha: " + e.message); }
     },
 
