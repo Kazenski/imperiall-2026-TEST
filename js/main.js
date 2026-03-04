@@ -259,7 +259,7 @@ const MASTER_ARCHITECTURE = {
         { id: 'racas', icon: 'fa-dna', label: 'Raças', render: () => window.showTab('racas-content') },
         { id: 'classes', icon: 'fa-khanda', label: 'Classes', render: () => window.showTab('classes-content') },
         { id: 'subclasses', icon: 'fa-project-diagram', label: 'Subclasses', render: () => window.showTab('subclasses-content') },
-        { id: 'habilidades-regras', icon: 'fa-book-sparkles', label: 'Habilidades', render: () => window.showTab('habilidades-regras-content') },
+        { id: 'habilidades-regras', icon: 'fa-magic', label: 'Habilidades', render: () => window.showTab('habilidades-regras-content') },
         { id: 'blank', icon: 'fa-hammer', label: 'Profissões', render: () => window.renderBlankPage('Profissões') }
     ],
     'Ao Mestre': [
