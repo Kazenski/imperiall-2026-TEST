@@ -1487,8 +1487,7 @@
 		};
 
 
-
-
+        // --- APP SHELL (ORQUESTRADOR PRINCIPAL) ---
         const App = () => {
             const [user, setUser] = React.useState(null); 
             const [page, setPage] = React.useState('map');
@@ -1503,30 +1502,39 @@
 
             if (!user) return (<><div className="h-screen w-full bg-black flex items-center justify-center p-4 fixed inset-0 z-[9998]"><form onSubmit={login} className="glass-panel p-8 rounded-2xl w-full max-w-md text-center"><h1 className="text-2xl rpg-title text-amber-500 mb-6">Portal do Mestre</h1><input name="email" type="email" placeholder="Email" className="input-field mb-3" /><input name="pass" type="password" placeholder="Senha" className="input-field mb-6" /><button className="w-full bg-amber-700 hover:bg-amber-600 text-white py-3 rounded font-bold">Entrar</button></form></div>{modal && <Modal {...modal} onClose={() => setModal(null)} />}</>);
 
-            const NavItem = ({ id, icon, label }) => <button onClick={() => setPage(id)} className={`flex items-center gap-2 px-4 h-full border-b-2 transition ${page===id ? 'border-amber-500 text-amber-500 bg-slate-900' : 'border-transparent text-slate-400 hover:text-white hover:bg-slate-800'}`}><Icon name={icon} size={16} /> <span className="hidden md:inline font-bold text-xs uppercase">{label}</span></button>;
+            // CORREÇÃO AQUI: Removemos o 'hidden md:inline' para o texto nunca sumir, e adicionamos 'whitespace-nowrap'
+            const NavItem = ({ id, icon, label }) => (
+                <button onClick={() => setPage(id)} className={`flex items-center gap-2 px-4 h-full border-b-2 transition whitespace-nowrap ${page===id ? 'border-amber-500 text-amber-500 bg-slate-900' : 'border-transparent text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+                    <Icon name={icon} size={16} /> 
+                    <span className="font-bold text-[10px] md:text-xs uppercase tracking-wider">{label}</span>
+                </button>
+            );
             
             return (
-                <div className="flex flex-col min-h-screen w-full bg-slate-950 text-slate-200">
-                    <header className="bg-slate-950 border-b border-slate-800 flex justify-between items-center px-4 h-14 shrink-0 sticky top-0 z-50">
-                        <div className="flex items-center gap-2 text-amber-600 font-serif font-bold text-lg"><Icon name="crown" /> <span className="hidden md:inline tracking-widest">ARCHITECT</span></div>
-                        <nav className="flex h-full overflow-x-auto no-scrollbar">
+                <div className="flex flex-col min-h-screen w-full bg-slate-950 text-slate-200 overflow-hidden">
+                    {/* HEADER FORÇADO A APARECER E ROLAR */}
+                    <header className="bg-slate-950 border-b border-slate-800 flex items-center px-2 md:px-4 h-14 shrink-0 sticky top-0 z-[9999] w-full overflow-hidden shadow-xl">
+                        <div className="flex items-center gap-2 text-amber-600 font-serif font-bold text-sm lg:text-lg mr-4 shrink-0">
+                            <Icon name="crown" /> <span className="hidden lg:inline tracking-widest">ARCHITECT</span>
+                        </div>
+                        <nav className="flex h-full overflow-x-auto no-scrollbar flex-1 items-center justify-start custom-scroll-x">
                             <NavItem id="map" icon="map" label="Global" />
                             <NavItem id="sessions" icon="users" label="Sessões" />
-                            <NavItem id="sessionMap" icon="map" label="Mapa Sessões" /> {/* ABA NOVA */}
+                            <NavItem id="sessionMap" icon="map" label="Mapa Sessões" />
                             <NavItem id="dungeons" icon="castle" label="Dungeons" />
                             <NavItem id="locations" icon="land-plot" label="Locais" />
                             <NavItem id="routes" icon="route" label="Rotas" />
-                            {/* <NavItem id="groups" icon="flag" label="Grupos" /> Ocultado conforme Ponto 6 */}
                             <NavItem id="events" icon="zap" label="Eventos" />
                             <NavItem id="isolated" icon="sword" label="Encontros" />
                             <NavItem id="time" icon="hourglass" label="Tempo" />
                         </nav>
-                        <button onClick={() => auth.signOut()} className="text-red-500 hover:bg-slate-800 p-2 rounded"><Icon name="log-out" size={18} /></button>
+                        <button onClick={() => auth.signOut()} className="text-red-500 hover:bg-slate-800 p-2 rounded ml-2 shrink-0"><Icon name="log-out" size={18} /></button>
                     </header>
-                    <main className="flex-1 relative flex flex-col w-full">
+                    
+                    <main className="flex-1 relative flex flex-col w-full overflow-hidden">
                         {page === 'map' && <GlobalMapModule />}
                         {page === 'sessions' && <SessionsModule showAlert={showAlert} showConfirm={showConfirm} />}
-                        {page === 'sessionMap' && <SessionMapModule showAlert={showAlert} />} {/* ABA NOVA */}
+                        {page === 'sessionMap' && <SessionMapModule showAlert={showAlert} />}
                         {page === 'locations' && <LocationsModule />}
                         {page === 'dungeons' && <DungeonsModule showAlert={showAlert} showConfirm={showConfirm} showModal={showModal} />}
                         {page === 'routes' && <RoutesModule />}
@@ -1540,8 +1548,10 @@
             );
         };
         
+        // Mantém as linhas de renderização
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
+        
 
     </script>
 
