@@ -39,6 +39,7 @@ import { renderCadastroMonstrosTab } from './aoMestre/cadastroMonstrosSeres.js';
 import { renderCadastroItensTab } from './aoMestre/cadastroItens.js';
 import { renderLorePersonagensTab } from './aoMestre/lorePersonagens.js';
 import { renderBackofficeTab } from './admin/backoffice.js';
+import { renderBackupsTab } from './admin/backups.js';
 
 
 const dom = {};
@@ -258,6 +259,13 @@ window.showTab = function(tabId) {
         return;
     }
 
+    // Aba "Gerenciador de Backups" (Admin)
+    if (tabId === 'backups-content' || tabId === 'backups') {
+        target.innerHTML = ''; 
+        if (typeof renderBackupsTab === 'function') renderBackupsTab();
+        return;
+    }
+
     if (tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
@@ -329,6 +337,7 @@ const MASTER_ARCHITECTURE = {
     ],
     'Painel Admin': [
         { id: 'backoffice', icon: 'fa-database', label: 'Backoffice', render: () => window.showTab('backoffice-content'), requiresAdmin: true }
+        { id: 'backups', icon: 'fa-server', label: 'Backups', render: () => window.showTab('backups-content'), requiresAdmin: true }
     ],
     'Ao Jogador': [
         { id: 'simular-ficha', icon: 'fa-flask', label: 'Simular Ficha', render: () => window.showTab('simular-ficha-content') },
