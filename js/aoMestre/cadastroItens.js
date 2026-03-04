@@ -1,8 +1,9 @@
 import { db, storage } from '../core/firebase.js';
 import { collection, getDocs, doc, setDoc, updateDoc, serverTimestamp, orderBy, query, writeBatch, increment } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
-import { escapeHTML } from '../core/utils.js';
+import { escapeHTML, compressImage } from '../core/utils.js';
 import { COINS, BONUS_LIST, POWER_RANGES } from '../core/state.js'; // IMPORTAÇÃO DIRETA DO CORE
+
 
 // --- CONFIGURAÇÕES DE BANCO DE DADOS ---
 const COLLECTION_EQUIPAMENTOS = 'rpg_itensCadastrados';
@@ -472,7 +473,6 @@ function attachFormListeners(type) {
                 data.durabilidade = getNum('item-dur');
                 data.slot_equipavel_id = getVal('item-tipo');
                 
-                // Extrai os Bônus a partir da CONSTANTE GLOBAL
                 Object.entries(BONUS_LIST).forEach(([cat, tipos]) => {
                     tipos.forEach(tipo => {
                         const key = `bonus${cat}${tipo}ItemBase`;
@@ -506,7 +506,8 @@ function attachFormListeners(type) {
                         try { await deleteObject(ref(storage, finalUrl)); } catch(e){}
                     }
                     const file = fileInput.files[0];
-                    const blob = await window.compressIcon(file);
+                    // USO DA FUNÇÃO IMPORTADA (Como é um ícone, 150x150, qualidade 0.6 é o ideal)
+                    const blob = await compressImage(file, 150, 150, 0.6);
                     const path = isEquip ? STORAGE_PATH_EQUIP : STORAGE_PATH_MOCHILA;
                     const docId = gmState.selectedItem?.id || Date.now().toString(); 
                     const storageRef = ref(storage, `${path}${docId}_${Date.now()}.jpg`);
@@ -536,7 +537,6 @@ function attachFormListeners(type) {
                     docRef = newDoc;
                 }
 
-                // Backup Seguro
                 await setDoc(doc(db, backupColName, docRef.id), { ...data, idOriginal: docRef.id }, { merge: true });
 
                 btn.innerHTML = '<i class="fas fa-check mr-2"></i> Salvo!';
@@ -544,7 +544,7 @@ function attachFormListeners(type) {
                 
                 setTimeout(() => {
                     gmState.selectedItem = null;
-                    loadInitialData(); // recarrega a vista e volta pra lista
+                    loadInitialData(); 
                 }, 1000);
 
             } catch(e) {

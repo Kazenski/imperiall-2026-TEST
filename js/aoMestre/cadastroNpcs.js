@@ -1,7 +1,7 @@
 import { db, storage } from '../core/firebase.js';
 import { collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp, orderBy, query } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
-import { escapeHTML } from '../core/utils.js';
+import { escapeHTML, compressImage } from '../core/utils.js';
 
 const COLLECTION_NPCS = 'rpg_Npcs';
 let npcList = [];
@@ -253,13 +253,12 @@ window.cadastroNpcs = {
 
         const docId = editingNpcId || doc(collection(db, COLLECTION_NPCS)).id;
         
-        // Coleta de Dados Base
         const getVal = id => document.getElementById(id).value;
         const getNum = id => Number(document.getElementById(id).value) || 0;
 
         const dataToSave = {
             nome: nome,
-            tipoDeSer: "NPCs", // Fixo
+            tipoDeSer: "NPCs",
             historia: getVal('npc-historia'),
             caracteristicasFisicas: getVal('npc-fisico'),
             curiosidades: getVal('npc-curiosidades'),
@@ -281,7 +280,6 @@ window.cadastroNpcs = {
 
         if (!editingNpcId) dataToSave.criadoEm = serverTimestamp();
 
-        // Processamento Mágico de Imagens (Upload)
         const imageUrls = {};
         const uploadPromises = [];
 
@@ -294,12 +292,11 @@ window.cadastroNpcs = {
                 const file = fileInput.files[0];
                 const uploadTask = async () => {
                     try {
-                        // Deleta antiga se houver
                         if (existingUrl && existingUrl.includes('firebasestorage')) {
                             try { await deleteObject(ref(storage, existingUrl)); } catch(e){}
                         }
-                        // Comprime e Envia
-                        const compressedBlob = await window.compressImage(file, 400, 400, 0.7);
+                        // USO DA FUNÇÃO IMPORTADA (Sem window.)
+                        const compressedBlob = await compressImage(file, 400, 400, 0.7);
                         const storageRef = ref(storage, `imagens_npcs/${docId}/${key}_${Date.now()}.jpg`);
                         await uploadBytes(storageRef, compressedBlob);
                         imageUrls[key] = await getDownloadURL(storageRef);
@@ -309,7 +306,6 @@ window.cadastroNpcs = {
                 };
                 uploadPromises.push(uploadTask());
             } else if (existingUrl) {
-                // Mantém a imagem que já lá estava
                 imageUrls[key] = existingUrl;
             }
         }
@@ -328,7 +324,7 @@ window.cadastroNpcs = {
                 btn.disabled = false;
                 btn.classList.replace('bg-green-500', 'bg-emerald-600');
                 window.cadastroNpcs.closeEditor();
-                loadNpcs(); // Recarrega a grelha
+                loadNpcs(); 
             }, 1000);
 
         } catch (e) {

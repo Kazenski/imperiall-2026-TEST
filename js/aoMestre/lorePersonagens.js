@@ -51,16 +51,16 @@ async function fetchLoreData() {
     const selectEl = document.getElementById('lore-session-filter');
     
     try {
-        // Busca Paralela Otimizada (Apenas as coleções necessárias)
-        const [charSnap, racaSnap, classeSnap, subClasseSnap, xpDoc] = await Promise.all([
+        // Busca Paralela Otimizada adicionando a coleção rpg_sessions
+        const [charSnap, racaSnap, classeSnap, subClasseSnap, xpDoc, sessionsSnap] = await Promise.all([
             getDocs(query(collection(db, 'rpg_fichas'), orderBy("nome"))),
             getDocs(collection(db, 'rpg_racas')),
             getDocs(collection(db, 'rpg_classes')),
             getDocs(collection(db, 'rpg_subclasses')),
-            getDoc(doc(db, "rpg_configuracoes", "tabela_xp"))
+            getDoc(doc(db, "rpg_configuracoes", "tabela_xp")),
+            getDocs(collection(db, 'rpg_sessions')) // <--- BUSCA AS SESSÕES AQUI
         ]);
 
-        // Cria Caches de Nomes O(1)
         const racaCache = {};
         racaSnap.forEach(d => racaCache[d.id] = d.data().nome);
         
@@ -72,24 +72,33 @@ async function fetchLoreData() {
         
         const tabelaXP = xpDoc.exists() ? xpDoc.data() : null;
 
-        // Função de cálculo de nível baseada na tabela
+        // Converte as sessões para uma array de objetos para fácil acesso
+        const allSessions = sessionsSnap.docs.map(s => ({ id: s.id, ...s.data() }));
+
         const calculateLevel = (xp) => {
             if (!tabelaXP?.niveis) return 1;
             const niveisOrdenados = Object.keys(tabelaXP.niveis).map(Number).sort((a, b) => b - a);
             return niveisOrdenados.find(lvl => xp >= (tabelaXP.niveis[String(lvl)]?.experienciaParaProximoNivel || 0)) || 1;
         };
 
-        // Popula Lista Principal extraindo o campo 'sessao'
         const sessionsSet = new Set();
         
         allCharacters = charSnap.docs.map(docSnap => {
             const data = docSnap.data();
+            const charId = docSnap.id;
             const lvl = calculateLevel(data.experienciapersonagemBase || 0);
-            const s = (data.sessao || '').trim();
-            if (s) sessionsSet.add(s);
+            
+            // LÓGICA DE RELACIONAMENTO:
+            // Procura quais sessões possuem o ID desta ficha dentro da array 'playerIds'
+            const charSessions = allSessions
+                .filter(session => session.playerIds && Array.isArray(session.playerIds) && session.playerIds.includes(charId))
+                .map(session => session.nome || session.id); // Pega o nome da sessão (ou ID se não houver nome)
+
+            // Adiciona as sessões deste jogador ao Set global do filtro
+            charSessions.forEach(s => sessionsSet.add(s));
 
             return {
-                id: docSnap.id,
+                id: charId,
                 nome: data.nome || 'Desconhecido',
                 imageUrls: data.imageUrls || {},
                 historia: data.historia || '',
@@ -97,11 +106,11 @@ async function fetchLoreData() {
                 racaName: racaCache[data.racaId] || 'Raça Oculta',
                 classeName: classeCache[data.classeId] || 'Sem Classe',
                 subclasseName: subClasseCache[data.subclasseId] || '',
-                sessao: s
+                sessoes: charSessions // Array com todas as sessões que ele participa
             };
         });
 
-        // Configura o Dropdown de Sessões
+        // Monta o select do filtro com as sessões únicas encontradas
         availableSessions = Array.from(sessionsSet).sort();
         if (selectEl) {
             let options = `<option value="" class="bg-slate-900 text-amber-500">Todas as Sessões</option>`;
@@ -126,8 +135,10 @@ function renderLoreList() {
     if (!container) return;
 
     let filtered = allCharacters;
+    
     if (currentSessionFilter) {
-        filtered = allCharacters.filter(c => c.sessao === currentSessionFilter);
+        // Filtra personagens cuja array "sessoes" inclua a sessão escolhida no select
+        filtered = allCharacters.filter(c => c.sessoes.includes(currentSessionFilter));
     }
 
     if (filtered.length === 0) {
@@ -147,9 +158,7 @@ function renderLoreList() {
 function generateLoreCard(char) {
     const imgUrl = char.imageUrls?.imagem1 || 'https://placehold.co/400x400/1e293b/a1a1aa?text=Desconhecido';
     
-    // Tratamento seguro da história para não quebrar HTML
     const rawHistory = char.historia || 'As brumas do tempo escondem o passado deste aventureiro...';
-    // Substitui quebras de linha reais por tags <br> para manter a formatação do texto no HTML final
     const formattedHistory = escapeHTML(rawHistory).replace(/\n/g, '<br>');
 
     let subHtml = '';
@@ -157,8 +166,10 @@ function generateLoreCard(char) {
         subHtml = `<span class="bg-purple-900/40 border border-purple-700/50 text-purple-300 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-widest shadow-sm">${escapeHTML(char.subclasseName)}</span>`;
     }
 
-    const sessionHtml = char.sessao 
-        ? `<div class="absolute top-6 right-6 bg-slate-900/80 border border-amber-500/30 px-3 py-1 rounded text-[10px] text-amber-500 font-bold uppercase tracking-widest shadow-lg backdrop-blur-sm z-20"><i class="fas fa-bookmark mr-1"></i> ${escapeHTML(char.sessao)}</div>`
+    // Se ele participar de mais de uma sessão, junta elas com vírgula. Se não, mostra só uma.
+    const sessionText = char.sessoes.join(', ');
+    const sessionHtml = sessionText 
+        ? `<div class="absolute top-6 right-6 bg-slate-900/80 border border-amber-500/30 px-3 py-1 rounded text-[10px] text-amber-500 font-bold uppercase tracking-widest shadow-lg backdrop-blur-sm z-20"><i class="fas fa-bookmark mr-1"></i> ${escapeHTML(sessionText)}</div>`
         : '';
 
     return `
