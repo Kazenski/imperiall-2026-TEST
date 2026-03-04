@@ -1,7 +1,8 @@
 import { db, storage } from '../core/firebase.js';
 import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, orderBy, query, arrayUnion, arrayRemove, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
-import { escapeHTML, compressImage, BONUS_LIST } from '../core/utils.js';
+import { escapeHTML, compressImage } from '../core/utils.js';
+import { BONUS_LIST } from '../core/state.js';
 
 // --- ESTADO GLOBAL DO BACKOFFICE ---
 let boState = {
