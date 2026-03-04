@@ -30,6 +30,7 @@ import { renderLendasMundoTab } from './oMundo/lendasMundo.js';
 import { renderNpcsGeralTab } from './oMundo/npcsGeral.js';
 import { renderRacasTab } from './manualRegras/racas.js';
 import { renderClassesTab } from './manualRegras/classes.js';
+import { renderSubclassesTab } from './manualRegras/subclasses.js';
 
 const dom = {};
 document.querySelectorAll('[id]').forEach(el => dom[el.id.replace(/-/g, '_')] = el);
@@ -185,6 +186,13 @@ window.showTab = function(tabId) {
         return;
     }
 
+    // Aba "Subclasses"
+    if (tabId === 'subclasses-content' || tabId === 'subclasses') {
+        target.innerHTML = ''; 
+        if (typeof renderSubclassesTab === 'function') renderSubclassesTab();
+        return;
+    }
+
     if (tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
@@ -242,7 +250,7 @@ const MASTER_ARCHITECTURE = {
         { id: 'blank', icon: 'fa-book', label: 'Manual', render: () => window.renderBlankPage('Manual') },
         { id: 'racas', icon: 'fa-dna', label: 'Raças', render: () => window.showTab('racas-content') },
         { id: 'classes', icon: 'fa-khanda', label: 'Classes', render: () => window.showTab('classes-content') },
-        { id: 'blank', icon: 'fa-mask', label: 'Subclasses', render: () => window.renderBlankPage('Subclasses') },
+        { id: 'subclasses', icon: 'fa-project-diagram', label: 'Subclasses', render: () => window.showTab('subclasses-content') },
         { id: 'blank', icon: 'fa-fire', label: 'Habilidades', render: () => window.renderBlankPage('Habilidades') },
         { id: 'blank', icon: 'fa-hammer', label: 'Profissões', render: () => window.renderBlankPage('Profissões') }
     ],
