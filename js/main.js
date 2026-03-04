@@ -33,6 +33,7 @@ import { renderClassesTab } from './manualRegras/classes.js';
 import { renderSubclassesTab } from './manualRegras/subclasses.js';
 import { renderHabilidadesTab } from './manualRegras/habilidades.js';
 import { renderProfissoesTab } from './manualRegras/profissoes.js';
+import { renderComandosMestreTab } from './aoMestre/comandos.js';
 
 const dom = {};
 document.querySelectorAll('[id]').forEach(el => dom[el.id.replace(/-/g, '_')] = el);
@@ -209,6 +210,13 @@ window.showTab = function(tabId) {
         return;
     }
 
+    // --- NOVA ABA: COMANDOS DO MESTRE ---
+    if (tabId === 'comandos-mestre-content' || tabId === 'comandos-mestre') {
+        target.innerHTML = ''; 
+        if (typeof renderComandosMestreTab === 'function') renderComandosMestreTab();
+        return;
+    }
+
     if (tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
@@ -271,7 +279,7 @@ const MASTER_ARCHITECTURE = {
         { id: 'profissoes-regras', icon: 'fa-hammer', label: 'Profissões', render: () => window.showTab('profissoes-regras-content') }
     ],
     'Ao Mestre': [
-        { id: 'blank', icon: 'fa-terminal', label: 'Comandos de jogo', render: () => window.renderBlankPage('Comandos de jogo') },
+        { id: 'comandos-mestre', icon: 'fa-crown', label: 'Comandos Mestre', render: () => window.showTab('comandos-mestre-content') },
         { id: 'blank', icon: 'fa-user-plus', label: 'Cad. NPCs', render: () => window.renderBlankPage('Cad. NPCs') },
         { id: 'blank', icon: 'fa-tools', label: 'Cad. Crafts', render: () => window.renderBlankPage('Cad. Crafts') },
         { id: 'blank', icon: 'fa-dragon', label: 'Cad. Monstros/Seres', render: () => window.renderBlankPage('Cad. Monstros/Seres') },
@@ -416,6 +424,45 @@ onAuthStateChanged(auth, async (user) => {
         globalState.currentUser = user;
         globalState.isAdmin = user.email === ADMIN_EMAIL;
         
+        // --- 1. CONTROLE DE ACESSO DO MESTRE VIA ROLE DO FIREBASE ---
+        const userRef = doc(db, 'rpg_users', user.uid);
+        let role = 'jogador'; // Padrão de segurança
+        
+        try {
+            const userSnap = await getDoc(userRef);
+            if (userSnap.exists()) {
+                role = userSnap.data().role || 'jogador';
+                globalState.userRole = role; // Guarda no estado global
+            }
+        } catch (err) {
+            console.error("Erro ao buscar permissões do utilizador:", err);
+        }
+
+        // Manipula visualmente o botão do topo "Ao Mestre"
+        const btnAoMestre = Array.from(document.querySelectorAll('.master-nav-btn')).find(b => b.textContent.includes('Ao Mestre'));
+        
+        if (btnAoMestre) {
+            if (role === 'mestre' || role === 'admin') {
+                btnAoMestre.classList.remove('hidden'); // Exibe o botão
+                
+                // Remove as cores padrões cinzentas/âmbar
+                btnAoMestre.classList.remove('text-slate-300', 'hover:bg-slate-700', 'hover:text-amber-500');
+                
+                // Aplica o tema Vermelho imponente de Mestre
+                btnAoMestre.classList.add('text-red-500', 'hover:bg-red-950/50', 'hover:text-red-400');
+                
+                // Se for Admin Supremo, adiciona o brilho dourado extra
+                if (role === 'admin') {
+                    btnAoMestre.classList.add('shadow-[0_0_15px_rgba(245,158,11,0.6)]', 'border-b', 'border-amber-500/50');
+                } else {
+                    btnAoMestre.classList.remove('shadow-[0_0_15px_rgba(245,158,11,0.6)]', 'border-b', 'border-amber-500/50');
+                }
+            } else {
+                btnAoMestre.classList.add('hidden'); // Jogadores normais não veem este botão
+            }
+        }
+        // --- FIM DA VERIFICAÇÃO DE ACESSO ---
+
         if (dom.auth_view) dom.auth_view.classList.add('hidden');
         if (dom.app_view) dom.app_view.classList.remove('hidden');
         if (dom.app_view) dom.app_view.classList.add('flex');
