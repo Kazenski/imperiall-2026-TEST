@@ -28,6 +28,8 @@ import { renderConhecaMundoTab } from './oMundo/conhecaMundo.js';
 import { renderOsDeusesTab } from './oMundo/osDeuses.js';
 import { renderLendasMundoTab } from './oMundo/lendasMundo.js';
 import { renderNpcsGeralTab } from './oMundo/npcsGeral.js';
+import { renderRacasTab } from './manualRegras/racas.js';
+import { renderClassesTab } from './manualRegras/classes.js';
 
 const dom = {};
 document.querySelectorAll('[id]').forEach(el => dom[el.id.replace(/-/g, '_')] = el);
@@ -169,6 +171,20 @@ window.showTab = function(tabId) {
         return;
     }
 
+    // Aba "Raças"
+    if (tabId === 'racas-content' || tabId === 'racas') {
+        target.innerHTML = ''; 
+        if (typeof renderRacasTab === 'function') renderRacasTab();
+        return;
+    }
+
+    // Aba "Classes"
+    if (tabId === 'classes-content' || tabId === 'classes') {
+        target.innerHTML = ''; 
+        if (typeof renderClassesTab === 'function') renderClassesTab();
+        return;
+    }
+
     if (tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
@@ -224,8 +240,8 @@ const MASTER_ARCHITECTURE = {
     ],
     'Manual e Regras': [
         { id: 'blank', icon: 'fa-book', label: 'Manual', render: () => window.renderBlankPage('Manual') },
-        { id: 'blank', icon: 'fa-dna', label: 'Raças', render: () => window.renderBlankPage('Raças') },
-        { id: 'blank', icon: 'fa-theater-masks', label: 'Classes', render: () => window.renderBlankPage('Classes') },
+        { id: 'racas', icon: 'fa-dna', label: 'Raças', render: () => window.showTab('racas-content') },
+        { id: 'classes', icon: 'fa-khanda', label: 'Classes', render: () => window.showTab('classes-content') },
         { id: 'blank', icon: 'fa-mask', label: 'Subclasses', render: () => window.renderBlankPage('Subclasses') },
         { id: 'blank', icon: 'fa-fire', label: 'Habilidades', render: () => window.renderBlankPage('Habilidades') },
         { id: 'blank', icon: 'fa-hammer', label: 'Profissões', render: () => window.renderBlankPage('Profissões') }
