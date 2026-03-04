@@ -3,63 +3,34 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RPG World Architect | God Mode</title>
-    
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <title>RPG World Architect</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
     <script src="https://unpkg.com/lucide@latest"></script>
-
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #020617; color: #e2e8f0; margin: 0; overflow: hidden; }
-        h1, h2, h3, h4, h5, h6, .font-cinzel { font-family: 'Cinzel', serif; }
-        
-        /* Scrollbar Imperiall */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #d97706; }
-
-        /* Leaflet Dark Theme Overrides */
-        .leaflet-container { background: #020617; z-index: 1; }
-        .leaflet-popup-content-wrapper { background: #1e293b; color: white; border: 1px solid #334155; border-radius: 0.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.8); }
-        .leaflet-popup-tip { background: #1e293b; }
-        .custom-div-icon { background: transparent; border: none; }
-        
-        /* Utilitários Tailwind Customizados */
-        .input-field { width: 100%; background-color: #1e293b; border: 1px solid #334155; color: white; padding: 0.5rem; border-radius: 0.375rem; font-size: 0.875rem; outline: none; transition: border-color 0.2s; }
-        .input-field:focus { border-color: #f59e0b; }
-        .input-label { display: block; font-size: 0.65rem; text-transform: uppercase; color: #94a3b8; font-weight: bold; margin-bottom: 0.25rem; letter-spacing: 0.05em; }
-    </style>
+    
+    <link rel="stylesheet" href="style.css" />
+    
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 </head>
-<body>
-    <div id="root" class="h-screen w-screen"></div>
+<body class="bg-[#020617] text-slate-200 font-sans h-screen w-screen overflow-hidden godmode-body">
+    
+    <div id="root" class="h-full w-full"></div>
 
-    <script type="text/babel">
-        // --- 1. FIREBASE SETUP ---
-        const firebaseConfig = { 
-            apiKey: "AIzaSyDLvrHJrPvmqR5PTbn4B9FZO2nIt0iTTU0", 
-            authDomain: "kazenski-a1bb2.firebaseapp.com", 
-            projectId: "kazenski-a1bb2", 
-            storageBucket: "kazenski-a1bb2.firebasestorage.app" 
-        };
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-        const { increment, serverTimestamp } = firebase.firestore.FieldValue;
+    <script type="module">
+        // Importando do ambiente global do HTML
+        const React = window.React;
+        const ReactDOM = window.ReactDOM;
+        const e = React.createElement;
 
+        // IMPORTANTE: Importando as suas configurações globais do Firebase
+        import { db, auth } from './js/core/firebase.js';
+        import { collection, doc, onSnapshot, updateDoc, addDoc, serverTimestamp, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        
         // --- 2. CONSTANTES ---
         const WORLD_MAP_URL = "https://firebasestorage.googleapis.com/v0/b/kazenski-a1bb2.firebasestorage.app/o/imagens_rpg%2FJna1SPdTpRYoo5jGrzZUem.jpg?alt=media";
         const MAP_W = 2048; const MAP_H = 1536; const HEX_RADIUS = 10;
@@ -921,7 +892,7 @@
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        root.render(e(MapaMundialApp));
 
     </script>
 </body>

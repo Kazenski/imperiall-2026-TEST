@@ -1500,3 +1500,21 @@ input[type=range]::-webkit-slider-runnable-track {
 .attr-row-grid input:focus { border-color: #0ea5e9; }
 @keyframes flashSuccess { 0% { background-color: #10b981; } 100% { background-color: #0ea5e9; } }
 .flash-success { animation: flashSuccess 0.5s ease-out; }
+
+/* ==========================================
+   MAPA MUNDIAL GOD MODE (Iframe)
+   ========================================== */
+.godmode-body { overflow: hidden !important; }
+.godmode-body ::-webkit-scrollbar { width: 8px; height: 8px; }
+.godmode-body ::-webkit-scrollbar-track { background: #0f172a; }
+.godmode-body ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+.godmode-body ::-webkit-scrollbar-thumb:hover { background: #f59e0b; }
+
+.godmode-body .leaflet-container { background: #020617; z-index: 1; }
+.godmode-body .leaflet-popup-content-wrapper { background: #1e293b; color: white; border: 1px solid #334155; border-radius: 0.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.8); }
+.godmode-body .leaflet-popup-tip { background: #1e293b; }
+.godmode-body .custom-div-icon { background: transparent; border: none; }
+
+.godmode-body .input-field { width: 100%; background-color: #1e293b; border: 1px solid #334155; color: white; padding: 0.5rem; border-radius: 0.375rem; font-size: 0.875rem; outline: none; transition: border-color 0.2s; }
+.godmode-body .input-field:focus { border-color: #f59e0b; }
+.godmode-body .input-label { display: block; font-size: 0.65rem; text-transform: uppercase; color: #94a3b8; font-weight: bold; margin-bottom: 0.25rem; letter-spacing: 0.05em; }
