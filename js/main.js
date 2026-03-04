@@ -37,6 +37,7 @@ import { renderComandosMestreTab } from './aoMestre/comandos.js';
 import { renderCadastroNpcsTab } from './aoMestre/cadastroNpcs.js';
 import { renderCadastroMonstrosTab } from './aoMestre/cadastroMonstrosSeres.js';
 import { renderCadastroItensTab } from './aoMestre/cadastroItens.js';
+import { renderLorePersonagensTab } from './aoMestre/lorePersonagens.js';
 
 const dom = {};
 document.querySelectorAll('[id]').forEach(el => dom[el.id.replace(/-/g, '_')] = el);
@@ -241,6 +242,13 @@ window.showTab = function(tabId) {
         return;
     }
 
+    // Aba "Lore Personagens"
+    if (tabId === 'lore-personagens-content' || tabId === 'lore-personagens') {
+        target.innerHTML = ''; 
+        if (typeof renderLorePersonagensTab === 'function') renderLorePersonagensTab();
+        return;
+    }
+
     if (tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
@@ -308,7 +316,7 @@ const MASTER_ARCHITECTURE = {
         //{ id: 'blank', icon: 'fa-tools', label: 'Cad. Crafts', render: () => window.renderBlankPage('Cad. Crafts') },
         { id: 'cadastro-monstros', icon: 'fa-dragon', label: 'Cad. Monstros', render: () => window.showTab('cadastro-monstros-content') },
         { id: 'cadastro-itens', icon: 'fa-gem', label: 'Cad. Itens', render: () => window.showTab('cadastro-itens-content') },
-        { id: 'blank', icon: 'fa-scroll', label: 'Lore personagens', render: () => window.renderBlankPage('Lore personagens') }
+        { id: 'lore-personagens', icon: 'fa-scroll', label: 'Lore Personagens', render: () => window.showTab('lore-personagens-content') }
     ],
     'Ao Jogador': [
         { id: 'simular-ficha', icon: 'fa-flask', label: 'Simular Ficha', render: () => window.showTab('simular-ficha-content') },
