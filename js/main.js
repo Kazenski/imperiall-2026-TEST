@@ -42,6 +42,7 @@ import { renderBackofficeTab } from './admin/backoffice.js';
 import { renderBackupsTab } from './admin/backups.js';
 import { renderCadastroConstelacoesTab } from './admin/cadastroConstelacoes.js'; 
 import { renderCadastroCraftTab } from './admin/cadastroCraft.js';
+import { renderCadastroDeusesTab } from './admin/cadastroDeuses.js';
 
 
 const dom = {};
@@ -282,6 +283,13 @@ window.showTab = function(tabId) {
         return;
     }
 
+    // Aba "Gerenciador de Deuses" (Admin)
+    if (tabId === 'cadastro-deuses-content' || tabId === 'cadastro-deuses') {
+        target.innerHTML = ''; 
+        if (typeof renderCadastroDeusesTab === 'function') renderCadastroDeusesTab();
+        return;
+    }
+
     if (tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
@@ -355,7 +363,8 @@ const MASTER_ARCHITECTURE = {
         { id: 'backoffice', icon: 'fa-database', label: 'Backoffice', render: () => window.showTab('backoffice-content'), requiresAdmin: true },
         { id: 'backups', icon: 'fa-server', label: 'Backups', render: () => window.showTab('backups-content'), requiresAdmin: true },
         { id: 'cadastro-constelacoes', icon: 'fa-project-diagram', label: 'Matriz de Estrelas', render: () => window.showTab('cadastro-constelacoes-content'), requiresAdmin: true },
-        { id: 'cadastro-craft', icon: 'fa-tools', label: 'Engenharia Craft', render: () => window.showTab('cadastro-craft-content'), requiresAdmin: true }
+        { id: 'cadastro-craft', icon: 'fa-tools', label: 'Engenharia Craft', render: () => window.showTab('cadastro-craft-content'), requiresAdmin: true },
+        { id: 'cadastro-deuses', icon: 'fa-om', label: 'Panteão Divino', render: () => window.showTab('cadastro-deuses-content'), requiresAdmin: true }
     ],
     'Ao Jogador': [
         { id: 'simular-ficha', icon: 'fa-flask', label: 'Simular Ficha', render: () => window.showTab('simular-ficha-content') },
