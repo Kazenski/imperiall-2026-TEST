@@ -43,6 +43,7 @@ import { renderBackupsTab } from './admin/backups.js';
 import { renderCadastroConstelacoesTab } from './admin/cadastroConstelacoes.js'; 
 import { renderCadastroCraftTab } from './admin/cadastroCraft.js';
 import { renderCadastroDeusesTab } from './admin/cadastroDeuses.js';
+import { renderCadastroEgoTab } from './admin/cadastroEgo.js';
 
 
 const dom = {};
@@ -290,6 +291,13 @@ window.showTab = function(tabId) {
         return;
     }
 
+    // Aba "Forja Espiritual / EGO" (Admin)
+    if (tabId === 'cadastro-ego-content' || tabId === 'cadastro-ego') {
+        target.innerHTML = ''; 
+        if (typeof renderCadastroEgoTab === 'function') renderCadastroEgoTab();
+        return;
+    }
+
     if (tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
@@ -364,7 +372,8 @@ const MASTER_ARCHITECTURE = {
         { id: 'backups', icon: 'fa-server', label: 'Backups', render: () => window.showTab('backups-content'), requiresAdmin: true },
         { id: 'cadastro-constelacoes', icon: 'fa-project-diagram', label: 'Matriz de Estrelas', render: () => window.showTab('cadastro-constelacoes-content'), requiresAdmin: true },
         { id: 'cadastro-craft', icon: 'fa-tools', label: 'Engenharia Craft', render: () => window.showTab('cadastro-craft-content'), requiresAdmin: true },
-        { id: 'cadastro-deuses', icon: 'fa-om', label: 'Panteão Divino', render: () => window.showTab('cadastro-deuses-content'), requiresAdmin: true }
+        { id: 'cadastro-deuses', icon: 'fa-om', label: 'Panteão Divino', render: () => window.showTab('cadastro-deuses-content'), requiresAdmin: true },
+        { id: 'cadastro-ego', icon: 'fa-gavel', label: 'Forja Espiritual', render: () => window.showTab('cadastro-ego-content'), requiresAdmin: true }
     ],
     'Ao Jogador': [
         { id: 'simular-ficha', icon: 'fa-flask', label: 'Simular Ficha', render: () => window.showTab('simular-ficha-content') },
