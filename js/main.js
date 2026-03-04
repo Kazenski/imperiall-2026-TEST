@@ -32,6 +32,7 @@ import { renderRacasTab } from './manualRegras/racas.js';
 import { renderClassesTab } from './manualRegras/classes.js';
 import { renderSubclassesTab } from './manualRegras/subclasses.js';
 import { renderHabilidadesTab } from './manualRegras/habilidades.js';
+import { renderProfissoesTab } from './manualRegras/profissoes.js';
 
 const dom = {};
 document.querySelectorAll('[id]').forEach(el => dom[el.id.replace(/-/g, '_')] = el);
@@ -201,6 +202,13 @@ window.showTab = function(tabId) {
         return;
     }
 
+    // Aba "Profissões"
+    if (tabId === 'profissoes-regras-content' || tabId === 'profissoes-regras') {
+        target.innerHTML = ''; 
+        if (typeof renderProfissoesTab === 'function') renderProfissoesTab();
+        return;
+    }
+
     if (tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
@@ -260,7 +268,7 @@ const MASTER_ARCHITECTURE = {
         { id: 'classes', icon: 'fa-khanda', label: 'Classes', render: () => window.showTab('classes-content') },
         { id: 'subclasses', icon: 'fa-project-diagram', label: 'Subclasses', render: () => window.showTab('subclasses-content') },
         { id: 'habilidades-regras', icon: 'fa-book-open', label: 'Habilidades', render: () => window.showTab('habilidades-regras-content') },
-        { id: 'blank', icon: 'fa-hammer', label: 'Profissões', render: () => window.renderBlankPage('Profissões') }
+        { id: 'profissoes-regras', icon: 'fa-hammer', label: 'Profissões', render: () => window.showTab('profissoes-regras-content') }
     ],
     'Ao Mestre': [
         { id: 'blank', icon: 'fa-terminal', label: 'Comandos de jogo', render: () => window.renderBlankPage('Comandos de jogo') },
