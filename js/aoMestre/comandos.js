@@ -1,8 +1,7 @@
 import { db } from '../core/firebase.js';
 import { collection, getDocs, doc, onSnapshot, updateDoc, deleteDoc, increment, deleteField, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { escapeHTML } from '../core/utils.js';
-
-const COINS = { BRONZE: 'fidZh2ozLmMfPvJ1Cez4', SILVER: 'DVnZSPTXYLZOCuQsvJ77', GOLD: 'TkJZyIyySo9goVil3EDy', ORB: 'zWRejvWyS04xgdMoNZA5' };
+import { COINS } from '../core/state.js'; // IMPORTA AS MOEDAS DIRETAMENTE DO STATE!
 
 let gmState = { 
     targetId: null, 
