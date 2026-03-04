@@ -26,6 +26,7 @@ import { renderSimularFichaTab } from './aoJogador/simularFicha.js';
 import { renderInicioTab } from './inicio/inicio.js';
 import { renderConhecaMundoTab } from './oMundo/conhecaMundo.js';
 import { renderOsDeusesTab } from './oMundo/osDeuses.js';
+import { renderLendasMundoTab } from './oMundo/lendasMundo.js';
 
 const dom = {};
 document.querySelectorAll('[id]').forEach(el => dom[el.id.replace(/-/g, '_')] = el);
@@ -153,6 +154,13 @@ window.showTab = function(tabId) {
         return;
     }
 
+    // Aba "Lendas do Mundo"
+    if (tabId === 'lendas-mundo-content' || tabId === 'lendas-mundo') {
+        target.innerHTML = ''; 
+        if (typeof renderLendasMundoTab === 'function') renderLendasMundoTab();
+        return;
+    }
+
     if (tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
@@ -203,7 +211,7 @@ const MASTER_ARCHITECTURE = {
     'O Mundo': [
         { id: 'conheca-mundo', icon: 'fa-globe', label: 'Conheça o mundo', render: () => window.showTab('conheca-mundo-content') },
         { id: 'os-deuses', icon: 'fa-bolt', label: 'Os Deuses', render: () => window.showTab('os-deuses-content') },
-        { id: 'blank', icon: 'fa-book-dead', label: 'Lendas do Mundo', render: () => window.renderBlankPage('Lendas do Mundo') },
+        { id: 'lendas-mundo', icon: 'fa-book-dead', label: 'Lendas do Mundo', render: () => window.showTab('lendas-mundo-content') },
         { id: 'blank', icon: 'fa-users', label: 'NPCs Importantes', render: () => window.renderBlankPage('NPCs Importantes') }
     ],
     'Manual e Regras': [
