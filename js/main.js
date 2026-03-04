@@ -40,6 +40,7 @@ import { renderCadastroItensTab } from './aoMestre/cadastroItens.js';
 import { renderLorePersonagensTab } from './aoMestre/lorePersonagens.js';
 import { renderBackofficeTab } from './admin/backoffice.js';
 import { renderBackupsTab } from './admin/backups.js';
+import { renderCadastroConstelacoesTab } from './admin/cadastroConstelacoes.js'; 
 
 
 const dom = {};
@@ -266,6 +267,13 @@ window.showTab = function(tabId) {
         return;
     }
 
+    // Aba "Editor de Constelações" (Admin)
+    if (tabId === 'cadastro-constelacoes-content' || tabId === 'cadastro-constelacoes') {
+        target.innerHTML = ''; 
+        if (typeof renderCadastroConstelacoesTab === 'function') renderCadastroConstelacoesTab();
+        return;
+    }
+
     if (tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
@@ -337,7 +345,8 @@ const MASTER_ARCHITECTURE = {
     ],
     'Painel Admin': [
         { id: 'backoffice', icon: 'fa-database', label: 'Backoffice', render: () => window.showTab('backoffice-content'), requiresAdmin: true },
-        { id: 'backups', icon: 'fa-server', label: 'Backups', render: () => window.showTab('backups-content'), requiresAdmin: true }
+        { id: 'backups', icon: 'fa-server', label: 'Backups', render: () => window.showTab('backups-content'), requiresAdmin: true },
+        { id: 'cadastro-constelacoes', icon: 'fa-project-diagram', label: 'Matriz de Estrelas', render: () => window.showTab('cadastro-constelacoes-content'), requiresAdmin: true }
     ],
     'Ao Jogador': [
         { id: 'simular-ficha', icon: 'fa-flask', label: 'Simular Ficha', render: () => window.showTab('simular-ficha-content') },

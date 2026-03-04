@@ -1460,3 +1460,43 @@ input[type=range]::-webkit-slider-runnable-track {
         font-size: 0.9em;
     }
 }
+
+/* ========================================================================== */
+/* ESTILOS DO EDITOR DE CONSTELAÇÕES DO MESTRE                                */
+/* ========================================================================== */
+.constellation-canvas-bg {
+    background-color: #020617;
+    background-image: linear-gradient(rgba(30, 41, 59, 0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(30, 41, 59, 0.3) 1px, transparent 1px);
+    background-size: 40px 40px;
+}
+.constellation-layer {
+    position: absolute; top: 50%; left: 50%;
+    width: 800px; height: 800px;
+    transform: translate(-50%, -50%);
+}
+.node-point {
+    position: absolute; width: 28px; height: 28px; border-radius: 50%;
+    border: 2px solid var(--destaque, #0ea5e9);
+    transform: translate(-50%, -50%);
+    cursor: pointer; z-index: 10;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 10px; font-weight: bold;
+    box-shadow: 0 0 10px rgba(14, 165, 233, 0.5);
+    user-select: none;
+}
+.node-point:hover { transform: translate(-50%, -50%) scale(1.2); z-index: 15; box-shadow: 0 0 15px var(--destaque, #0ea5e9); }
+.node-point.selected {
+    border-color: white !important;
+    box-shadow: 0 0 20px var(--destaque, #0ea5e9), inset 0 0 10px var(--destaque, #0ea5e9) !important;
+    transform: translate(-50%, -50%) scale(1.3);
+    z-index: 20; color: #fff; text-shadow: 0 0 2px black;
+}
+.node-point.start-node { border: 2px solid #fbbf24 !important; box-shadow: 0 0 15px #fbbf24 !important; }
+.connection-line { stroke: #334155; stroke-width: 2; transition: all 0.3s; }
+.attr-row-grid { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.attr-row-grid label { font-size: 0.65rem; text-transform: uppercase; color: #94a3b8; min-width: 70px; font-weight: bold; }
+.attr-row-grid input { width: 100%; padding: 2px 6px; text-align: center; height: 24px; font-size: 0.8rem; background-color: #1e293b; border: 1px solid #334155; color: white; border-radius: 4px; outline: none; }
+.attr-row-grid input:focus { border-color: #0ea5e9; }
+@keyframes flashSuccess { 0% { background-color: #10b981; } 100% { background-color: #0ea5e9; } }
+.flash-success { animation: flashSuccess 0.5s ease-out; }
