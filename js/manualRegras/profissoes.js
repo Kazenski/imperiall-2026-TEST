@@ -5,7 +5,7 @@ import { escapeHTML } from '../core/utils.js';
 let allProfessions = [];
 
 export async function renderProfissoesTab() {
-    const container = document.getElementById('profissoes-content');
+    const container = document.getElementById('profissoes-regras-content');
     if (!container) return;
 
     // Estrutura Base
