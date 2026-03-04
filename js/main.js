@@ -371,15 +371,41 @@ window.openFichaPersonagemMenu = function(autoClick = true) {
 };
 
 window.setMasterContext = function(menuName, autoClick = true) {
-    localStorage.setItem('ultimoMenuAcessado', menuName); // Salva o menu no cache
+    localStorage.setItem('ultimoMenuAcessado', menuName); 
     
     document.querySelectorAll('#global-top-nav button.master-nav-btn').forEach(b => {
-        b.classList.toggle('border-amber-500', b.textContent.trim().startsWith(menuName));
-        b.classList.toggle('text-amber-500', b.textContent.trim().startsWith(menuName));
-        b.classList.toggle('bg-slate-800', !b.textContent.trim().startsWith(menuName));
-        b.classList.toggle('bg-amber-600', b.textContent.trim().startsWith(menuName));
-        b.classList.toggle('text-black', b.textContent.trim().startsWith(menuName));
-        b.classList.toggle('text-slate-300', !b.textContent.trim().startsWith(menuName));
+        const txt = b.textContent.trim();
+        const isActive = txt.startsWith(menuName);
+        
+        // Remove estados visuais ativos
+        b.classList.remove('bg-amber-600', 'text-black', 'border-amber-500', 'bg-red-600', 'bg-purple-500', 'shadow-inner');
+        
+        if (!isActive) {
+            b.classList.add('bg-slate-800');
+            // Mantém as cores especiais mesmo inativo
+            if(txt.includes('Mestre')) {
+                b.classList.add('text-red-500', 'border-red-900/50');
+                b.classList.remove('text-amber-500', 'text-slate-300', 'border-slate-700');
+            } else if(txt.includes('Admin')) {
+                b.classList.add('text-purple-400', 'border-purple-900/50');
+                b.classList.remove('text-amber-500', 'text-slate-300', 'border-slate-700');
+            } else {
+                b.classList.add('text-slate-300', 'border-slate-700');
+                b.classList.remove('text-amber-500', 'text-red-500', 'text-purple-400');
+            }
+        } else {
+            // Aplica estado Ativo
+            b.classList.remove('bg-slate-800', 'text-slate-300', 'text-red-500', 'text-purple-400', 'border-slate-700', 'border-red-900/50', 'border-purple-900/50');
+            b.classList.add('text-black', 'shadow-inner');
+            
+            if(txt.includes('Mestre')) {
+                b.classList.add('bg-red-600', 'border-red-500');
+            } else if(txt.includes('Admin')) {
+                b.classList.add('bg-purple-400', 'border-purple-300');
+            } else {
+                b.classList.add('bg-amber-600', 'border-amber-500');
+            }
+        }
     });
 
     if (MASTER_ARCHITECTURE[menuName]) {
@@ -457,6 +483,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if(text.includes('O Mundo')) targetContext = 'O Mundo';
             if(text.includes('Manual')) targetContext = 'Manual e Regras';
             if(text.includes('Mestre')) targetContext = 'Ao Mestre';
+            if(text.includes('Admin')) targetContext = 'Painel Admin';
             if(text.includes('Jogador')) targetContext = 'Ao Jogador';
             if(text.includes('Atualizações')) targetContext = 'Atualizações';
             
@@ -491,28 +518,30 @@ onAuthStateChanged(auth, async (user) => {
             console.error("Erro ao buscar permissões do utilizador:", err);
         }
 
-        // Manipula visualmente o botão do topo "Ao Mestre"
-        // Procura em todos os botões do menu superior aquele que tem o texto "Mestre"
+        // Manipula visualmente os botões
         const btnAoMestre = Array.from(document.querySelectorAll('.master-nav-btn')).find(b => b.textContent.trim().includes('Mestre'));
+        const btnAdmin = Array.from(document.querySelectorAll('.master-nav-btn')).find(b => b.textContent.trim().includes('Admin'));
         
+        // CONTROLE DO BOTÃO MESTRE
         if (btnAoMestre) {
             if (role === 'mestre' || role === 'admin') {
-                btnAoMestre.classList.remove('hidden'); // Exibe o botão
-                
-                // Remove as cores padrões cinzentas/âmbar do Tailwind
-                btnAoMestre.classList.remove('text-slate-300', 'hover:bg-slate-700', 'hover:text-amber-500');
-                
-                // Aplica o tema Vermelho imponente de Mestre (Texto vermelho, hover vermelho escuro)
-                btnAoMestre.classList.add('text-red-500', 'hover:bg-red-950', 'hover:text-red-400');
-                
-                // Se for Admin Supremo, adiciona o brilho dourado extra (box-shadow)
-                if (role === 'admin') {
-                    btnAoMestre.classList.add('shadow-[0_0_15px_rgba(245,158,11,0.6)]', 'border', 'border-amber-500/50');
-                } else {
-                    btnAoMestre.classList.remove('shadow-[0_0_15px_rgba(245,158,11,0.6)]', 'border', 'border-amber-500/50');
-                }
+                btnAoMestre.classList.remove('hidden');
+                btnAoMestre.classList.add('text-red-500', 'border-red-900/50');
+                btnAoMestre.classList.remove('text-slate-300', 'border-slate-700');
             } else {
-                btnAoMestre.classList.add('hidden'); // Jogadores normais não veem este botão
+                btnAoMestre.classList.add('hidden');
+            }
+        }
+
+        // CONTROLE DO BOTÃO ADMIN (Só você o vê!)
+        if (btnAdmin) {
+            if (role === 'admin') {
+                btnAdmin.classList.remove('hidden');
+                // Adiciona o brilho épico que pediu
+                btnAdmin.classList.add('text-purple-400', 'border-purple-500/50', 'shadow-[0_0_15px_rgba(168,85,247,0.4)]');
+                btnAdmin.classList.remove('text-slate-300', 'border-slate-700');
+            } else {
+                btnAdmin.classList.add('hidden');
             }
         }
         // --- FIM DA VERIFICAÇÃO DE ACESSO ---
