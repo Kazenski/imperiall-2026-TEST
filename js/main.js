@@ -47,6 +47,7 @@ import { renderCadastroEgoTab } from './admin/cadastroEgo.js';
 import { renderCadastroLojasTab } from './admin/cadastroLojas.js';
 import { renderCadastroNoticiasTab } from './admin/cadastroNoticias.js';
 import { renderCadastroPetsTab } from './admin/cadastroPets.js';
+import { renderCadastroReputacaoTab } from './admin/cadastroReputacao.js';
 
 
 const dom = {};
@@ -322,6 +323,13 @@ window.showTab = function(tabId) {
         return;
     }
 
+    // Aba "Gestor de Império / Reputação" (Admin)
+    if (tabId === 'cadastro-reputacao-content' || tabId === 'cadastro-reputacao') {
+        target.innerHTML = ''; 
+        if (typeof renderCadastroReputacaoTab === 'function') renderCadastroReputacaoTab();
+        return;
+    }
+
     if (tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
@@ -400,7 +408,8 @@ const MASTER_ARCHITECTURE = {
         { id: 'cadastro-ego', icon: 'fa-gavel', label: 'Forja Espiritual', render: () => window.showTab('cadastro-ego-content'), requiresAdmin: true },
         { id: 'cadastro-lojas', icon: 'fa-coins', label: 'Engine Econômica', render: () => window.showTab('cadastro-lojas-content'), requiresAdmin: true },
         { id: 'cadastro-noticias', icon: 'fa-newspaper', label: 'Diário Mestre', render: () => window.showTab('cadastro-noticias-content'), requiresAdmin: true },
-        { id: 'cadastro-pets', icon: 'fa-paw', label: 'Gestor Bestiário', render: () => window.showTab('cadastro-pets-content'), requiresAdmin: true }
+        { id: 'cadastro-pets', icon: 'fa-paw', label: 'Gestor Bestiário', render: () => window.showTab('cadastro-pets-content'), requiresAdmin: true },
+        { id: 'cadastro-reputacao', icon: 'fa-chess-rook', label: 'Gestor Império', render: () => window.showTab('cadastro-reputacao-content'), requiresAdmin: true }
         
     ],
     'Ao Jogador': [
