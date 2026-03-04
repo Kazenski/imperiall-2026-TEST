@@ -6,20 +6,27 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // Atalho para React.createElement (Obrigatório para arquivos .js sem build)
+const React = window.React;
 const e = React.createElement;
 
 // --- CONFIGURAÇÕES TÉCNICAS ---
 const WORLD_MAP_URL = "https://firebasestorage.googleapis.com/v0/b/kazenski-a1bb2.firebasestorage.app/o/imagens_rpg%2FJna1SPdTpRYoo5jGrzZUem.jpg?alt=media";
 const MAP_W = 2048;
 const MAP_H = 1536;
+const HEX_RADIUS = 10;
 
 const COLS = {
     LOCATIONS: 'rpg_locations',
     ROUTES: 'rpg_routes',
     ROUTE_TYPES: 'rpg_route_types',
     EVENTS: 'rpg_events',
+    ISOLATED: 'rpg_isolated_encounters',
+    SEASONS: 'rpg_seasons',
+    WORLD: 'rpg_world_state',
+    NPCS: 'rpg_Npcs',
     DUNGEONS: 'rpg_dungeons',
-    WORLD: 'rpg_world_state'
+    SESSIONS: 'rpg_sessions',
+    PLAYERS: 'rpg_fichas'
 };
 
 // --- COMPONENTE DE ÍCONE (Sem JSX) ---
