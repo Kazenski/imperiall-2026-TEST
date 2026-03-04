@@ -328,7 +328,7 @@ const MASTER_ARCHITECTURE = {
         { id: 'lore-personagens', icon: 'fa-scroll', label: 'Lore Personagens', render: () => window.showTab('lore-personagens-content') }
     ],
     'Painel Admin': [
-        { id: 'backoffice', icon: 'fa-database', label: 'Backoffice', render: () => window.showTab('backoffice-content') }
+        { id: 'backoffice', icon: 'fa-database', label: 'Backoffice', render: () => window.showTab('backoffice-content'), requiresAdmin: true }
     ],
     'Ao Jogador': [
         { id: 'simular-ficha', icon: 'fa-flask', label: 'Simular Ficha', render: () => window.showTab('simular-ficha-content') },
@@ -414,6 +414,9 @@ function populateSidebar(subAbaArray, isFichaMenu = false) {
     }
 
     subAbaArray.forEach(subAba => {
+        
+        if (subAba.requiresAdmin && globalState.userRole !== 'admin') return;
+        
         const btn = document.createElement('button');
         btn.dataset.tabId = subAba.id; 
         // Layout de botão expansivo (ícone na esquerda, texto que acompanha)
