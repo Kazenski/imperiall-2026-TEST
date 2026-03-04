@@ -7,17 +7,19 @@ let allSubclasses = [];
 let allSkills = [];
 
 let selectedClassId = '';
-let selectedSkills = [];
+let currentSearchTerm = '';
 let currentSortKey = 'nome';
 let currentSortDirection = 'asc';
 
 export async function renderHabilidadesTab() {
-    const container = document.getElementById('habilidades-content');
+    const container = document.getElementById('habilidades-regras-content');
     if (!container) return;
 
-    // Reset de estado
+    // Reset de estado ao abrir a aba
     selectedClassId = '';
-    selectedSkills = [];
+    currentSearchTerm = '';
+    currentSortKey = 'nome';
+    currentSortDirection = 'asc';
 
     container.innerHTML = `
         <div class="w-full h-full fade-in flex flex-col p-6 md:p-10 overflow-y-auto custom-scroll pb-16 bg-slate-950">
@@ -28,30 +30,49 @@ export async function renderHabilidadesTab() {
             </header>
 
             <div class="w-full flex-grow flex flex-col gap-6">
-                <div class="w-full max-w-2xl mx-auto p-6 bg-slate-800/80 border border-slate-700 rounded-2xl shadow-xl relative z-20">
-                    <label htmlFor="habilidade-class-select" class="block text-sm md:text-base font-cinzel font-bold text-slate-300 mb-3 tracking-widest uppercase">
-                        Filtrar Origem do Poder:
-                    </label>
-                    <div class="relative">
-                        <select id="habilidade-class-select" class="appearance-none w-full px-5 py-4 bg-slate-900 text-white border-2 border-slate-600 rounded-xl shadow-inner focus:outline-none focus:border-amber-500 transition-colors cursor-pointer text-base md:text-lg" onchange="window.habilidadesCompendio.handleClassSelect(this.value)">
+                
+                <div class="w-full max-w-4xl mx-auto p-6 bg-slate-800/80 border border-slate-700 rounded-2xl shadow-xl relative z-20 flex flex-col md:flex-row gap-4">
+                    
+                    <div class="flex-1 relative">
+                        <label class="block text-xs font-cinzel font-bold text-slate-400 mb-2 tracking-widest uppercase">Origem do Poder</label>
+                        <select id="habilidade-class-select" class="appearance-none w-full px-4 py-3 bg-slate-900 text-white border border-slate-600 rounded-xl shadow-inner focus:outline-none focus:border-amber-500 transition-colors cursor-pointer text-sm" onchange="window.habilidadesCompendio.handleClassSelect(this.value)">
                             <option value="" class="bg-slate-900 text-slate-400">Vasculhando Grimórios...</option>
                         </select>
-                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-amber-500">
+                        <div class="pointer-events-none absolute bottom-0 right-0 h-[46px] flex items-center px-4 text-amber-500">
                             <i class="fas fa-chevron-down"></i>
                         </div>
                     </div>
+
+                    <div class="flex-1 relative">
+                        <label class="block text-xs font-cinzel font-bold text-slate-400 mb-2 tracking-widest uppercase">Pesquisar Técnica</label>
+                        <input type="text" id="habilidade-search-input" placeholder="Ex: Fogo, Cura, Corte..." class="w-full px-4 py-3 bg-slate-900 text-white border border-slate-600 rounded-xl shadow-inner focus:outline-none focus:border-amber-500 transition-colors text-sm disabled:opacity-50" disabled onkeyup="window.habilidadesCompendio.handleSearch(this.value)">
+                        <div class="absolute bottom-0 right-0 h-[46px] flex items-center px-4 text-slate-500 pointer-events-none">
+                            <i class="fas fa-search"></i>
+                        </div>
+                    </div>
+
                 </div>
 
-                <div id="habilidades-table-container" class="w-full relative z-10 hidden mt-4">
-                    <div class="w-full overflow-x-auto pb-4 custom-scroll">
-                        <table class="w-full text-left border-collapse min-w-[900px]">
+                <div id="habilidades-table-container" class="w-full relative z-10 hidden mt-4 bg-slate-900/50 border border-slate-700 rounded-xl overflow-hidden shadow-2xl">
+                    <div class="w-full overflow-x-auto custom-scroll">
+                        <table class="w-full text-left border-collapse min-w-[1000px]">
                             <thead>
-                                <tr class="bg-slate-800/80 text-amber-500 font-cinzel tracking-widest border-b-2 border-amber-600">
-                                    <th class="py-4 px-4 font-bold text-sm uppercase cursor-pointer hover:text-amber-300" onclick="window.habilidadesCompendio.handleSort('nome')">Técnica <i class="fas fa-sort ml-1 opacity-50"></i></th>
-                                    <th class="py-4 px-4 font-bold text-sm uppercase w-1/3">Descrição</th>
-                                    <th class="py-4 px-4 font-bold text-sm uppercase">Duração</th>
-                                    <th class="py-4 px-4 font-bold text-sm uppercase">Custo MP</th>
-                                    <th class="py-4 px-4 font-bold text-sm uppercase">Dano Base</th>
+                                <tr class="bg-slate-800 text-amber-500 font-cinzel tracking-widest border-b-2 border-amber-600 select-none">
+                                    <th class="py-4 px-4 font-bold text-sm uppercase cursor-pointer hover:bg-slate-700 transition-colors w-1/5" onclick="window.habilidadesCompendio.handleSort('nome')">
+                                        Técnica <i id="sort-icon-nome" class="fas fa-sort text-slate-500 ml-1"></i>
+                                    </th>
+                                    <th class="py-4 px-4 font-bold text-sm uppercase w-1/3">
+                                        Descrição
+                                    </th>
+                                    <th class="py-4 px-4 font-bold text-sm uppercase cursor-pointer hover:bg-slate-700 transition-colors" onclick="window.habilidadesCompendio.handleSort('duracaoHabilidade')">
+                                        Duração <i id="sort-icon-duracaoHabilidade" class="fas fa-sort text-slate-500 ml-1"></i>
+                                    </th>
+                                    <th class="py-4 px-4 font-bold text-sm uppercase cursor-pointer hover:bg-slate-700 transition-colors" onclick="window.habilidadesCompendio.handleSort('gastoMpUso')">
+                                        Custo MP <i id="sort-icon-gastoMpUso" class="fas fa-sort text-slate-500 ml-1"></i>
+                                    </th>
+                                    <th class="py-4 px-4 font-bold text-sm uppercase cursor-pointer hover:bg-slate-700 transition-colors" onclick="window.habilidadesCompendio.handleSort('efeitoDanoBaseUsoHabilidade')">
+                                        Dano Base <i id="sort-icon-efeitoDanoBaseUsoHabilidade" class="fas fa-sort text-slate-500 ml-1"></i>
+                                    </th>
                                     <th class="py-4 px-4 font-bold text-sm uppercase text-center">Ações</th>
                                 </tr>
                             </thead>
@@ -72,9 +93,7 @@ export async function renderHabilidadesTab() {
         <div id="habilidade-modal" class="fixed inset-0 z-[100] bg-black/95 hidden flex-col items-center justify-center p-4 md:p-10 animate-fade-in">
             <div class="w-full max-w-4xl bg-slate-900 border-2 border-amber-600 rounded-2xl shadow-2xl relative flex flex-col max-h-full">
                 <button class="absolute top-4 right-6 text-slate-400 hover:text-red-500 text-3xl font-bold transition-colors outline-none z-10" onclick="document.getElementById('habilidade-modal').classList.add('hidden'); document.getElementById('habilidade-modal').classList.remove('flex');">&times;</button>
-                
-                <div class="p-6 md:p-10 overflow-y-auto custom-scroll" id="habilidade-modal-content">
-                    </div>
+                <div class="p-6 md:p-10 overflow-y-auto custom-scroll" id="habilidade-modal-content"></div>
             </div>
         </div>
     `;
@@ -98,7 +117,6 @@ async function fetchInitialData() {
         allSubclasses = subClassSnap.docs.map(doc => ({ id: doc.id, name: doc.data().nome }));
         allSkills = skillSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        // Popula Dropdown agrupado
         if (selectEl) {
             let optionsHTML = `<option value="" class="bg-slate-900">-- Selecione a Origem --</option>`;
             
@@ -130,39 +148,104 @@ async function fetchInitialData() {
     }
 }
 
-function processSkillsForSelection(classId) {
+// -------------------------------------------------------------
+// LÓGICA DE FILTRAGEM E ORDENAÇÃO
+// -------------------------------------------------------------
+
+function applyFiltersAndSort() {
     const tableContainer = document.getElementById('habilidades-table-container');
     const feedbackContainer = document.getElementById('habilidades-feedback-container');
     const feedbackText = document.getElementById('habilidade-loading-text');
+    const searchInput = document.getElementById('habilidade-search-input');
 
-    if (!classId) {
+    if (!selectedClassId) {
         tableContainer.classList.add('hidden');
         feedbackContainer.classList.remove('hidden');
         feedbackText.textContent = "Selecione uma Classe ou Subclasse para revelar suas habilidades.";
+        if(searchInput) searchInput.disabled = true;
         return;
     }
 
-    // Filtra habilidades que pertencem à classe/subclasse (lembrando que são arrays no banco)
-    selectedSkills = allSkills.filter(skill => {
-        const inClass = skill.restricaoClasses && skill.restricaoClasses.includes(classId);
-        const inSubclass = skill.restricaoSubclasses && skill.restricaoSubclasses.includes(classId);
+    if(searchInput) searchInput.disabled = false;
+
+    // 1. Filtra pela Classe/Subclasse selecionada
+    let filteredSkills = allSkills.filter(skill => {
+        const inClass = skill.restricaoClasses && skill.restricaoClasses.includes(selectedClassId);
+        const inSubclass = skill.restricaoSubclasses && skill.restricaoSubclasses.includes(selectedClassId);
         return inClass || inSubclass;
     });
 
-    if (selectedSkills.length === 0) {
+    // 2. Filtra pelo texto de pesquisa (Nome ou Descrição)
+    if (currentSearchTerm.trim() !== '') {
+        const term = currentSearchTerm.toLowerCase();
+        filteredSkills = filteredSkills.filter(skill => 
+            (skill.nome && skill.nome.toLowerCase().includes(term)) ||
+            (skill.descricaoEfeito && skill.descricaoEfeito.toLowerCase().includes(term))
+        );
+    }
+
+    if (filteredSkills.length === 0) {
         tableContainer.classList.add('hidden');
         feedbackContainer.classList.remove('hidden');
-        feedbackText.textContent = "Nenhuma habilidade registrada para esta seleção.";
+        feedbackText.textContent = "Nenhuma habilidade encontrada com estes filtros.";
         return;
     }
 
-    // Prepara para mostrar tabela
     feedbackContainer.classList.add('hidden');
     tableContainer.classList.remove('hidden');
-    
-    // Força a primeira ordenação
-    sortSkills('nome');
+
+    // 3. Ordena os resultados
+    filteredSkills.sort((a, b) => {
+        const valA = getSortValue(a, currentSortKey);
+        const valB = getSortValue(b, currentSortKey);
+
+        if (typeof valA === 'string' && typeof valB === 'string') {
+            return currentSortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        } else {
+            return currentSortDirection === 'asc' ? valA - valB : valB - valA;
+        }
+    });
+
+    renderTableRows(filteredSkills);
+    updateSortIcons();
 }
+
+function getSortValue(skill, key) {
+    if (key === 'nome' || key === 'duracaoHabilidade') {
+        return (skill[key] || '').toString().toLowerCase();
+    }
+    
+    // Tratamento para mapas complexos (MP, Dano) - Busca o menor nível (lvl1) ou o primeiro valor numérico
+    const data = skill[key];
+    if (typeof data === 'number') return data;
+    if (typeof data === 'object' && data !== null) {
+        if (data.lvl1 !== undefined) return Number(data.lvl1) || 0;
+        const firstKey = Object.keys(data).sort()[0];
+        return Number(data[firstKey]) || 0;
+    }
+    return 0;
+}
+
+function updateSortIcons() {
+    const keys = ['nome', 'duracaoHabilidade', 'gastoMpUso', 'efeitoDanoBaseUsoHabilidade'];
+    keys.forEach(k => {
+        const icon = document.getElementById(`sort-icon-${k}`);
+        if (icon) {
+            icon.className = 'fas ml-1 text-slate-500'; // Reset
+            if (k === currentSortKey) {
+                icon.classList.add(currentSortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down');
+                icon.classList.add('text-amber-500');
+                icon.classList.remove('text-slate-500');
+            } else {
+                icon.classList.add('fa-sort', 'opacity-30');
+            }
+        }
+    });
+}
+
+// -------------------------------------------------------------
+// RENDERIZAÇÃO VISUAL
+// -------------------------------------------------------------
 
 function formatLvlMap(data) {
     if (!data) return '<span class="text-slate-500">N/A</span>';
@@ -177,53 +260,17 @@ function formatLvlMap(data) {
     return '<span class="text-slate-500">N/A</span>';
 }
 
-// Utilizado para extrair o valor real numérico para ordenação
-function getSortValue(skill, key) {
-    if (key === 'nome') return skill.nome || '';
-    
-    const data = skill[key];
-    if (typeof data === 'number') return data;
-    if (typeof data === 'object' && data !== null) {
-        const firstKey = Object.keys(data).sort()[0];
-        return Number(data[firstKey]) || 0;
-    }
-    return 0;
-}
-
-function sortSkills(key) {
-    if (currentSortKey === key) {
-        currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
-    } else {
-        currentSortKey = key;
-        currentSortDirection = 'asc';
-    }
-
-    selectedSkills.sort((a, b) => {
-        const valA = getSortValue(a, key);
-        const valB = getSortValue(b, key);
-
-        if (typeof valA === 'string') {
-            return currentSortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
-        } else {
-            return currentSortDirection === 'asc' ? valA - valB : valB - valA;
-        }
-    });
-
-    renderTableRows();
-}
-
-function renderTableRows() {
+function renderTableRows(skillsToRender) {
     const tbody = document.getElementById('habilidades-table-body');
     if (!tbody) return;
 
     let html = '';
-    selectedSkills.forEach((skill, idx) => {
-        // Truncar descrição
+    skillsToRender.forEach((skill) => {
         const desc = skill.descricaoEfeito || '';
-        const shortDesc = desc.length > 80 ? desc.substring(0, 80) + '...' : desc;
+        const shortDesc = desc.length > 90 ? desc.substring(0, 90) + '...' : desc;
 
         html += `
-            <tr class="border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors group">
+            <tr class="border-b border-slate-700/50 hover:bg-slate-800 transition-colors">
                 <td class="py-4 px-4 font-bold text-white align-top">${escapeHTML(skill.nome || 'Desconhecida')}</td>
                 <td class="py-4 px-4 text-sm align-top leading-relaxed text-slate-300 pr-8">
                     ${escapeHTML(shortDesc)}
@@ -232,7 +279,7 @@ function renderTableRows() {
                 <td class="py-4 px-4 text-sm align-top font-mono bg-slate-900/30">${formatLvlMap(skill.gastoMpUso)}</td>
                 <td class="py-4 px-4 text-sm align-top font-mono bg-slate-900/30">${formatLvlMap(skill.efeitoDanoBaseUsoHabilidade)}</td>
                 <td class="py-4 px-4 text-center align-top">
-                    <button onclick="window.habilidadesCompendio.openModal('${skill.id}')" class="px-4 py-2 bg-slate-700 hover:bg-amber-600 text-white rounded text-xs font-bold uppercase tracking-widest transition-colors shadow-md">
+                    <button onclick="window.habilidadesCompendio.openModal('${skill.id}')" class="px-4 py-2 bg-slate-700 border border-slate-600 hover:bg-amber-600 hover:border-amber-500 text-white rounded-lg text-xs font-bold uppercase tracking-widest transition-colors shadow-md">
                         Detalhes
                     </button>
                 </td>
@@ -243,7 +290,9 @@ function renderTableRows() {
     tbody.innerHTML = html;
 }
 
-// Modal Detalhado
+// -------------------------------------------------------------
+// MODAL DE DETALHES
+// -------------------------------------------------------------
 function openSkillModal(skillId) {
     const modal = document.getElementById('habilidade-modal');
     const content = document.getElementById('habilidade-modal-content');
@@ -252,14 +301,13 @@ function openSkillModal(skillId) {
     const skill = allSkills.find(s => s.id === skillId);
     if (!skill) return;
 
-    // Constrói o HTML dos mapas (MP, Dano) com formatação rica
     const renderFullMap = (data, unit) => {
         if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) return '<span class="text-slate-500">N/A</span>';
-        if (typeof data === 'number') return `<span class="bg-slate-800 px-3 py-1 rounded text-amber-400 font-mono border border-slate-700">${data} ${unit}</span>`;
+        if (typeof data === 'number') return `<span class="bg-slate-800 px-3 py-1 rounded text-amber-400 font-mono border border-slate-700 shadow-sm">${data} ${unit}</span>`;
         
-        const sortedKeys = Object.keys(data).sort();
+        const sortedKeys = Object.keys(data).sort((a, b) => parseInt(a.replace(/\D/g,'')) - parseInt(b.replace(/\D/g,'')));
         return `<div class="flex flex-wrap gap-2">` + 
-            sortedKeys.map(k => `<span class="bg-slate-800 px-3 py-1 rounded border border-slate-700 font-mono text-sm"><span class="text-slate-400 mr-2">${k}:</span><span class="text-amber-400 font-bold">${data[k]}</span> ${unit}</span>`).join('') +
+            sortedKeys.map(k => `<span class="bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 shadow-sm font-mono text-sm"><span class="text-slate-400 mr-2">${k}:</span><span class="text-amber-400 font-bold">${data[k]}</span> ${unit}</span>`).join('') +
         `</div>`;
     };
 
@@ -274,32 +322,33 @@ function openSkillModal(skillId) {
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             <div class="space-y-6">
-                <div>
-                    <h4 class="text-slate-400 font-cinzel font-bold text-sm tracking-widest mb-3 uppercase border-b border-slate-800 pb-1">Custo de Poder (MP)</h4>
+                <div class="bg-slate-800/30 p-5 rounded-2xl border border-slate-700">
+                    <h4 class="text-slate-400 font-cinzel font-bold text-sm tracking-widest mb-3 uppercase flex items-center gap-2"><i class="fas fa-bolt text-amber-500"></i> Custo de Poder (MP)</h4>
                     ${renderFullMap(skill.gastoMpUso, 'MP')}
                 </div>
-                <div>
-                    <h4 class="text-slate-400 font-cinzel font-bold text-sm tracking-widest mb-3 uppercase border-b border-slate-800 pb-1">Potência Base</h4>
+                <div class="bg-slate-800/30 p-5 rounded-2xl border border-slate-700">
+                    <h4 class="text-slate-400 font-cinzel font-bold text-sm tracking-widest mb-3 uppercase flex items-center gap-2"><i class="fas fa-khanda text-orange-500"></i> Potência Base</h4>
                     ${renderFullMap(skill.efeitoDanoBaseUsoHabilidade, 'Dano')}
                 </div>
             </div>
             <div class="space-y-6">
-                <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                    <h4 class="text-slate-400 font-cinzel text-xs tracking-widest uppercase mb-1">Duração</h4>
-                    <p class="text-xl text-white">${escapeHTML(skill.duracaoHabilidade || 'Instantânea')}</p>
+                <div class="bg-slate-800/50 p-5 rounded-xl border border-slate-700 shadow-inner">
+                    <h4 class="text-slate-400 font-cinzel text-xs tracking-widest uppercase mb-1 flex items-center gap-2"><i class="fas fa-hourglass-half"></i> Duração</h4>
+                    <p class="text-xl text-white font-medium">${escapeHTML(skill.duracaoHabilidade || 'Instantânea')}</p>
                 </div>
-                <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                    <h4 class="text-slate-400 font-cinzel text-xs tracking-widest uppercase mb-1">Área de Efeito</h4>
-                    <p class="text-xl text-white">${escapeHTML(skill.areaHabilidade || 'Alvo Único')}</p>
+                <div class="bg-slate-800/50 p-5 rounded-xl border border-slate-700 shadow-inner">
+                    <h4 class="text-slate-400 font-cinzel text-xs tracking-widest uppercase mb-1 flex items-center gap-2"><i class="fas fa-bullseye"></i> Área de Efeito</h4>
+                    <p class="text-xl text-white font-medium">${escapeHTML(skill.areaHabilidade || 'Alvo Único')}</p>
                 </div>
             </div>
         </div>
 
-        <div class="bg-slate-800/30 p-6 rounded-2xl border border-slate-700/80 shadow-inner">
-            <h4 class="text-xl font-cinzel font-bold text-amber-400 mb-4 flex items-center gap-2"><i class="fas fa-scroll"></i> Efeito da Habilidade</h4>
-            <p class="text-slate-300 text-base md:text-lg leading-relaxed whitespace-pre-wrap">${escapeHTML(skill.descricaoEfeito || 'O manual encontra-se ilegível neste trecho.')}</p>
+        <div class="bg-slate-800/80 p-8 rounded-2xl border border-slate-600 shadow-xl relative overflow-hidden">
+            <i class="fas fa-scroll absolute -right-4 -top-4 text-8xl text-slate-700/30 pointer-events-none"></i>
+            <h4 class="text-xl font-cinzel font-bold text-amber-400 mb-4 flex items-center gap-2 relative z-10"><i class="fas fa-align-left text-slate-400"></i> Efeito da Habilidade</h4>
+            <p class="text-slate-300 text-base md:text-lg leading-relaxed whitespace-pre-wrap relative z-10 font-serif text-justify">${escapeHTML(skill.descricaoEfeito || 'O manual encontra-se ilegível neste trecho.')}</p>
         </div>
     `;
 
@@ -307,13 +356,24 @@ function openSkillModal(skillId) {
     modal.classList.add('flex');
 }
 
-// Funções Globais da Página
+// Funções Globais expostas para o HTML
 window.habilidadesCompendio = {
     handleClassSelect: function(val) {
-        processSkillsForSelection(val);
+        selectedClassId = val;
+        applyFiltersAndSort();
+    },
+    handleSearch: function(val) {
+        currentSearchTerm = val;
+        applyFiltersAndSort();
     },
     handleSort: function(key) {
-        sortSkills(key);
+        if (currentSortKey === key) {
+            currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            currentSortKey = key;
+            currentSortDirection = 'asc';
+        }
+        applyFiltersAndSort();
     },
     openModal: function(id) {
         openSkillModal(id);
