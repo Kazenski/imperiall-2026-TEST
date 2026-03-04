@@ -316,7 +316,13 @@ export async function renderFichaEditor(fichaId) {
     // PREENCHIMENTO DOS DADOS
     const populate = (id, map) => { 
         const sel = container.querySelector('#'+id); 
-        [...map.values()].sort((a,b)=>a.nome.localeCompare(b.nome)).forEach(d => sel.add(new Option(d.nome, d.id))); 
+        sel.innerHTML = '<option value="" class="bg-slate-900 text-slate-500">-- Selecione --</option>';
+        
+        [...map.values()].sort((a,b)=>a.nome.localeCompare(b.nome)).forEach(d => {
+            const opt = new Option(d.nome, d.id);
+            opt.className = "bg-slate-900 text-slate-200 font-sans"; 
+            sel.add(opt);
+        }); 
         sel.value = fichaData[id.replace('editor-','')] || ''; 
     };
     

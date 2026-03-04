@@ -235,8 +235,12 @@ async function loadGMCaches() {
         const fill = (id, list) => {
             const el = document.getElementById(id);
             if (!el) return;
-            el.innerHTML = '<option value="" class="text-slate-500">-- Indefinido --</option>';
-            list.forEach(i => el.add(new Option(i.nome, i.id)));
+            el.innerHTML = '<option value="" class="bg-slate-900 text-slate-500">-- Indefinido --</option>';
+            list.forEach(i => {
+                const opt = new Option(i.nome, i.id);
+                opt.className = "bg-slate-900 text-slate-200"; // FIX DA COR BRANCA
+                el.add(opt);
+            });
         };
         fill('gm-raca', rc);
         fill('gm-classe', cl);
@@ -244,8 +248,12 @@ async function loadGMCaches() {
 
         const skillFilter = document.getElementById('gm-skill-class-filter');
         if (skillFilter) {
-            skillFilter.innerHTML = '<option value="" class="text-slate-500">Todas as Classes</option>';
-            cl.forEach(c => skillFilter.add(new Option(c.nome, c.id)));
+            skillFilter.innerHTML = '<option value="" class="bg-slate-900 text-slate-500">Todas as Classes</option>';
+            cl.forEach(c => {
+                const opt = new Option(c.nome, c.id);
+                opt.className = "bg-slate-900 text-slate-200"; // FIX DA COR BRANCA
+                skillFilter.add(opt);
+            });
         }
     } catch(e) {
         console.error("Erro carregando caches do Mestre:", e);
@@ -258,10 +266,12 @@ function startPlayerListener() {
 
     onSnapshot(query(collection(db, "rpg_fichas"), orderBy("nome")), (snap) => {
         const oldVal = sel.value;
-        sel.innerHTML = '<option value="" class="text-slate-500">-- Selecione o Jogador Alvo --</option>';
+        sel.innerHTML = '<option value="" class="bg-slate-900 text-amber-500">-- Selecione o Jogador Alvo --</option>';
         snap.forEach(d => {
             const data = d.data();
-            sel.add(new Option(`${data.nome} (${data.jogador || '?'})`, d.id));
+            const opt = new Option(`${data.nome} (${data.jogador || '?'})`, d.id);
+            opt.className = "bg-slate-900 text-amber-400"; // FIX DA COR BRANCA
+            sel.add(opt);
         });
         if(oldVal) sel.value = oldVal;
     });
