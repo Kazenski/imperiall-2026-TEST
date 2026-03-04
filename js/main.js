@@ -27,6 +27,7 @@ import { renderInicioTab } from './inicio/inicio.js';
 import { renderConhecaMundoTab } from './oMundo/conhecaMundo.js';
 import { renderOsDeusesTab } from './oMundo/osDeuses.js';
 import { renderLendasMundoTab } from './oMundo/lendasMundo.js';
+import { renderNpcsGeralTab } from './oMundo/npcsGeral.js';
 
 const dom = {};
 document.querySelectorAll('[id]').forEach(el => dom[el.id.replace(/-/g, '_')] = el);
@@ -161,6 +162,13 @@ window.showTab = function(tabId) {
         return;
     }
 
+    // Aba "NPCs Importantes"
+    if (tabId === 'npcs-geral-content' || tabId === 'npcs-geral') {
+        target.innerHTML = ''; 
+        if (typeof renderNpcsGeralTab === 'function') renderNpcsGeralTab();
+        return;
+    }
+
     if (tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
@@ -212,7 +220,7 @@ const MASTER_ARCHITECTURE = {
         { id: 'conheca-mundo', icon: 'fa-globe', label: 'Conheça o mundo', render: () => window.showTab('conheca-mundo-content') },
         { id: 'os-deuses', icon: 'fa-bolt', label: 'Os Deuses', render: () => window.showTab('os-deuses-content') },
         { id: 'lendas-mundo', icon: 'fa-book-dead', label: 'Lendas do Mundo', render: () => window.showTab('lendas-mundo-content') },
-        { id: 'blank', icon: 'fa-users', label: 'NPCs Importantes', render: () => window.renderBlankPage('NPCs Importantes') }
+        { id: 'npcs-geral', icon: 'fa-users', label: 'NPCs Importantes', render: () => window.showTab('npcs-geral-content') }
     ],
     'Manual e Regras': [
         { id: 'blank', icon: 'fa-book', label: 'Manual', render: () => window.renderBlankPage('Manual') },

@@ -176,12 +176,6 @@ export function renderLendasMundoTab() {
                     
                     ${boatosHTML}
                 </div>
-                
-                <div class="absolute bottom-6 right-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onclick="document.getElementById('lendas-mundo-content').scrollTo({top: 0, behavior: 'smooth'})" class="text-xs font-cinzel text-slate-500 hover:text-amber-400 font-bold uppercase tracking-widest flex items-center gap-2 transition-colors outline-none">
-                        Ir ao Topo <i class="fas fa-arrow-up"></i>
-                    </button>
-                </div>
             </article>
         `;
     }).join('');
