@@ -49,6 +49,7 @@ import { renderCadastroNoticiasTab } from './admin/cadastroNoticias.js';
 import { renderCadastroPetsTab } from './admin/cadastroPets.js';
 import { renderCadastroReputacaoTab } from './admin/cadastroReputacao.js';
 import { renderFirebaseMudaAllTab } from './admin/firebaseMudaAll.js';
+import { renderFirebaseMudaIfTab } from './admin/firebaseMudaIf.js';
 
 
 const dom = {};
@@ -338,6 +339,13 @@ window.showTab = function(tabId) {
         return;
     }
 
+    // Aba "Firebase Conditional Updater" (Admin)
+    if (tabId === 'firebase-muda-if-content' || tabId === 'firebase-muda-if') {
+        target.innerHTML = ''; 
+        if (typeof renderFirebaseMudaIfTab === 'function') renderFirebaseMudaIfTab();
+        return;
+    }
+
     if (tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
@@ -418,8 +426,9 @@ const MASTER_ARCHITECTURE = {
         { id: 'cadastro-noticias', icon: 'fa-newspaper', label: 'Diário Mestre', render: () => window.showTab('cadastro-noticias-content'), requiresAdmin: true },
         { id: 'cadastro-pets', icon: 'fa-paw', label: 'Gestor Bestiário', render: () => window.showTab('cadastro-pets-content'), requiresAdmin: true },
         { id: 'cadastro-reputacao', icon: 'fa-chess-rook', label: 'Gestor Império', render: () => window.showTab('cadastro-reputacao-content'), requiresAdmin: true },
-        { id: 'firebase-muda-all', icon: 'fa-biohazard', label: 'Injeção DB', render: () => window.showTab('firebase-muda-all-content'), requiresAdmin: true }
-        
+        { id: 'firebase-muda-all', icon: 'fa-biohazard', label: 'Injeção DB', render: () => window.showTab('firebase-muda-all-content'), requiresAdmin: true },
+        { id: 'firebase-muda-if', icon: 'fa-filter', label: 'Mutação DB (IF)', render: () => window.showTab('firebase-muda-if-content'), requiresAdmin: true }
+
     ],
     'Ao Jogador': [
         { id: 'simular-ficha', icon: 'fa-flask', label: 'Simular Ficha', render: () => window.showTab('simular-ficha-content') },
