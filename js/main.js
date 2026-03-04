@@ -31,6 +31,7 @@ import { renderNpcsGeralTab } from './oMundo/npcsGeral.js';
 import { renderRacasTab } from './manualRegras/racas.js';
 import { renderClassesTab } from './manualRegras/classes.js';
 import { renderSubclassesTab } from './manualRegras/subclasses.js';
+import { renderHabilidadesTab } from './manualRegras/habilidades.js';
 
 const dom = {};
 document.querySelectorAll('[id]').forEach(el => dom[el.id.replace(/-/g, '_')] = el);
@@ -193,6 +194,13 @@ window.showTab = function(tabId) {
         return;
     }
 
+    // Aba "Habilidades (Manual)"
+    if (tabId === 'habilidades-regras-content' || tabId === 'habilidades-regras') {
+        target.innerHTML = ''; 
+        if (typeof renderHabilidadesTab === 'function') renderHabilidadesTab();
+        return;
+    }
+
     if (tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
@@ -251,7 +259,7 @@ const MASTER_ARCHITECTURE = {
         { id: 'racas', icon: 'fa-dna', label: 'Raças', render: () => window.showTab('racas-content') },
         { id: 'classes', icon: 'fa-khanda', label: 'Classes', render: () => window.showTab('classes-content') },
         { id: 'subclasses', icon: 'fa-project-diagram', label: 'Subclasses', render: () => window.showTab('subclasses-content') },
-        { id: 'blank', icon: 'fa-fire', label: 'Habilidades', render: () => window.renderBlankPage('Habilidades') },
+        { id: 'habilidades-regras', icon: 'fa-book-sparkles', label: 'Habilidades', render: () => window.showTab('habilidades-regras-content') },
         { id: 'blank', icon: 'fa-hammer', label: 'Profissões', render: () => window.renderBlankPage('Profissões') }
     ],
     'Ao Mestre': [
