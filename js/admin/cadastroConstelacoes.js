@@ -22,21 +22,67 @@ export async function renderCadastroConstelacoesTab() {
     const container = document.getElementById('cadastro-constelacoes-content');
     if (!container) return;
 
+    // A injeção direta de estilo garante que a constelação mantenha a proporção 800x800 original,
+    // preservando a posição exata de X e Y (em %) salvas no Firebase.
     container.innerHTML = `
-        <div class="w-full h-full fade-in flex flex-col bg-slate-950 overflow-hidden relative">
+        <style>
+            #constellation-layer {
+                position: absolute; top: 50%; left: 50%;
+                width: 800px; height: 800px;
+                transform: translate(-50%, -50%);
+                border: 1px dashed #334155;
+                border-radius: 8px;
+                box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            }
+            .node-point {
+                position: absolute; width: 28px; height: 28px; border-radius: 50%;
+                border: 2px solid var(--destaque, #0ea5e9);
+                transform: translate(-50%, -50%);
+                cursor: pointer; z-index: 10;
+                transition: transform 0.2s, box-shadow 0.2s;
+                display: flex; align-items: center; justify-content: center;
+                color: white; font-size: 10px; font-weight: bold;
+                box-shadow: 0 0 10px rgba(14, 165, 233, 0.5);
+                user-select: none;
+            }
+            .node-point:hover { transform: translate(-50%, -50%) scale(1.2); z-index: 15; box-shadow: 0 0 15px var(--destaque, #0ea5e9); }
+            .node-point.selected {
+                border-color: white !important;
+                box-shadow: 0 0 20px var(--destaque, #0ea5e9), inset 0 0 10px var(--destaque, #0ea5e9) !important;
+                transform: translate(-50%, -50%) scale(1.3);
+                z-index: 20; color: #fff; text-shadow: 0 0 2px black;
+            }
+            .node-point.start-node { border: 2px solid #fbbf24 !important; box-shadow: 0 0 15px #fbbf24 !important; }
+            .connection-line { stroke: #334155; stroke-width: 2; transition: all 0.3s; }
             
+            .attr-row-grid { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+            .attr-row-grid label { font-size: 0.65rem; text-transform: uppercase; color: #94a3b8; min-width: 70px; font-weight: bold; }
+            .attr-row-grid input { width: 100%; padding: 2px 6px; text-align: center; height: 24px; font-size: 0.8rem; background-color: #1e293b; border: 1px solid #334155; color: white; border-radius: 4px; outline: none; }
+            .attr-row-grid input:focus { border-color: #0ea5e9; }
+            
+            @keyframes flashSuccess { 0% { background-color: #10b981; } 100% { background-color: #0ea5e9; } }
+            .flash-success { animation: flashSuccess 0.5s ease-out; }
+            
+            .constellation-canvas-bg {
+                background-color: #020617;
+                background-image: linear-gradient(rgba(30, 41, 59, 0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(30, 41, 59, 0.3) 1px, transparent 1px);
+                background-size: 40px 40px;
+            }
+        </style>
+        
+        <div class="w-full h-full fade-in flex flex-col bg-slate-950 overflow-hidden relative">
             <header class="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-6 z-40 shrink-0 shadow-lg">
                 <div class="flex items-center gap-4">
-                    <h1 class="font-cinzel text-xl text-sky-400 flex items-center gap-2 font-bold tracking-widest"><i class="fas fa-star text-sky-600"></i> Editor de Constelações</h1>
+                    <h1 class="font-cinzel text-xl text-sky-400 flex items-center gap-2 font-bold tracking-widest"><i class="fas fa-star text-sky-600"></i> Matriz de Estrelas</h1>
                     <div class="h-8 w-px bg-slate-800 mx-2"></div>
                     <div class="flex flex-col">
                         <label class="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Vincular a uma Classe</label>
                         <div class="flex gap-2">
-                            <select id="const-class-select" class="w-48 py-1 px-2 text-sm bg-slate-800 border border-slate-700 rounded focus:border-sky-500 text-sky-100 outline-none">
+                            <select id="const-class-select" onchange="window.constTools.loadConstellation()" class="w-48 py-1 px-2 text-sm bg-slate-800 border border-slate-700 rounded focus:border-sky-500 text-sky-100 outline-none cursor-pointer">
                                 <option value="">-- Carregando Classes --</option>
                             </select>
-                            <button onclick="window.constTools.loadConstellation()" class="bg-sky-900 hover:bg-sky-700 text-sky-200 px-3 rounded text-xs border border-sky-800 transition"><i class="fas fa-sync-alt"></i></button>
-                            <button onclick="window.constTools.newClass()" class="bg-emerald-900 hover:bg-emerald-700 text-emerald-200 px-3 rounded text-xs border border-emerald-800 transition"><i class="fas fa-plus"></i></button>
+                            <button id="btn-load-class" onclick="window.constTools.loadConstellation()" class="bg-sky-900 hover:bg-sky-700 text-sky-200 px-3 rounded text-xs border border-sky-800 transition" title="Atualizar Mapa"><i class="fas fa-sync-alt"></i></button>
+                            <button onclick="window.constTools.newClass()" class="bg-emerald-900 hover:bg-emerald-700 text-emerald-200 px-3 rounded text-xs border border-emerald-800 transition" title="Nova Classe"><i class="fas fa-plus"></i></button>
                         </div>
                     </div>
                 </div>
@@ -127,7 +173,7 @@ export async function renderCadastroConstelacoesTab() {
                 </aside>
 
                 <main id="const-canvas-container" class="flex-1 relative constellation-canvas-bg overflow-hidden cursor-grab">
-                    <div id="constellation-layer" class="constellation-layer border border-dashed border-slate-800 rounded-full shadow-[0_0_100px_rgba(0,0,0,0.8)]">
+                    <div id="constellation-layer">
                         <svg id="connections-svg" class="absolute inset-0 w-full h-full pointer-events-none z-0"></svg>
                         <div id="nodes-container" class="absolute inset-0 w-full h-full"></div>
                     </div>
@@ -235,14 +281,13 @@ function renderCanvas() {
     calculateTotals();
 }
 
-// DRAG AND DROP LOGIC
 function attachDragListeners() {
     const canvas = document.getElementById('const-canvas-container');
-    const layer = document.getElementById('constellation-layer');
-    if(!canvas || !layer) return;
+    if(!canvas) return;
 
     canvas.addEventListener('mousemove', (e) => {
         if(cState.isDragging && cState.dragData) {
+            const layer = document.getElementById('constellation-layer');
             const rect = layer.getBoundingClientRect();
             const mouseX = ((e.clientX - rect.left) / rect.width) * 100;
             const mouseY = ((e.clientY - rect.top) / rect.height) * 100;
@@ -259,7 +304,12 @@ function attachDragListeners() {
         }
     });
 
-    document.addEventListener('mouseup', () => { cState.isDragging = false; cState.dragData = null; canvas.style.cursor = cState.isLinking ? 'crosshair' : 'grab'; });
+    document.addEventListener('mouseup', () => { 
+        cState.isDragging = false; 
+        cState.dragData = null; 
+        const cvs = document.getElementById('const-canvas-container');
+        if(cvs) cvs.style.cursor = cState.isLinking ? 'crosshair' : 'grab'; 
+    });
 }
 
 function startDrag(e, id) {
@@ -402,20 +452,21 @@ window.constTools = {
     loadConstellation: async () => {
         const sel = document.getElementById('const-class-select');
         const classId = sel.value;
-        if(!classId) return alert("Selecione a Classe Mestra no menu superior!");
+        if(!classId) return alert("Selecione a Classe no menu superior!");
         
         cState.currentClassId = classId;
         cState.selectedNodeIds.clear();
         updateSidebarUI();
 
-        const btn = document.getElementById('btn-save-const');
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Baixando...';
+        const btn = document.getElementById('btn-load-class');
+        const oldHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
         try {
             const docSnap = await getDoc(doc(db, "rpg_constelacoes_templates", classId));
             cState.nodes = docSnap.exists() ? (docSnap.data().nodes || []) : [];
             
-            // Migração Nativa
+            // Migração da Lógica Antiga
             cState.nodes.forEach(n => {
                 if (n.data.bonusKey && !n.data.bonuses) {
                     n.data.bonuses = {};
@@ -429,7 +480,7 @@ window.constTools = {
             if(!docSnap.exists() && confirm("Ainda não existe mapa para esta classe. Iniciar em branco?")) cState.nodes = [];
             renderCanvas();
         } catch (e) { alert("Falha astral: " + e.message); }
-        finally { btn.innerHTML = '<i class="fas fa-save"></i> Gravar Diagrama'; }
+        finally { btn.innerHTML = oldHtml; }
     },
 
     newClass: () => {
@@ -462,15 +513,16 @@ window.constTools = {
     save: async () => {
         if(!cState.currentClassId) return alert("Selecione a classe no menu do topo primeiro.");
         const btn = document.getElementById('btn-save-const');
+        const oldHtml = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Gravando...';
         
         const data = { classeId: cState.currentClassId, nodes: cState.nodes, totalNodes: cState.nodes.length, updatedAt: serverTimestamp() };
         try {
             await setDoc(doc(db, "rpg_constelacoes_templates", cState.currentClassId), data);
             await setDoc(doc(db, "rpg_constelacoes_backup", `${cState.currentClassId}_${Date.now()}`), data);
-            alert("✨ Diagrama Estelar Gravado!");
+            alert("✨ Diagrama Estelar Gravado com Sucesso!");
         } catch(e) { alert("Erro ao salvar: " + e.message); } 
-        finally { btn.innerHTML = '<i class="fas fa-save"></i> Gravar Diagrama'; }
+        finally { btn.innerHTML = oldHtml; }
     },
 
     addNode: (x, y) => {
