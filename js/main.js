@@ -38,6 +38,8 @@ import { renderCadastroNpcsTab } from './aoMestre/cadastroNpcs.js';
 import { renderCadastroMonstrosTab } from './aoMestre/cadastroMonstrosSeres.js';
 import { renderCadastroItensTab } from './aoMestre/cadastroItens.js';
 import { renderLorePersonagensTab } from './aoMestre/lorePersonagens.js';
+import { renderBackofficeTab } from './admin/backoffice.js';
+
 
 const dom = {};
 document.querySelectorAll('[id]').forEach(el => dom[el.id.replace(/-/g, '_')] = el);
@@ -249,6 +251,13 @@ window.showTab = function(tabId) {
         return;
     }
 
+    // Aba "Backoffice" (Admin)
+    if (tabId === 'backoffice-content' || tabId === 'backoffice') {
+        target.innerHTML = ''; 
+        if (typeof renderBackofficeTab === 'function') renderBackofficeTab();
+        return;
+    }
+
     if (tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
@@ -317,6 +326,9 @@ const MASTER_ARCHITECTURE = {
         { id: 'cadastro-monstros', icon: 'fa-dragon', label: 'Cad. Monstros', render: () => window.showTab('cadastro-monstros-content') },
         { id: 'cadastro-itens', icon: 'fa-gem', label: 'Cad. Itens', render: () => window.showTab('cadastro-itens-content') },
         { id: 'lore-personagens', icon: 'fa-scroll', label: 'Lore Personagens', render: () => window.showTab('lore-personagens-content') }
+    ],
+    'Painel Admin': [
+        { id: 'backoffice', icon: 'fa-database', label: 'Backoffice', render: () => window.showTab('backoffice-content') }
     ],
     'Ao Jogador': [
         { id: 'simular-ficha', icon: 'fa-flask', label: 'Simular Ficha', render: () => window.showTab('simular-ficha-content') },
