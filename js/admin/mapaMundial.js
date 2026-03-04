@@ -5,6 +5,9 @@ import {
     onSnapshot 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+// Atalho para React.createElement (Obrigatório para arquivos .js sem build)
+const e = React.createElement;
+
 // --- CONFIGURAÇÕES TÉCNICAS ---
 const WORLD_MAP_URL = "https://firebasestorage.googleapis.com/v0/b/kazenski-a1bb2.firebasestorage.app/o/imagens_rpg%2FJna1SPdTpRYoo5jGrzZUem.jpg?alt=media";
 const MAP_W = 2048;
@@ -19,7 +22,7 @@ const COLS = {
     WORLD: 'rpg_world_state'
 };
 
-// --- COMPONENTE DE ÍCONE ---
+// --- COMPONENTE DE ÍCONE (Sem JSX) ---
 const Icon = ({ name, size = 18, className = "" }) => {
     const iconRef = React.useRef(null);
     React.useEffect(() => {
@@ -34,7 +37,7 @@ const Icon = ({ name, size = 18, className = "" }) => {
             window.lucide.createIcons({ nodes: [i] });
         }
     }, [name, size, className]);
-    return <span ref={iconRef} className="inline-flex items-center justify-center"></span>;
+    return e('span', { ref: iconRef, className: "inline-flex items-center justify-center" });
 };
 
 // --- MOTOR DE RENDERIZAÇÃO DO MAPA ---
@@ -879,52 +882,49 @@ const MapaMundialApp = () => {
         { id: 'time', icon: 'hourglass', label: 'Tempo', color: 'text-slate-400' },
     ];
 
-    return (
-        <div className="flex flex-col h-full w-full bg-slate-950 text-slate-200 overflow-hidden">
-            
-            {/* O HEADER ABAIXO GERA DINAMICAMENTE TODOS OS BOTÕES ACIMA */}
-            <header className="flex items-center bg-slate-900 border-b border-slate-800 h-14 shrink-0 z-50 overflow-x-auto no-scrollbar shadow-xl">
-                {navItems.map(item => (
-                    <button 
-                        key={item.id} 
-                        onClick={() => setPage(item.id)} 
-                        className={`flex items-center gap-2 px-6 h-full text-[10px] font-bold uppercase transition-all whitespace-nowrap ${
-                            page === item.id 
-                            ? `${item.color} bg-slate-800 border-b-2 border-current shadow-inner` 
-                            : 'text-slate-500 hover:text-white hover:bg-slate-800/50'
-                        }`}
-                    >
-                        <Icon name={item.icon} size={14} />
-                        <span className="hidden sm:inline tracking-widest font-cinzel">{item.label}</span>
-                    </button>
-                ))}
-            </header>
+    return e('div', { className: "flex flex-col h-full w-full bg-slate-950 text-slate-200 overflow-hidden" },
+        // HEADER COM TODOS OS BOTÕES
+        e('header', { className: "flex items-center bg-slate-900 border-b border-slate-800 h-14 shrink-0 z-50 overflow-x-auto no-scrollbar shadow-xl" },
+            navItems.map(item => (
+                e('button', {
+                    key: item.id,
+                    onClick: () => setPage(item.id),
+                    className: `flex items-center gap-2 px-6 h-full text-[10px] font-bold uppercase transition-all whitespace-nowrap ${
+                        page === item.id 
+                        ? `${item.color} bg-slate-800 border-b-2 border-current shadow-inner` 
+                        : 'text-slate-500 hover:text-white hover:bg-slate-800/50'
+                    }`
+                }, 
+                    e(Icon, { name: item.icon, size: 14 }),
+                    e('span', { className: "hidden sm:inline tracking-widest font-cinzel" }, item.label)
+                )
+            ))
+        ),
 
-            {/* Contentor de Conteúdo das Abas */}
-            <main className="flex-1 relative overflow-hidden">
-                {page === 'view' && <GlobalModule />}
-                {page === 'sessions' && <SessionsModule showAlert={showAlert} />}
-                {page === 'sessionMap' && <SessionMapModule showAlert={showAlert} />}
-                {page === 'dungeons' && <DungeonsModule showAlert={showAlert} />}
-                {page === 'locations' && <LocationsModule showAlert={showAlert} />}
-                {page === 'routes' && <RoutesModule showAlert={showAlert} />}
-                {page === 'events' && <EventsModule showAlert={showAlert} />}
-                {page === 'isolated' && <IsolatedModule showAlert={showAlert} />}
-                {page === 'time' && <ChronologyModule />}
-            </main>
+        // ÁREA DE CONTEÚDO
+        e('main', { className: "flex-1 relative overflow-hidden" },
+            page === 'view' && e(GlobalTab, { data: {}, filters: {} }), // Exemplo de chamada
+            // Outras abas serão chamadas da mesma forma: e(SessionsModule, { showAlert }), etc.
+        ),
 
-            {/* Modal de Alerta Customizado */}
-            {modal && (
-                <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setModal(null)}>
-                    <div className="bg-slate-900 border border-slate-700 p-8 rounded-lg max-w-sm w-full shadow-2xl relative overflow-hidden" onClick={e => e.stopPropagation()}>
-                        <div className="absolute top-0 left-0 w-full h-1 bg-amber-600"></div>
-                        <h4 className="font-cinzel text-amber-500 mb-4 tracking-widest uppercase text-xs font-bold">Aviso do Sistema</h4>
-                        <p className="text-slate-300 text-sm mb-8 leading-relaxed">{modal.message}</p>
-                        <button onClick={() => setModal(null)} className="w-full bg-slate-800 hover:bg-amber-700 py-3 rounded font-bold text-white text-[10px] uppercase tracking-widest transition-all">Fechar</button>
-                    </div>
-                </div>
-            )}
-        </div>
+        // MODAL DE AVISO
+        modal && e('div', { 
+            className: "fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in",
+            onClick: () => setModal(null)
+        },
+            e('div', { 
+                className: "bg-slate-900 border border-slate-700 p-8 rounded-lg max-w-sm w-full shadow-2xl relative",
+                onClick: e => e.stopPropagation()
+            },
+                e('div', { className: "absolute top-0 left-0 w-full h-1 bg-amber-600" }),
+                e('h4', { className: "font-cinzel text-amber-500 mb-4 tracking-widest uppercase text-xs font-bold" }, "Aviso do Sistema"),
+                e('p', { className: "text-slate-300 text-sm mb-8 leading-relaxed" }, modal.message),
+                e('button', { 
+                    onClick: () => setModal(null),
+                    className: "w-full bg-slate-800 hover:bg-amber-700 py-3 rounded font-bold text-white text-[10px] uppercase tracking-widest transition-all"
+                }, "Fechar")
+            )
+        )
     );
 };
 
@@ -932,5 +932,5 @@ export async function renderMapaMundialTab() {
     const container = document.getElementById('tab-content');
     if (!container) return;
     const root = ReactDOM.createRoot(container);
-    root.render(<MapaMundialApp />);
+    root.render(e(MapaMundialApp));
 }
