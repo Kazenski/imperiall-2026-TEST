@@ -581,6 +581,161 @@ const EventsModule = ({ showAlert }) => {
     );
 };
 
+// --- MÓDULO: ENCONTROS ISOLADOS ---
+const IsolatedModule = ({ showAlert }) => {
+    const [list, setList] = React.useState([]);
+    const [npcs, setNpcs] = React.useState([]);
+    const [editing, setEditing] = React.useState(null);
+    const [tempPoints, setTempPoints] = React.useState([]);
+
+    React.useEffect(() => {
+        const unsubI = onSnapshot(collection(db, COLS.ISOLATED), s => setList(s.docs.map(d => ({id: d.id, ...d.data()}))));
+        const unsubN = onSnapshot(query(collection(db, COLS.NPCS), orderBy('nome')), s => setNpcs(s.docs.map(d => ({id: d.id, ...d.data()}))));
+        return () => { unsubI(); unsubN(); };
+    }, []);
+
+    const saveIsolated = async () => {
+        if(!editing.name || tempPoints.length === 0) return showAlert("Nome e pelo menos um local são obrigatórios.");
+        
+        const data = {
+            name: editing.name || '',
+            desc: editing.desc || '',
+            frequency: parseInt(editing.frequency) || 24,
+            npcId: editing.npcId || '',
+            spots: tempPoints.map(p => ({ 
+                lat: p.lat, 
+                lng: p.lng, 
+                chance: parseInt(p.chance) || 10 
+            }))
+        };
+
+        try {
+            if(editing.id) await updateDoc(doc(db, COLS.ISOLATED, editing.id), data);
+            else await addDoc(collection(db, COLS.ISOLATED), data);
+            setEditing(null);
+            setTempPoints([]);
+            showAlert("Encontro salvo com sucesso!");
+        } catch (err) { showAlert("Erro ao salvar encontro."); }
+    };
+
+    return e('div', { className: "flex h-full animate-fade-in bg-slate-950" },
+        // SIDEBAR: LISTAGEM
+        e('div', { className: "w-72 bg-slate-900/50 border-r border-slate-700 flex flex-col" },
+            e('div', { className: "p-4 border-b border-slate-800" },
+                e('button', { 
+                    onClick: () => { setEditing({name: '', desc: '', frequency: 24, npcId: ''}); setTempPoints([]); },
+                    className: "w-full bg-red-800 hover:bg-red-700 text-white py-2 rounded font-bold text-xs transition shadow-lg"
+                }, "+ NOVO ENCONTRO")
+            ),
+            e('div', { className: "flex-1 overflow-y-auto p-2 space-y-2 custom-scroll" },
+                list.map(i => e('div', {
+                    key: i.id,
+                    onClick: () => { setEditing(i); setTempPoints(i.spots || []); },
+                    className: "p-3 rounded cursor-pointer border-l-4 border-red-500 transition " + (editing?.id === i.id ? 'bg-slate-800' : 'bg-slate-900/30 hover:bg-slate-800')
+                }, 
+                    e('div', { className: "text-sm font-bold text-slate-200" }, i.name),
+                    e('div', { className: "text-[10px] text-slate-500 uppercase mt-1" }, 
+                        (i.spots?.length || 0) + " locais cadastrados"
+                    )
+                ))
+            )
+        ),
+
+        // ÁREA DO MAPA E EDITOR
+        e('div', { className: "flex-1 relative" },
+            e('div', { className: "absolute inset-0 z-0" },
+                e(RPGMap, { 
+                    mode: "isolated", 
+                    tempPoints: tempPoints,
+                    onMapClick: pt => editing && setTempPoints(p => [...p, { ...pt, chance: 10 }]),
+                    filters: { locations: true },
+                    isolated: list.filter(l => l.id !== editing?.id)
+                })
+            ),
+
+            editing && e('div', { className: "absolute top-4 left-4 z-10 w-80 bg-slate-900/95 backdrop-blur-md border border-red-900/30 rounded-lg shadow-2xl p-6 space-y-4 max-h-[90%] overflow-y-auto custom-scroll" },
+                e('h3', { className: "font-cinzel text-red-500 text-lg" }, "Encontro Isolado"),
+                
+                e('div', null,
+                    e('label', { className: "text-[10px] font-bold text-slate-500 uppercase" }, "Nome do Evento"),
+                    e('input', { 
+                        value: editing.name, 
+                        onChange: ev => setEditing({...editing, name: ev.target.value}), 
+                        placeholder: "Ex: Alcateia de Lobos",
+                        className: "w-full bg-slate-800 border border-slate-700 p-2 rounded text-sm text-white" 
+                    })
+                ),
+
+                e('div', null,
+                    e('label', { className: "text-[10px] font-bold text-slate-500 uppercase" }, "Descrição / Lore"),
+                    e('textarea', { 
+                        value: editing.desc, 
+                        onChange: ev => setEditing({...editing, desc: ev.target.value}), 
+                        className: "w-full bg-slate-800 border border-slate-700 p-2 rounded text-xs text-slate-400 h-20" 
+                    })
+                ),
+                
+                e('div', { className: "grid grid-cols-2 gap-4" },
+                    e('div', null,
+                        e('label', { className: "text-[10px] font-bold text-slate-500 uppercase" }, "Freq. (h)"),
+                        e('input', { 
+                            type: "number", 
+                            value: editing.frequency, 
+                            onChange: ev => setEditing({...editing, frequency: ev.target.value}), 
+                            className: "w-full bg-slate-800 border border-slate-700 p-2 rounded text-sm text-white" 
+                        })
+                    ),
+                    e('div', null,
+                        e('label', { className: "text-[10px] font-bold text-slate-500 uppercase" }, "NPC Líder"),
+                        e('select', {
+                            value: editing.npcId,
+                            onChange: ev => setEditing({...editing, npcId: ev.target.value}),
+                            className: "w-full bg-slate-800 border border-slate-700 p-2 rounded text-sm text-white"
+                        },
+                            e('option', { value: "" }, "Nenhum"),
+                            npcs.map(n => e('option', { key: n.id, value: n.id }, n.nome))
+                        )
+                    )
+                ),
+
+                e('div', { className: "bg-slate-950 p-3 rounded border border-slate-800 space-y-2" },
+                    e('label', { className: "text-[10px] font-bold text-slate-400 uppercase block" }, "Locais e Chances (" + tempPoints.length + ")"),
+                    tempPoints.map((p, i) => (
+                        e('div', { key: i, className: "flex items-center gap-2 text-[10px] bg-slate-900 p-1 rounded" },
+                            e('span', { className: "text-slate-600 w-4" }, "#" + (i+1)),
+                            e('input', { 
+                                type: "number", 
+                                value: p.chance, 
+                                onChange: ev => {
+                                    const n = [...tempPoints]; 
+                                    n[i].chance = ev.target.value; 
+                                    setTempPoints(n);
+                                }, 
+                                className: "w-12 bg-slate-800 border border-slate-700 rounded text-center text-red-400 font-bold" 
+                            }),
+                            e('span', { className: "text-slate-500" }, "%"),
+                            e('button', { 
+                                onClick: () => setTempPoints(tempPoints.filter((_, idx) => idx !== i)),
+                                className: "ml-auto text-red-500 hover:text-red-400"
+                            }, e(Icon, { name: "x", size: 12 }))
+                        )
+                    )),
+                    tempPoints.length === 0 && e('p', { className: "text-[9px] text-slate-600 italic text-center" }, "Clique no mapa para marcar locais.")
+                ),
+
+                e('div', { className: "flex gap-2 pt-2" },
+                    e('button', { onClick: saveIsolated, className: "flex-1 bg-red-800 hover:bg-red-700 text-white py-2 rounded font-bold text-xs" }, "SALVAR ENCONTRO"),
+                    e('button', { onClick: () => setEditing(null), className: "px-4 bg-slate-800 text-slate-400 rounded text-xs" }, "X")
+                ),
+                editing.id && e('button', { 
+                    onClick: () => { if(confirm('Remover este encontro?')) deleteDoc(doc(db, COLS.ISOLATED, editing.id)); setEditing(null); },
+                    className: "w-full text-[9px] text-red-600 font-bold hover:text-red-400 uppercase tracking-tighter"
+                }, "Excluir Permanentemente")
+            )
+        )
+    );
+};
+
 // --- MÓDULO: CRONOLOGIA (Tempo e Mundo) ---
 const ChronologyModule = () => {
     const [state, setState] = React.useState({ year:1, month:1, day:1, time:'12:00', seasonId:'' });
