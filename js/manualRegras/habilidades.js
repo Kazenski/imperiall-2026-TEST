@@ -306,7 +306,7 @@ function openSkillModal(skillId) {
     const iconHTML = skill.imagemUrl 
         ? `<img src="${escapeHTML(skill.imagemUrl)}" alt="${escapeHTML(skill.nome)}" class="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover border-2 border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.4)] shrink-0 bg-slate-900">`
         : `<div class="w-16 h-16 md:w-20 md:h-20 bg-slate-800 rounded-full flex items-center justify-center border-2 border-amber-500/50 text-amber-500 text-3xl shrink-0 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
-             <i class="fas fa-magic"></i>
+             <i class="fas fa-book-open"></i>
            </div>`;
 
     const renderFullMap = (data, unit) => {
