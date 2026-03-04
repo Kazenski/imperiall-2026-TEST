@@ -252,7 +252,7 @@ function renderPetForm() {
                             
                             <div>
                                 <label class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 block">Nome do Pet (Opcional - Ex: Fenrir)</label>
-                                <input type="text" id="f-nome" value="${escapeHTML(data.nome||'')}" placeholder="${currentMobData ? currentMobData.nome : 'Nome customizado...'}" class="w-full bg-slate-950 border border-slate-600 p-3 rounded-lg text-emerald-200 outline-none focus:border-emerald-500">
+                                <input type="text" id="f-nome" value="${escapeHTML(data.nome||'')}" placeholder="${currentMob ? currentMob.nome : 'Nome customizado...'}" class="w-full bg-slate-950 border border-slate-600 p-3 rounded-lg text-emerald-200 outline-none focus:border-emerald-500">
                             </div>
 
                             <div class="grid grid-cols-2 gap-6 pt-4 border-t border-slate-700">
