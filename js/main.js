@@ -48,6 +48,7 @@ import { renderCadastroLojasTab } from './admin/cadastroLojas.js';
 import { renderCadastroNoticiasTab } from './admin/cadastroNoticias.js';
 import { renderCadastroPetsTab } from './admin/cadastroPets.js';
 import { renderCadastroReputacaoTab } from './admin/cadastroReputacao.js';
+import { renderFirebaseMudaAllTab } from './admin/firebaseMudaAll.js';
 
 
 const dom = {};
@@ -330,6 +331,13 @@ window.showTab = function(tabId) {
         return;
     }
 
+    // Aba "Firebase Batch Updater" (Admin)
+    if (tabId === 'firebase-muda-all-content' || tabId === 'firebase-muda-all') {
+        target.innerHTML = ''; 
+        if (typeof renderFirebaseMudaAllTab === 'function') renderFirebaseMudaAllTab();
+        return;
+    }
+
     if (tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
@@ -409,7 +417,8 @@ const MASTER_ARCHITECTURE = {
         { id: 'cadastro-lojas', icon: 'fa-coins', label: 'Engine Econômica', render: () => window.showTab('cadastro-lojas-content'), requiresAdmin: true },
         { id: 'cadastro-noticias', icon: 'fa-newspaper', label: 'Diário Mestre', render: () => window.showTab('cadastro-noticias-content'), requiresAdmin: true },
         { id: 'cadastro-pets', icon: 'fa-paw', label: 'Gestor Bestiário', render: () => window.showTab('cadastro-pets-content'), requiresAdmin: true },
-        { id: 'cadastro-reputacao', icon: 'fa-chess-rook', label: 'Gestor Império', render: () => window.showTab('cadastro-reputacao-content'), requiresAdmin: true }
+        { id: 'cadastro-reputacao', icon: 'fa-chess-rook', label: 'Gestor Império', render: () => window.showTab('cadastro-reputacao-content'), requiresAdmin: true },
+        { id: 'firebase-muda-all', icon: 'fa-biohazard', label: 'Injeção DB', render: () => window.showTab('firebase-muda-all-content'), requiresAdmin: true }
         
     ],
     'Ao Jogador': [
