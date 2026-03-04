@@ -50,6 +50,7 @@ import { renderCadastroPetsTab } from './admin/cadastroPets.js';
 import { renderCadastroReputacaoTab } from './admin/cadastroReputacao.js';
 import { renderFirebaseMudaAllTab } from './admin/firebaseMudaAll.js';
 import { renderFirebaseMudaIfTab } from './admin/firebaseMudaIf.js';
+import { renderGerarTabelaXpTab } from './admin/gerarTabelaXp.js';
 
 
 const dom = {};
@@ -346,6 +347,13 @@ window.showTab = function(tabId) {
         return;
     }
 
+    // Aba "Gerador de Tabela XP" (Admin)
+    if (tabId === 'gerar-tabela-xp-content' || tabId === 'gerar-tabela-xp') {
+        target.innerHTML = ''; 
+        if (typeof renderGerarTabelaXpTab === 'function') renderGerarTabelaXpTab();
+        return;
+    }
+
     if (tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
@@ -427,8 +435,9 @@ const MASTER_ARCHITECTURE = {
         { id: 'cadastro-pets', icon: 'fa-paw', label: 'Gestor Bestiário', render: () => window.showTab('cadastro-pets-content'), requiresAdmin: true },
         { id: 'cadastro-reputacao', icon: 'fa-chess-rook', label: 'Gestor Império', render: () => window.showTab('cadastro-reputacao-content'), requiresAdmin: true },
         { id: 'firebase-muda-all', icon: 'fa-biohazard', label: 'Injeção DB', render: () => window.showTab('firebase-muda-all-content'), requiresAdmin: true },
-        { id: 'firebase-muda-if', icon: 'fa-filter', label: 'Mutação DB (IF)', render: () => window.showTab('firebase-muda-if-content'), requiresAdmin: true }
-
+        { id: 'firebase-muda-if', icon: 'fa-filter', label: 'Mutação DB (IF)', render: () => window.showTab('firebase-muda-if-content'), requiresAdmin: true },
+        { id: 'gerar-tabela-xp', icon: 'fa-chart-line', label: 'Engine de Níveis', render: () => window.showTab('gerar-tabela-xp-content'), requiresAdmin: true }
+        
     ],
     'Ao Jogador': [
         { id: 'simular-ficha', icon: 'fa-flask', label: 'Simular Ficha', render: () => window.showTab('simular-ficha-content') },
