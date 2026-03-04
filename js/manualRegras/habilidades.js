@@ -175,7 +175,7 @@ function applyFiltersAndSort() {
         return inClass || inSubclass;
     });
 
-    // 2. Filtra pelo texto de pesquisa (Nome ou Descrição)
+    // 2. Filtra pelo texto de pesquisa
     if (currentSearchTerm.trim() !== '') {
         const term = currentSearchTerm.toLowerCase();
         filteredSkills = filteredSkills.filter(skill => 
@@ -215,7 +215,6 @@ function getSortValue(skill, key) {
         return (skill[key] || '').toString().toLowerCase();
     }
     
-    // Tratamento para mapas complexos (MP, Dano) - Busca o menor nível (lvl1) ou o primeiro valor numérico
     const data = skill[key];
     if (typeof data === 'number') return data;
     if (typeof data === 'object' && data !== null) {
@@ -291,7 +290,7 @@ function renderTableRows(skillsToRender) {
 }
 
 // -------------------------------------------------------------
-// MODAL DE DETALHES
+// MODAL DE DETALHES DA HABILIDADE
 // -------------------------------------------------------------
 function openSkillModal(skillId) {
     const modal = document.getElementById('habilidade-modal');
@@ -300,6 +299,15 @@ function openSkillModal(skillId) {
 
     const skill = allSkills.find(s => s.id === skillId);
     if (!skill) return;
+
+    // --- LÓGICA DO ÍCONE DA HABILIDADE (BOLINHA) ---
+    // Se existir 'imagemUrl', renderiza a imagem em formato circular. 
+    // Se não, renderiza um ícone genérico com o mesmo formato circular.
+    const iconHTML = skill.imagemUrl 
+        ? `<img src="${escapeHTML(skill.imagemUrl)}" alt="${escapeHTML(skill.nome)}" class="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover border-2 border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.4)] shrink-0 bg-slate-900">`
+        : `<div class="w-16 h-16 md:w-20 md:h-20 bg-slate-800 rounded-full flex items-center justify-center border-2 border-amber-500/50 text-amber-500 text-3xl shrink-0 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+             <i class="fas fa-magic"></i>
+           </div>`;
 
     const renderFullMap = (data, unit) => {
         if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) return '<span class="text-slate-500">N/A</span>';
@@ -312,13 +320,11 @@ function openSkillModal(skillId) {
     };
 
     content.innerHTML = `
-        <div class="flex items-center gap-4 border-b border-slate-700 pb-6 mb-6">
-            <div class="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center border-2 border-amber-500/50 text-amber-500 text-3xl shrink-0 shadow-lg">
-                <i class="fas fa-book-sparkles"></i>
-            </div>
+        <div class="flex items-center gap-4 md:gap-6 border-b border-slate-700 pb-6 mb-6">
+            ${iconHTML}
             <div>
                 <h2 class="text-3xl md:text-4xl font-black font-cinzel text-white">${escapeHTML(skill.nome)}</h2>
-                <p class="text-amber-500 font-bold tracking-widest text-sm uppercase mt-1">Técnica Registrada</p>
+                <p class="text-amber-500 font-bold tracking-widest text-sm uppercase mt-1 drop-shadow-md">Técnica Registrada</p>
             </div>
         </div>
 
