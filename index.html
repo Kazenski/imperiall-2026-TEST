@@ -13,6 +13,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="style.css" />
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+
 </head>
 <body class="bg-[#020617] text-slate-200 font-sans h-screen w-screen flex flex-col overflow-hidden">
 
@@ -187,30 +193,32 @@
                 <div id="arena-combate-content" class="tab-content h-full flex flex-col hidden">
                     <div id="arena-content" class="flex-grow w-full h-full relative z-0"></div>
                 </div>
-                
+                <!-- Páginas de atualizações -->
                 <div id="atualizacoes-novidades-content" class="tab-content hidden h-full flex flex-col"></div>
-                
+
                 <div id="simular-ficha-content" class="tab-content hidden h-full flex flex-col"></div>
                 
                 <div id="inicio-content" class="tab-content hidden h-full flex flex-col p-0"></div>
                 
+                <!-- Páginas de visão geral do rpg -->
                 <div id="conheca-mundo-content" class="tab-content hidden h-full flex flex-col"></div>
                 <div id="os-deuses-content" class="tab-content hidden h-full flex flex-col p-0 md:p-0"></div>
                 <div id="lendas-mundo-content" class="tab-content hidden h-full flex flex-col p-0"></div>
                 <div id="npcs-geral-content" class="tab-content hidden h-full flex flex-col p-0"></div>
-                
                 <div id="racas-content" class="tab-content hidden h-full flex flex-col p-0"></div>
                 <div id="classes-content" class="tab-content hidden h-full flex flex-col p-0"></div>
                 <div id="subclasses-content" class="tab-content hidden h-full flex flex-col p-0"></div>
                 <div id="habilidades-regras-content" class="tab-content hidden h-full flex flex-col p-0"></div>
                 <div id="profissoes-regras-content" class="tab-content hidden h-full flex flex-col p-0"></div>
-            
+                
+                <!-- Páginas do mestre -->
                 <div id="comandos-mestre-content" class="tab-content hidden h-full flex flex-col p-0"></div>
                 <div id="cadastro-npcs-content" class="tab-content hidden h-full flex flex-col p-0"></div>
                 <div id="cadastro-monstros-content" class="tab-content hidden h-full flex flex-col p-0"></div>
                 <div id="cadastro-itens-content" class="tab-content hidden h-full flex flex-col p-0"></div>
                 <div id="lore-personagens-content" class="tab-content hidden h-full flex flex-col p-0"></div>
                 
+                <!-- Páginas do admin -->
                 <div id="backoffice-content" class="tab-content hidden h-full flex flex-col p-0"></div>
                 <div id="backups-content" class="tab-content hidden h-full flex flex-col p-0"></div>
                 <div id="cadastro-constelacoes-content" class="tab-content hidden h-full flex flex-col p-0 overflow-hidden"></div>
@@ -224,7 +232,8 @@
                 <div id="firebase-muda-all-content" class="tab-content hidden h-full flex flex-col p-0"></div>
                 <div id="firebase-muda-if-content" class="tab-content hidden h-full flex flex-col p-0"></div>
                 <div id="gerar-tabela-xp-content" class="tab-content hidden h-full flex flex-col p-0"></div>
-                
+                <div id="mapa-mundial-content" class="tab-content hidden h-full flex flex-col p-0"></div>
+
             </main>
         </div>
     </div>

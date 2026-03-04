@@ -51,7 +51,7 @@ import { renderCadastroReputacaoTab } from './admin/cadastroReputacao.js';
 import { renderFirebaseMudaAllTab } from './admin/firebaseMudaAll.js';
 import { renderFirebaseMudaIfTab } from './admin/firebaseMudaIf.js';
 import { renderGerarTabelaXpTab } from './admin/gerarTabelaXp.js';
-
+import { renderMapaMundialTab } from './admin/mapaMundial.js';
 
 const dom = {};
 document.querySelectorAll('[id]').forEach(el => dom[el.id.replace(/-/g, '_')] = el);
@@ -354,6 +354,13 @@ window.showTab = function(tabId) {
         return;
     }
 
+    // Aba "Mapa Mundial (God Mode)" (Admin)
+    if (tabId === 'mapa-mundial-content' || tabId === 'mapa-mundial') {
+        target.innerHTML = ''; 
+        if (typeof renderMapaMundialTab === 'function') renderMapaMundialTab();
+        return;
+    }
+
     if (tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
@@ -436,8 +443,8 @@ const MASTER_ARCHITECTURE = {
         { id: 'cadastro-reputacao', icon: 'fa-chess-rook', label: 'Gestor Império', render: () => window.showTab('cadastro-reputacao-content'), requiresAdmin: true },
         { id: 'firebase-muda-all', icon: 'fa-biohazard', label: 'Injeção DB', render: () => window.showTab('firebase-muda-all-content'), requiresAdmin: true },
         { id: 'firebase-muda-if', icon: 'fa-filter', label: 'Mutação DB (IF)', render: () => window.showTab('firebase-muda-if-content'), requiresAdmin: true },
-        { id: 'gerar-tabela-xp', icon: 'fa-chart-line', label: 'Engine de Níveis', render: () => window.showTab('gerar-tabela-xp-content'), requiresAdmin: true }
-        
+        { id: 'gerar-tabela-xp', icon: 'fa-chart-line', label: 'Engine de Níveis', render: () => window.showTab('gerar-tabela-xp-content'), requiresAdmin: true },
+        { id: 'mapa-mundial', icon: 'fa-map', label: 'Mapa (Fog of War)', render: () => window.showTab('mapa-mundial-content'), requiresAdmin: true }
     ],
     'Ao Jogador': [
         { id: 'simular-ficha', icon: 'fa-flask', label: 'Simular Ficha', render: () => window.showTab('simular-ficha-content') },
