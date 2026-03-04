@@ -104,3 +104,23 @@ export let listeners = {
     unsubscribeSessions: null,
     storageUnsubscribe: null
 };
+
+// ============================================================================
+// CONSTANTES GLOBAIS DE REGRAS DO RPG (Itens, Bônus, Escalas)
+// ============================================================================
+
+// Categorias e Tipos de Bônus de Atributos do Sistema
+export const BONUS_LIST = {
+    "Ataque": ["Fisico", "Magico", "Elemental", "Espiritual", "Divino", "Imunidade", "Hibrido", "Definitivo"],
+    "Defesa": ["Fisica", "Magica", "Elemental", "Espiritual", "Divina", "Imunidade", "Hibrida", "Definitiva"],
+    "Evasao": ["Fisica", "Magica", "Elemental", "Espiritual", "Divina", "Imunidade", "Hibrida", "Definitiva"]
+};
+
+// Escalas de Poder para Geração Procedural de Itens (Base, Bônus, Efeitos, Durabilidade, Peso)
+export const POWER_RANGES = {
+    comum:   { base: [1, 5],   bonus: [1, 10],   efeito: [1, 2], durabilidade: [50, 100], peso: [0.5, 5] },
+    incomum: { base: [5, 15],  bonus: [10, 25],  efeito: [1, 5], durabilidade: [100, 250], peso: [1, 10] },
+    raro:    { base: [15, 30], bonus: [25, 60],  efeito: [3, 8], durabilidade: [250, 500], peso: [2, 15] },
+    epico:   { base: [30, 60], bonus: [60, 150], efeito: [5, 12], durabilidade: [500, 1000], peso: [3, 20] },
+    lendario:{ base: [60, 120],bonus: [150, 350],efeito: [10, 20],durabilidade: [1000, 2500], peso: [5, 30] }
+};

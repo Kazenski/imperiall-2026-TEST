@@ -34,6 +34,9 @@ import { renderSubclassesTab } from './manualRegras/subclasses.js';
 import { renderHabilidadesTab } from './manualRegras/habilidades.js';
 import { renderProfissoesTab } from './manualRegras/profissoes.js';
 import { renderComandosMestreTab } from './aoMestre/comandos.js';
+import { renderCadastroNpcsTab } from './aoMestre/cadastroNpcs.js';
+import { renderCadastroMonstrosTab } from './aoMestre/cadastroMonstrosSeres.js';
+import { renderCadastroItensTab } from './aoMestre/cadastroItens.js';
 
 const dom = {};
 document.querySelectorAll('[id]').forEach(el => dom[el.id.replace(/-/g, '_')] = el);
@@ -217,6 +220,27 @@ window.showTab = function(tabId) {
         return;
     }
 
+    // Aba "Cad. NPCs"
+    if (tabId === 'cadastro-npcs-content' || tabId === 'cadastro-npcs') {
+        target.innerHTML = ''; 
+        if (typeof renderCadastroNpcsTab === 'function') renderCadastroNpcsTab();
+        return;
+    }
+
+    // Aba "Cad. Monstros"
+    if (tabId === 'cadastro-monstros-content' || tabId === 'cadastro-monstros') {
+        target.innerHTML = ''; 
+        if (typeof renderCadastroMonstrosTab === 'function') renderCadastroMonstrosTab();
+        return;
+    }
+
+    // Aba "Cad. Itens"
+    if (tabId === 'cadastro-itens-content' || tabId === 'cadastro-itens') {
+        target.innerHTML = ''; 
+        if (typeof renderCadastroItensTab === 'function') renderCadastroItensTab();
+        return;
+    }
+
     if (tabId === 'painel-fichas') {
         if (globalState.selectedCharacterId) {
             window.renderFichaEditor(globalState.selectedCharacterId);
@@ -280,10 +304,10 @@ const MASTER_ARCHITECTURE = {
     ],
     'Ao Mestre': [
         { id: 'comandos-mestre', icon: 'fa-crown', label: 'Comandos Mestre', render: () => window.showTab('comandos-mestre-content') },
-        { id: 'blank', icon: 'fa-user-plus', label: 'Cad. NPCs', render: () => window.renderBlankPage('Cad. NPCs') },
-        { id: 'blank', icon: 'fa-tools', label: 'Cad. Crafts', render: () => window.renderBlankPage('Cad. Crafts') },
-        { id: 'blank', icon: 'fa-dragon', label: 'Cad. Monstros/Seres', render: () => window.renderBlankPage('Cad. Monstros/Seres') },
-        { id: 'blank', icon: 'fa-gem', label: 'Cad. Itens', render: () => window.renderBlankPage('Cad. Itens') },
+        { id: 'cadastro-npcs', icon: 'fa-user-plus', label: 'Cad. NPCs', render: () => window.showTab('cadastro-npcs-content') },
+        //{ id: 'blank', icon: 'fa-tools', label: 'Cad. Crafts', render: () => window.renderBlankPage('Cad. Crafts') },
+        { id: 'cadastro-monstros', icon: 'fa-dragon', label: 'Cad. Monstros', render: () => window.showTab('cadastro-monstros-content') },
+        { id: 'cadastro-itens', icon: 'fa-gem', label: 'Cad. Itens', render: () => window.showTab('cadastro-itens-content') },
         { id: 'blank', icon: 'fa-scroll', label: 'Lore personagens', render: () => window.renderBlankPage('Lore personagens') }
     ],
     'Ao Jogador': [
