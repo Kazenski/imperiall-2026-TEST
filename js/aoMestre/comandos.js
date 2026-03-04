@@ -1,7 +1,7 @@
 import { db } from '../core/firebase.js';
 import { collection, getDocs, doc, onSnapshot, updateDoc, deleteDoc, increment, deleteField, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { escapeHTML } from '../core/utils.js';
-import { COINS } from '../core/state.js';
+import { COINS } from '../core/state.js'; // Moedas puxadas diretamente do seu state!
 
 let gmState = { 
     targetId: null, 
@@ -25,7 +25,7 @@ export async function renderComandosMestreTab() {
                 <div class="flex-grow w-full max-w-md bg-slate-950 p-3 rounded-xl border border-slate-800">
                     <label for="gm-target-select" class="text-xs font-cinzel text-slate-400 uppercase tracking-widest block mb-1">Foco Divino (Alvo)</label>
                     <select id="gm-target-select" class="w-full bg-transparent text-amber-500 font-bold focus:outline-none cursor-pointer" onchange="window.gmTools.selectTarget(this.value)">
-                        <option value="" class="text-slate-400">-- Carregando Personagens --</option>
+                        <option value="" class="bg-slate-900 text-slate-400">-- Carregando Personagens --</option>
                     </select>
                 </div>
             </header>
@@ -54,19 +54,19 @@ export async function renderComandosMestreTab() {
                         <div class="bg-slate-800/50 border border-slate-700 p-6 rounded-2xl">
                             <h3 class="font-cinzel text-xl text-white mb-6 border-b border-slate-600 pb-2">Dados Vitais</h3>
                             <div class="grid grid-cols-2 gap-4 mb-6">
-                                <div><label class="block text-xs font-bold text-emerald-400 uppercase tracking-widest mb-2">HP Atual</label><input type="number" id="gm-hp" class="w-full bg-slate-900 border border-slate-600 p-3 rounded text-white font-mono text-lg"></div>
-                                <div><label class="block text-xs font-bold text-blue-400 uppercase tracking-widest mb-2">MP Atual</label><input type="number" id="gm-mp" class="w-full bg-slate-900 border border-slate-600 p-3 rounded text-white font-mono text-lg"></div>
+                                <div><label class="block text-xs font-bold text-emerald-400 uppercase tracking-widest mb-2">HP Atual</label><input type="number" id="gm-hp" class="w-full bg-slate-900 border border-slate-600 p-3 rounded text-white font-mono text-lg outline-none focus:border-amber-500"></div>
+                                <div><label class="block text-xs font-bold text-blue-400 uppercase tracking-widest mb-2">MP Atual</label><input type="number" id="gm-mp" class="w-full bg-slate-900 border border-slate-600 p-3 rounded text-white font-mono text-lg outline-none focus:border-amber-500"></div>
                             </div>
-                            <div class="mb-6"><label class="block text-xs font-bold text-amber-400 uppercase tracking-widest mb-2">Experiência Total (XP)</label><input type="number" id="gm-xp" class="w-full bg-slate-900 border border-slate-600 p-3 rounded text-amber-300 font-mono text-xl text-center"></div>
-                            <div><label class="block text-xs font-bold text-purple-400 uppercase tracking-widest mb-2">Pontos de Atributo Bônus (Mestre)</label><input type="number" id="gm-pts" class="w-full bg-slate-900 border border-slate-600 p-3 rounded text-white font-mono text-lg"></div>
+                            <div class="mb-6"><label class="block text-xs font-bold text-amber-400 uppercase tracking-widest mb-2">Experiência Total (XP)</label><input type="number" id="gm-xp" class="w-full bg-slate-900 border border-slate-600 p-3 rounded text-amber-300 font-mono text-xl text-center outline-none focus:border-amber-500"></div>
+                            <div><label class="block text-xs font-bold text-purple-400 uppercase tracking-widest mb-2">Pontos de Atributo Bônus (Mestre)</label><input type="number" id="gm-pts" class="w-full bg-slate-900 border border-slate-600 p-3 rounded text-white font-mono text-lg outline-none focus:border-amber-500"></div>
                         </div>
 
                         <div class="bg-slate-800/50 border border-slate-700 p-6 rounded-2xl">
                             <h3 class="font-cinzel text-xl text-white mb-6 border-b border-slate-600 pb-2">Origem</h3>
                             <div class="space-y-6">
-                                <div><label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Raça do Personagem</label><select id="gm-raca" class="w-full bg-slate-900 border border-slate-600 p-3 rounded text-slate-300"></select></div>
-                                <div><label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Classe Principal</label><select id="gm-classe" class="w-full bg-slate-900 border border-slate-600 p-3 rounded text-slate-300"></select></div>
-                                <div><label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Especialização (Subclasse)</label><select id="gm-subclasse" class="w-full bg-slate-900 border border-slate-600 p-3 rounded text-slate-300"></select></div>
+                                <div><label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Raça do Personagem</label><select id="gm-raca" class="w-full bg-slate-900 border border-slate-600 p-3 rounded text-slate-300 outline-none focus:border-amber-500"></select></div>
+                                <div><label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Classe Principal</label><select id="gm-classe" class="w-full bg-slate-900 border border-slate-600 p-3 rounded text-slate-300 outline-none focus:border-amber-500"></select></div>
+                                <div><label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Especialização (Subclasse)</label><select id="gm-subclasse" class="w-full bg-slate-900 border border-slate-600 p-3 rounded text-slate-300 outline-none focus:border-amber-500"></select></div>
                             </div>
                         </div>
                     </div>
@@ -89,7 +89,7 @@ export async function renderComandosMestreTab() {
                             <input type="hidden" id="gm-selected-item-id">
                             
                             <label class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 mt-auto">Quantidade a Injetar</label>
-                            <input type="number" id="gm-item-qtd" value="1" min="1" class="w-full bg-slate-950 border border-slate-600 p-3 rounded text-center text-white font-mono text-xl mb-6">
+                            <input type="number" id="gm-item-qtd" value="1" min="1" class="w-full bg-slate-950 border border-slate-600 p-3 rounded text-center text-white font-mono text-xl mb-6 outline-none focus:border-emerald-500">
                             
                             <button onclick="window.gmTools.injectItem()" class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded shadow-lg transition-colors uppercase tracking-widest">
                                 <i class="fas fa-paper-plane mr-2"></i> Enviar
@@ -105,12 +105,12 @@ export async function renderComandosMestreTab() {
                         <div class="lg:col-span-3 flex flex-col gap-4">
                             <div class="flex gap-4">
                                 <input type="text" id="gm-skill-search" placeholder="Procurar técnica..." class="flex-grow bg-slate-900 border border-slate-600 p-4 rounded-xl text-white focus:border-purple-500 focus:outline-none" onkeyup="window.gmTools.renderSkills()">
-                                <select id="gm-skill-class-filter" class="w-1/3 bg-slate-900 border border-slate-600 p-4 rounded-xl text-slate-300 focus:outline-none" onchange="window.gmTools.renderSkills()">
-                                    <option value="">Todas as Classes</option>
+                                <select id="gm-skill-class-filter" class="w-1/3 bg-slate-900 border border-slate-600 p-4 rounded-xl text-slate-300 focus:border-purple-500 focus:outline-none" onchange="window.gmTools.renderSkills()">
+                                    <option value="" class="bg-slate-900 text-slate-300">Todas as Classes</option>
                                 </select>
                             </div>
                             
-                            <div id="gm-skill-grid" class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 xl:grid-cols-12 gap-2 max-h-[400px] overflow-y-auto custom-scroll p-3 bg-slate-950 rounded-xl border border-slate-800">
+                            <div id="gm-skill-grid" class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 xl:grid-cols-12 gap-3 max-h-[400px] overflow-y-auto custom-scroll p-4 bg-slate-950 rounded-xl border border-slate-800">
                                 </div>
                         </div>
                         
@@ -136,25 +136,25 @@ export async function renderComandosMestreTab() {
                                 <div class="flex justify-between items-center bg-slate-900 p-4 rounded-xl border border-slate-700 shadow-inner">
                                     <span class="text-yellow-500 font-bold font-cinzel tracking-widest uppercase">Ouro</span>
                                     <div class="flex gap-3 items-center">
-                                        <button onclick="window.gmTools.modMoney('gold', -10)" class="px-3 py-1 bg-slate-700 hover:bg-red-900/50 rounded font-mono border border-slate-600 text-sm">-10</button>
+                                        <button onclick="window.gmTools.modMoney('gold', -10)" class="px-3 py-1 bg-slate-700 hover:bg-red-900/50 rounded font-mono border border-slate-600 text-sm transition-colors">-10</button>
                                         <span id="disp-gold" class="font-mono w-20 text-center text-white font-black text-xl">0</span>
-                                        <button onclick="window.gmTools.modMoney('gold', 10)" class="px-3 py-1 bg-slate-700 hover:bg-emerald-900/50 rounded font-mono border border-slate-600 text-sm">+10</button>
+                                        <button onclick="window.gmTools.modMoney('gold', 10)" class="px-3 py-1 bg-slate-700 hover:bg-emerald-900/50 rounded font-mono border border-slate-600 text-sm transition-colors">+10</button>
                                     </div>
                                 </div>
                                 <div class="flex justify-between items-center bg-slate-900 p-4 rounded-xl border border-slate-700 shadow-inner">
                                     <span class="text-slate-300 font-bold font-cinzel tracking-widest uppercase">Prata</span>
                                     <div class="flex gap-3 items-center">
-                                        <button onclick="window.gmTools.modMoney('silver', -10)" class="px-3 py-1 bg-slate-700 hover:bg-red-900/50 rounded font-mono border border-slate-600 text-sm">-10</button>
+                                        <button onclick="window.gmTools.modMoney('silver', -10)" class="px-3 py-1 bg-slate-700 hover:bg-red-900/50 rounded font-mono border border-slate-600 text-sm transition-colors">-10</button>
                                         <span id="disp-silver" class="font-mono w-20 text-center text-white font-black text-xl">0</span>
-                                        <button onclick="window.gmTools.modMoney('silver', 10)" class="px-3 py-1 bg-slate-700 hover:bg-emerald-900/50 rounded font-mono border border-slate-600 text-sm">+10</button>
+                                        <button onclick="window.gmTools.modMoney('silver', 10)" class="px-3 py-1 bg-slate-700 hover:bg-emerald-900/50 rounded font-mono border border-slate-600 text-sm transition-colors">+10</button>
                                     </div>
                                 </div>
                                 <div class="flex justify-between items-center bg-slate-900 p-4 rounded-xl border border-slate-700 shadow-inner">
                                     <span class="text-orange-600 font-bold font-cinzel tracking-widest uppercase">Bronze</span>
                                     <div class="flex gap-3 items-center">
-                                        <button onclick="window.gmTools.modMoney('bronze', -50)" class="px-3 py-1 bg-slate-700 hover:bg-red-900/50 rounded font-mono border border-slate-600 text-sm">-50</button>
+                                        <button onclick="window.gmTools.modMoney('bronze', -50)" class="px-3 py-1 bg-slate-700 hover:bg-red-900/50 rounded font-mono border border-slate-600 text-sm transition-colors">-50</button>
                                         <span id="disp-bronze" class="font-mono w-20 text-center text-white font-black text-xl">0</span>
-                                        <button onclick="window.gmTools.modMoney('bronze', 50)" class="px-3 py-1 bg-slate-700 hover:bg-emerald-900/50 rounded font-mono border border-slate-600 text-sm">+50</button>
+                                        <button onclick="window.gmTools.modMoney('bronze', 50)" class="px-3 py-1 bg-slate-700 hover:bg-emerald-900/50 rounded font-mono border border-slate-600 text-sm transition-colors">+50</button>
                                     </div>
                                 </div>
                             </div>
@@ -166,9 +166,9 @@ export async function renderComandosMestreTab() {
                                 <div class="flex justify-between items-center bg-slate-950 p-4 rounded-xl border border-purple-900 shadow-inner">
                                     <span class="text-purple-300 font-bold font-cinzel tracking-widest uppercase">Orbes da Ascensão</span>
                                     <div class="flex gap-3 items-center">
-                                        <button onclick="window.gmTools.modMoney('orbs', -1)" class="px-4 py-2 bg-slate-800 hover:bg-red-900/50 rounded font-mono border border-slate-700 text-sm">-1</button>
+                                        <button onclick="window.gmTools.modMoney('orbs', -1)" class="px-4 py-2 bg-slate-800 hover:bg-red-900/50 rounded font-mono border border-slate-700 text-sm transition-colors">-1</button>
                                         <span id="disp-orbs" class="font-mono w-16 text-center text-white font-black text-2xl">0</span>
-                                        <button onclick="window.gmTools.modMoney('orbs', 1)" class="px-4 py-2 bg-slate-800 hover:bg-emerald-900/50 rounded font-mono border border-slate-700 text-sm">+1</button>
+                                        <button onclick="window.gmTools.modMoney('orbs', 1)" class="px-4 py-2 bg-slate-800 hover:bg-emerald-900/50 rounded font-mono border border-slate-700 text-sm transition-colors">+1</button>
                                     </div>
                                 </div>
                             </div>
@@ -177,7 +177,7 @@ export async function renderComandosMestreTab() {
                                 <h3 class="font-cinzel text-xl text-sky-400 mb-4 border-b border-sky-900/50 pb-2">Glória & Fama</h3>
                                 <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Bônus de Reputação Imputado (Oculto)</label>
                                 <div class="flex gap-2">
-                                    <input type="number" id="gm-rep-bonus" class="flex-grow bg-slate-950 border border-sky-900 p-3 rounded text-white font-mono text-center text-xl">
+                                    <input type="number" id="gm-rep-bonus" class="flex-grow bg-slate-950 border border-sky-900 p-3 rounded text-white font-mono text-center text-xl outline-none focus:border-sky-500">
                                     <button onclick="window.gmTools.saveReputation()" class="px-6 py-3 bg-sky-700 hover:bg-sky-600 text-white font-bold rounded uppercase tracking-widest transition-colors shadow-lg">Aplicar</button>
                                 </div>
                             </div>
@@ -266,7 +266,7 @@ function startPlayerListener() {
 
     onSnapshot(query(collection(db, "rpg_fichas"), orderBy("nome")), (snap) => {
         const oldVal = sel.value;
-        sel.innerHTML = '<option value="" class="bg-slate-900 text-amber-500">-- Selecione o Jogador Alvo --</option>';
+        sel.innerHTML = '<option value="" class="bg-slate-900 text-slate-500">-- Selecione o Jogador Alvo --</option>';
         snap.forEach(d => {
             const data = d.data();
             const opt = new Option(`${data.nome} (${data.jogador || '?'})`, d.id);
@@ -376,7 +376,7 @@ function renderGMItems() {
         const imgUrl = item.imagemUrl || "https://firebasestorage.googleapis.com/v0/b/kazenski-a1bb2.firebasestorage.app/o/atualizacoes_sistema%2Fenvio.png?alt=media";
         
         const div = document.createElement('div');
-        // QUADRADINHO PEQUENO
+        // QUADRADINHO PEQUENO (rounded)
         div.className = `aspect-square bg-slate-900 rounded border cursor-pointer relative overflow-hidden group transition-all transform hover:scale-110 ${isSelected ? 'border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] z-10 scale-105' : 'border-slate-700 hover:border-slate-400'}`;
         div.title = item.nome;
         
@@ -390,7 +390,7 @@ function renderGMItems() {
             gmState.selectedItemId = item.id;
             document.getElementById('gm-item-preview-name').textContent = item.nome;
             document.getElementById('gm-selected-item-id').value = item.id;
-            renderGMItems(); // Re-renderiza para atualizar o contorno visual
+            renderGMItems(); 
         };
 
         container.appendChild(div);
@@ -435,7 +435,7 @@ function renderGMSkills() {
         const imgUrl = skill.imagemUrl || "https://placehold.co/400x400/1e293b/a1a1aa?text=Skill";
         
         const div = document.createElement('div');
-        // BOLINHA PEQUENA
+        // BOLINHA PEQUENA (rounded-full)
         div.className = `aspect-square bg-slate-900 rounded-full border cursor-pointer relative overflow-hidden group transition-all transform hover:scale-110 ${isSelected ? 'border-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)] z-10 scale-105' : 'border-slate-700 hover:border-slate-400'}`;
         div.title = `${skill.nome}\n(Custo: ${skill.gastoMpUso?.lvl1 || 0} MP)`;
         
@@ -449,7 +449,7 @@ function renderGMSkills() {
             gmState.selectedSkillId = skill.id;
             document.getElementById('gm-skill-preview-name').textContent = skill.nome;
             document.getElementById('gm-selected-skill-id').value = skill.id;
-            renderGMSkills(); // Re-renderiza para atualizar o contorno visual
+            renderGMSkills(); 
         };
 
         container.appendChild(div);
@@ -503,12 +503,11 @@ window.gmTools = {
         
         if(!skillId) return alert("Selecione uma magia na galeria.");
 
-        // PROMPT DE NÍVEL DA HABILIDADE
+        // PROMPT DE NÍVEL
         const levelInput = prompt(`Em que NÍVEL deseja conceder esta habilidade ao personagem?\n(Apenas números. Se cancelar, usará nível 1)`, "1");
         
-        if (levelInput === null) return; // Se o GM cancelar o prompt, aborta a operação.
+        if (levelInput === null) return;
 
-        // Converte para número e garante que é válido (pelo menos nível 1)
         let skillLevel = parseInt(levelInput, 10);
         if (isNaN(skillLevel) || skillLevel < 1) {
             skillLevel = 1;
