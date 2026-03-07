@@ -8,6 +8,16 @@ const mapasDoMundo = [
     "imagens/mapas/mapas6.webp"
 ];
 
+// Lista de Mídias dos Bardos com o caminho fornecido
+const cancoesDoBardo = [
+    { id: 1, tipo: 'podcast', titulo: 'Crônicas da Gênese', src: 'audios/A Dança dos Três Continentes.mp3' },
+    { id: 2, tipo: 'musica', titulo: 'A Dança dos Três Continentes', src: 'audios/A Dança dos Três Continentes.mp3' },
+    { id: 3, tipo: 'musica', titulo: 'Taverna do Javali Caolho', src: 'audios/A Dança dos Três Continentes.mp3' },
+    { id: 4, tipo: 'musica', titulo: 'Sussurros de Gallandra', src: 'audios/A Dança dos Três Continentes.mp3' },
+    { id: 5, tipo: 'musica', titulo: 'Marcha dos Templários', src: 'audios/A Dança dos Três Continentes.mp3' },
+    { id: 6, tipo: 'musica', titulo: 'Lamento dos Dragões', src: 'audios/A Dança dos Três Continentes.mp3' }
+];
+
 export function renderConhecaMundoTab() {
     const container = document.getElementById('conheca-mundo-content');
     if (!container) return;
@@ -24,6 +34,20 @@ export function renderConhecaMundoTab() {
             </div>
         `).join('');
     }
+
+    // Gera o HTML das mídias do Bardo
+    let bardosHTML = cancoesDoBardo.map((midia) => `
+        <button onclick="window.conhecaMundo.carregarAudio('${midia.src}', '${midia.titulo}')" 
+            class="flex items-center gap-3 bg-slate-900/80 hover:bg-amber-600/20 border border-slate-700 hover:border-amber-500 rounded-lg p-3 transition-all group">
+            <div class="w-10 h-10 rounded-full bg-slate-950 border border-slate-600 flex items-center justify-center group-hover:border-amber-400 shrink-0 transition-colors">
+                <i class="fas ${midia.tipo === 'podcast' ? 'fa-podcast' : 'fa-music'} text-slate-400 group-hover:text-amber-400"></i>
+            </div>
+            <div class="text-left overflow-hidden">
+                <span class="block text-[10px] text-slate-500 uppercase tracking-widest font-bold">${midia.tipo}</span>
+                <span class="block text-sm text-slate-300 group-hover:text-white font-cinzel font-bold truncate whitespace-nowrap">${midia.titulo}</span>
+            </div>
+        </button>
+    `).join('');
 
     container.innerHTML = `
         <div class="w-full h-full fade-in flex flex-col p-6 md:p-10 overflow-y-auto custom-scroll pb-16">
@@ -78,6 +102,50 @@ export function renderConhecaMundoTab() {
                 </div>
             </div>
 
+            <div class="w-full mt-16">
+                <div class="flex items-center justify-between mb-6 border-b border-slate-800 pb-3">
+                    <h2 class="text-2xl font-cinzel font-bold text-slate-200 tracking-widest"><i class="fas fa-guitar text-amber-500 mr-3"></i> Canções dos Bardos</h2>
+                </div>
+
+                <div class="relative w-full rounded-2xl overflow-hidden shadow-2xl min-h-[350px] flex items-center justify-center bg-[url('imagens/usoGeralSite/bardo-conheca-o-mundo.png')] bg-cover bg-center">
+                    
+                    <div class="absolute inset-0 bg-slate-950/50 z-0"></div>
+
+                    <div class="relative z-10 w-full bg-slate-900/90 border-t-2 border-b-2 border-amber-500/50 shadow-[0_0_30px_rgba(0,0,0,0.8)] backdrop-blur-md py-8 flex flex-col items-center">
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-6xl px-6 mb-6">
+                            ${bardosHTML}
+                        </div>
+
+                        <div id="bardo-player-container" class="opacity-50 pointer-events-none transition-opacity duration-300 w-full max-w-3xl px-6">
+                            <audio id="bardo-audio-engine"></audio>
+                            <div class="bg-slate-950 border border-slate-700 rounded-full px-6 py-3 flex flex-wrap items-center justify-between gap-4 shadow-inner">
+                                
+                                <div class="flex items-center gap-3 w-full sm:w-auto flex-grow">
+                                    <div class="relative flex h-3 w-3 shrink-0">
+                                      <span id="bardo-pulse" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-0"></span>
+                                      <span class="relative inline-flex rounded-full h-3 w-3 bg-slate-600" id="bardo-dot"></span>
+                                    </div>
+                                    <span id="bardo-now-playing" class="text-amber-500 font-cinzel text-sm font-bold truncate max-w-[200px] md:max-w-[300px]">Aguardando seleção...</span>
+                                </div>
+
+                                <div class="flex items-center gap-6 shrink-0 ml-auto w-full sm:w-auto justify-end border-t sm:border-t-0 sm:border-l border-slate-800 pt-3 sm:pt-0 sm:pl-6">
+                                    <button onclick="window.conhecaMundo.togglePlay()" class="text-white hover:text-amber-400 text-xl transition-transform hover:scale-110 outline-none w-8 text-center" id="bardo-btn-play">
+                                        <i class="fas fa-play"></i>
+                                    </button>
+                                    
+                                    <div class="flex items-center gap-2">
+                                        <i class="fas fa-volume-up text-slate-500 text-xs"></i>
+                                        <input type="range" id="bardo-volume" min="0" max="1" step="0.05" value="0.5" oninput="window.conhecaMundo.mudarVolume(this.value)" class="w-20 md:w-28 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <div id="modal-mapa-mundo" class="fixed inset-0 z-[100] bg-black/95 hidden items-center justify-center p-4 cursor-pointer animate-fade-in" onclick="this.classList.add('hidden'); this.classList.remove('flex');">
@@ -87,7 +155,7 @@ export function renderConhecaMundoTab() {
     `;
 }
 
-// Controla o clique nas imagens para as abrir em tamanho real
+// Controla interações globais da aba Conheça o Mundo
 window.conhecaMundo = {
     openMapa: function(url) {
         const modal = document.getElementById('modal-mapa-mundo');
@@ -96,6 +164,69 @@ window.conhecaMundo = {
             img.src = url;
             modal.classList.remove('hidden');
             modal.classList.add('flex');
+        }
+    },
+
+    // Funções do Mini Player dos Bardos
+    carregarAudio: function(src, titulo) {
+        const audio = document.getElementById('bardo-audio-engine');
+        const tituloEl = document.getElementById('bardo-now-playing');
+        const container = document.getElementById('bardo-player-container');
+        const btnPlay = document.getElementById('bardo-btn-play');
+        const pulse = document.getElementById('bardo-pulse');
+        const dot = document.getElementById('bardo-dot');
+
+        if (!audio || !src || src === '#') {
+            console.error("Link de áudio inválido.");
+            return;
+        }
+
+        // Ativa o container do player visualmente
+        container.classList.remove('opacity-50', 'pointer-events-none');
+        
+        // Atualiza UI com o nome da música e o source do áudio
+        tituloEl.textContent = titulo;
+        audio.src = src;
+        audio.play();
+
+        // Altera botão para Pause e liga o "led" verde
+        btnPlay.innerHTML = '<i class="fas fa-pause"></i>';
+        pulse.classList.remove('opacity-0');
+        dot.classList.replace('bg-slate-600', 'bg-amber-500');
+
+        // Evento caso a música termine sozinha
+        audio.onended = () => {
+            btnPlay.innerHTML = '<i class="fas fa-play"></i>';
+            pulse.classList.add('opacity-0');
+            dot.classList.replace('bg-amber-500', 'bg-slate-600');
+        };
+    },
+
+    togglePlay: function() {
+        const audio = document.getElementById('bardo-audio-engine');
+        const btnPlay = document.getElementById('bardo-btn-play');
+        const pulse = document.getElementById('bardo-pulse');
+        const dot = document.getElementById('bardo-dot');
+
+        if (!audio || !audio.src) return;
+
+        if (audio.paused) {
+            audio.play();
+            btnPlay.innerHTML = '<i class="fas fa-pause"></i>';
+            pulse.classList.remove('opacity-0');
+            dot.classList.replace('bg-slate-600', 'bg-amber-500');
+        } else {
+            audio.pause();
+            btnPlay.innerHTML = '<i class="fas fa-play"></i>';
+            pulse.classList.add('opacity-0');
+            dot.classList.replace('bg-amber-500', 'bg-slate-600');
+        }
+    },
+
+    mudarVolume: function(valor) {
+        const audio = document.getElementById('bardo-audio-engine');
+        if (audio) {
+            audio.volume = valor;
         }
     }
 };
