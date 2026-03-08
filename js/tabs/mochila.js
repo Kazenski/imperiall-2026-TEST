@@ -39,7 +39,7 @@ export function renderMochila(isJustFiltering = false) {
                     <div id="mochila-advanced-controls" class="shrink-0 mb-4"></div>
                     
                     <div class="flex-1 overflow-y-auto custom-scroll bg-slate-900/50 border border-slate-700 rounded-xl p-4 shadow-inner relative">
-                        <div id="inventory-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 xl:grid-cols-9 gap-3 content-start"></div>
+                        <div id="inventory-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-9 xl:grid-cols-12 gap-3 content-start"></div>
                     </div>
                 </div>
 
