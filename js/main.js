@@ -1126,10 +1126,17 @@ window.updateGlobalBars = function() {
 // --- HUB VTT: CHAT E DADOS POR SESSÃO ---
 // ==========================================
 let currentHubTab = 'hub-dice';
-let activeChatRef = null; // Usado para desligar o RTDB quando trocar de sessão
+let activeChatRef = null; 
 
 window.switchHubTab = function(tabId) {
     currentHubTab = tabId;
+    
+    // Identificador único de quem está lendo (Personagem ou Mestre)
+    const watcherId = globalState.selectedCharacterId || (globalState.isAdmin ? 'master' : 'unknown');
+    
+    // Salva o momento exato em que o usuário abriu esta aba
+    localStorage.setItem(`chatRead_${watcherId}_${tabId}`, Date.now());
+
     document.querySelectorAll('.hub-tab-btn').forEach(btn => {
         if (btn.dataset.target === tabId) {
             btn.classList.add('active');
@@ -1181,14 +1188,13 @@ window.sendHubMessage = async function(type) {
         remetenteId,
         remetenteNome,
         mensagem: text,
-        timestamp: rtdbServerTimestamp() // Usa o Timestamp do Realtime
+        timestamp: rtdbServerTimestamp()
     };
 
     if (type === 'whisper') { payload.destinatarioId = targetId; payload.destinatarioNome = targetName; }
     inputEl.value = ''; 
 
     try {
-        // Envia para o Realtime Database
         const chatRef = rtdbRef(rtdb, `session_chats/${globalState.activeSessionId}`);
         const newMsgRef = push(chatRef);
         await set(newMsgRef, payload);
@@ -1199,7 +1205,7 @@ window.sendHubMessage = async function(type) {
 
 window.listenToSessionChat = function(sessionId) {
     if (activeChatRef) {
-        off(activeChatRef); // Desliga a escuta da sessão antiga
+        off(activeChatRef); 
         activeChatRef = null;
     }
     
@@ -1209,41 +1215,56 @@ window.listenToSessionChat = function(sessionId) {
     if (!sessionId || sessionId === 'world') return;
 
     const baseRef = rtdbRef(rtdb, `session_chats/${sessionId}`);
-    activeChatRef = rtdbQuery(baseRef, limitToLast(100)); // Baixa só os últimos 100 pra ser ultra rápido
+    activeChatRef = rtdbQuery(baseRef, limitToLast(100)); 
     
-    let isFirstLoad = true;
-
     onValue(activeChatRef, (snapshot) => {
         const data = snapshot.val();
         const logs = [];
         
         if (data) {
             Object.keys(data).forEach(key => logs.push({ id: key, ...data[key] }));
-            logs.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0)); // Crescente
+            logs.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0)); 
         }
 
-        if (!isFirstLoad) {
-            const oldIds = new Set(globalState.currentChatLogs.map(l => l.id));
-            const newLogs = logs.filter(l => !oldIds.has(l.id));
-            
-            newLogs.forEach(d => {
-                let targetAba = '';
-                if(d.tipo === 'dice') targetAba = 'hub-dice';
-                else if(d.tipo === 'geral') targetAba = 'hub-chat';
-                else if(d.tipo === 'mestre') targetAba = 'hub-master';
-                else if(d.tipo === 'whisper') {
-                     if(globalState.isAdmin || d.destinatarioId === globalState.selectedCharacterId || d.remetenteId === globalState.selectedCharacterId) targetAba = 'hub-whisper';
-                }
-                
-                if (targetAba && currentHubTab !== targetAba) {
-                    const badge = document.getElementById(`badge-${targetAba}`);
-                    if(badge) badge.classList.remove('hidden');
-                }
-            });
-        }
+        // LÓGICA DE NOTIFICAÇÕES PERSISTENTES
+        const watcherId = globalState.selectedCharacterId || (globalState.isAdmin ? 'master' : 'unknown');
+        const latestTimes = { 'hub-dice': 0, 'hub-chat': 0, 'hub-master': 0, 'hub-whisper': 0 };
 
-        isFirstLoad = false;
-        globalState.currentChatLogs = logs.reverse(); // Deixa o mais recente no index 0
+        // Descobre a hora da última mensagem de CADA aba
+        logs.forEach(d => {
+            let targetAba = '';
+            if(d.tipo === 'dice') targetAba = 'hub-dice';
+            else if(d.tipo === 'geral') targetAba = 'hub-chat';
+            else if(d.tipo === 'mestre') targetAba = 'hub-master';
+            else if(d.tipo === 'whisper') {
+                 if(globalState.isAdmin || d.destinatarioId === watcherId || d.remetenteId === watcherId) targetAba = 'hub-whisper';
+            }
+            if(targetAba && d.timestamp > latestTimes[targetAba]) {
+                latestTimes[targetAba] = d.timestamp;
+            }
+        });
+
+        // Compara com o que o usuário leu no localStorage
+        ['hub-dice', 'hub-chat', 'hub-master', 'hub-whisper'].forEach(tab => {
+            const badge = document.getElementById(`badge-${tab}`);
+            if (!badge) return;
+
+            if (tab === currentHubTab) {
+                // Se a aba está aberta agora, atualiza a data de leitura e esconde a bolinha
+                localStorage.setItem(`chatRead_${watcherId}_${tab}`, Date.now());
+                badge.classList.add('hidden');
+            } else if (latestTimes[tab] > 0) {
+                // Se não está aberta, verifica se há mensagens novas depois da última leitura
+                const lastRead = Number(localStorage.getItem(`chatRead_${watcherId}_${tab}`) || 0);
+                if (latestTimes[tab] > lastRead) {
+                    badge.classList.remove('hidden'); // TEM NOVIDADE!
+                } else {
+                    badge.classList.add('hidden'); // TUDO LIDO!
+                }
+            }
+        });
+
+        globalState.currentChatLogs = logs.reverse(); 
         renderHubMessages();
     });
 };
@@ -1258,6 +1279,7 @@ function renderHubMessages() {
     }
 
     const logs = globalState.currentChatLogs || [];
+    const watcherId = globalState.selectedCharacterId || (globalState.isAdmin ? 'master' : 'unknown');
     
     const filteredLogs = logs.filter(log => {
         if (currentHubTab === 'hub-dice') return log.tipo === 'dice';
@@ -1266,8 +1288,7 @@ function renderHubMessages() {
         if (currentHubTab === 'hub-whisper') {
              if (log.tipo !== 'whisper') return false;
              if (globalState.isAdmin) return true;
-             const myId = globalState.selectedCharacterId;
-             return log.remetenteId === myId || log.destinatarioId === myId;
+             return log.remetenteId === watcherId || log.destinatarioId === watcherId;
         }
         return true;
     });
@@ -1279,17 +1300,21 @@ function renderHubMessages() {
 
     let html = '';
     [...filteredLogs].reverse().forEach(log => {
-        // Correção do Timestamp para RTDB (Ele retorna millisegundos inteiros)
         const timeStr = log.timestamp ? new Date(log.timestamp).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}) : '...';
         
         if (log.tipo === 'dice') {
+             // NOVO VISUAL DO DADO UNIFICADO E LIMPO!
              html += `
-                <div class="bg-slate-900 border border-slate-700 rounded p-2 text-[10px] shadow-sm">
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="text-sky-400 font-bold">${log.remetenteNome}</span>
-                        <span class="text-slate-500 text-[8px]">${timeStr}</span>
+                <div class="bg-slate-900/80 border border-slate-700/60 rounded p-2 mb-1 shadow flex justify-between items-center group hover:bg-slate-800 transition-colors">
+                    <div class="flex items-center gap-1.5 overflow-hidden">
+                        <span class="text-sky-400 font-bold text-[10px] uppercase tracking-wider truncate max-w-[100px]" title="${log.remetenteNome}">${log.remetenteNome}</span>
+                        <span class="text-slate-500 text-[10px] shrink-0">rolou</span>
+                        <strong class="text-white text-[10px] shrink-0">${log.dado}</strong>
                     </div>
-                    <div class="text-slate-300">Rolou <strong class="text-white">${log.dado}</strong> e tirou <span class="text-amber-400 font-black text-sm ml-1">${log.valor}</span></div>
+                    <div class="flex items-baseline gap-2 shrink-0">
+                        <span class="text-amber-400 font-black text-base leading-none">${log.valor}</span>
+                        <span class="text-slate-600 text-[8px] font-mono">${timeStr}</span>
+                    </div>
                 </div>`;
         } 
         else if (log.tipo === 'geral') {
@@ -1313,7 +1338,7 @@ function renderHubMessages() {
                 </div>`;
         }
         else if (log.tipo === 'whisper') {
-             const isMe = log.remetenteId === globalState.selectedCharacterId;
+             const isMe = log.remetenteId === watcherId;
              html += `
                 <div class="bg-purple-900/20 border-l-2 border-purple-500 pl-2 py-1 mb-1">
                     <div class="flex justify-between items-baseline mb-0.5">
@@ -1329,6 +1354,7 @@ function renderHubMessages() {
     container.scrollTop = container.scrollHeight; 
 }
 
+// Binds de Eventos de Tela do Hub
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.hub-tab-btn').forEach(btn => btn.addEventListener('click', (e) => window.switchHubTab(e.currentTarget.dataset.target)));
     const btnSend = document.getElementById('hub-btn-send'); const inputChat = document.getElementById('hub-chat-input');
@@ -1374,6 +1400,10 @@ async function updateCharacterSessions(charId) {
                     sessionSelect.value = "world";
                     globalState.activeSessionId = "world";
                     localStorage.setItem(`sessaoAtiva_${charId}`, "world");
+                } else if (globalState.activeSessionId !== "world") {
+                    // NOVO: Se ele já tem uma sessão ativa válida, auto-carrega o chat RTDB e sussurros!
+                    if (window.listenToSessionChat) window.listenToSessionChat(globalState.activeSessionId);
+                    if (typeof popularSussurros === 'function') popularSussurros();
                 }
             }
         } else {
