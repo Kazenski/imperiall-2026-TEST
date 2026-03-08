@@ -967,15 +967,18 @@ function handleCharacterSelect(id) {
         unsubscribeChar = null;
     }
     
+    // NOVO: Gatilho imediato que zera a tela antes do novo personagem carregar
+    if (typeof window.resetHubChat === 'function') window.resetHubChat();
+
     updateCharacterSessions(id);
 
+    // Se o usuário selecionou "-- Selecione um Personagem --" (Vazio)
     if(!id) {
         globalState.selectedCharacterId = null;
         globalState.selectedCharacterData = null;
         localStorage.removeItem('personagemAtivoId');
         renderHeaderWidget();
         if(window.updateGlobalBars) window.updateGlobalBars();
-        if(window.renderSidebarDiceLog) window.renderSidebarDiceLog();
         
         let activeTab = 'painel-fichas';
         document.querySelectorAll('.tab-content').forEach(c => {
@@ -985,6 +988,7 @@ function handleCharacterSelect(id) {
         return;
     }
 
+    // Se o usuário escolheu um personagem válido
     globalState.selectedCharacterId = id;
     localStorage.setItem('personagemAtivoId', id);
 
@@ -995,13 +999,13 @@ function handleCharacterSelect(id) {
             
             globalState.selectedCharacterData = await gatherAllCharacterData(id);
             if(window.updateGlobalBars) window.updateGlobalBars();
-            if(window.renderSidebarDiceLog) window.renderSidebarDiceLog();
             
             let activeTab = 'painel-fichas';
             document.querySelectorAll('.tab-content').forEach(c => {
                 if (!c.classList.contains('hidden')) activeTab = c.id.replace('-content', '');
             });
             
+            // Recarrega a aba que o usuário estava visualizando
             if(activeTab === 'painel-fichas') {
                 if (!document.getElementById('editor-nome')) window.renderFichaEditor(id); 
             } 
@@ -1127,6 +1131,31 @@ window.updateGlobalBars = function() {
 // ==========================================
 let currentHubTab = 'hub-dice';
 let activeChatRef = null; 
+
+// Função de limpeza absoluta de interface
+window.resetHubChat = function() {
+    // 1. Desliga o rádio do banco de dados
+    if (activeChatRef) {
+        off(activeChatRef);
+        activeChatRef = null;
+    }
+    
+    // 2. Limpa a memória local das mensagens
+    globalState.currentChatLogs = [];
+    
+    // 3. Oculta todos os avisos de mensagens não lidas
+    ['hub-dice', 'hub-chat', 'hub-master', 'hub-whisper'].forEach(tab => {
+        const badge = document.getElementById(`badge-${tab}`);
+        if (badge) badge.classList.add('hidden');
+    });
+    
+    // 4. Limpa a barra lateral
+    renderHubMessages();
+    
+    // 5. Tenta limpar a aba grande se ela estiver aberta no fundo
+    const logGrande = document.getElementById('log-lista');
+    if (logGrande) logGrande.innerHTML = '<p class="text-slate-500 text-sm italic">Nenhuma rolagem ou sessão ativa.</p>';
+};
 
 window.switchHubTab = function(tabId) {
     currentHubTab = tabId;
