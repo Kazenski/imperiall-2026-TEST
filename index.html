@@ -78,9 +78,9 @@
                         </select>
                     </div>
 
-                    <div class="w-full aspect-square bg-black relative border-b border-slate-800">
-                        <img id="sidebar-char-img" src="https://placehold.co/400x400/0f172a/d4af37?text=Sem+Foto" class="w-full h-full object-cover opacity-90">
-                        <div class="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-t from-[#0a0f18] to-transparent"></div>
+                    <div class="w-full h-32 bg-black relative border-b border-slate-800 shrink-0">
+                        <img id="sidebar-char-img" src="https://placehold.co/400x400/0f172a/d4af37?text=Sem+Foto" class="w-full h-full object-cover opacity-90 object-top">
+                        <div class="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-[#0a0f18] to-transparent"></div>
                     </div>
 
                     <div class="px-4 pt-3 pb-3 text-center border-b border-slate-800">
@@ -131,13 +131,60 @@
                     </div>
                 </div>
 
-                <div class="flex-1 flex flex-col min-h-0 bg-slate-900/60 p-4 pb-2 border-b border-slate-800">
-                    <h4 class="text-[9px] text-slate-500 font-bold uppercase mb-2 tracking-widest text-center shrink-0">Log de Rolagens</h4>
+                <div class="flex-1 flex flex-col min-h-0 bg-slate-900/60 border-b border-slate-800 flex-grow relative">
                     
-                    <div id="sidebar-dice-log" class="flex-1 overflow-y-auto custom-scroll pr-2 mb-4 border border-slate-800 bg-slate-950/50 p-2 rounded shadow-inner space-y-1"></div>
+                    <div class="flex bg-slate-950 border-b border-slate-800 shrink-0">
+                        <button class="hub-tab-btn active flex-1 py-2 text-[10px] text-slate-400 hover:text-white transition relative" data-target="hub-dice" title="Rolagens">
+                            <i class="fas fa-dice"></i>
+                            <span id="badge-hub-dice" class="hidden absolute top-1 right-2 w-2 h-2 rounded-full bg-red-500 shadow-[0_0_5px_red]"></span>
+                        </button>
+                        <button class="hub-tab-btn flex-1 py-2 text-[10px] text-slate-400 hover:text-white transition relative" data-target="hub-chat" title="Chat Geral">
+                            <i class="fas fa-comments"></i>
+                            <span id="badge-hub-chat" class="hidden absolute top-1 right-2 w-2 h-2 rounded-full bg-red-500 shadow-[0_0_5px_red]"></span>
+                        </button>
+                        <button class="hub-tab-btn flex-1 py-2 text-[10px] text-slate-400 hover:text-white transition relative" data-target="hub-master" title="Avisos do Mestre">
+                            <i class="fas fa-crown"></i>
+                            <span id="badge-hub-master" class="hidden absolute top-1 right-2 w-2 h-2 rounded-full bg-red-500 shadow-[0_0_5px_red]"></span>
+                        </button>
+                        <button class="hub-tab-btn flex-1 py-2 text-[10px] text-slate-400 hover:text-white transition relative" data-target="hub-whisper" title="Sussurros">
+                            <i class="fas fa-user-secret"></i>
+                            <span id="badge-hub-whisper" class="hidden absolute top-1 right-2 w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_5px_purple]"></span>
+                        </button>
+                    </div>
                     
-                    <h4 class="text-[9px] text-slate-500 font-bold uppercase mb-2 tracking-widest text-center shrink-0">Rolar Dados</h4>
-                    <div id="sidebar-dice-area" class="grid grid-cols-4 gap-1.5 shrink-0"></div>
+                    <style>
+                        .hub-tab-btn.active { color: #f59e0b; background: rgba(245,158,11,0.05); border-bottom: 2px solid #f59e0b; }
+                        .hub-tab-btn[data-target="hub-whisper"].active { color: #a855f7; background: rgba(168,85,247,0.05); border-bottom: 2px solid #a855f7; }
+                    </style>
+
+                    <div id="hub-log-container" class="flex-1 overflow-y-auto custom-scroll p-2 bg-slate-950/50 space-y-2 relative">
+                        </div>
+
+                    <div class="p-2 bg-slate-900 border-t border-slate-800 shrink-0">
+                        
+                        <div id="hub-footer-dice" class="flex flex-col">
+                            <h4 class="text-[8px] text-slate-500 font-bold uppercase mb-1.5 tracking-widest text-center">Rolar Dados</h4>
+                            <div id="sidebar-dice-area" class="grid grid-cols-4 gap-1.5"></div>
+                        </div>
+
+                        <div id="hub-footer-chat" class="hidden flex-col gap-2">
+                            <div class="flex gap-1 relative">
+                                <input type="text" id="hub-chat-input" placeholder="Enviar para todos..." class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs text-white outline-none focus:border-amber-500 transition-colors pr-8">
+                                <button id="hub-btn-send" class="absolute right-1 top-1 bottom-1 text-amber-600 hover:text-amber-400 px-2 transition-colors"><i class="fas fa-paper-plane text-xs"></i></button>
+                            </div>
+                        </div>
+
+                        <div id="hub-footer-whisper" class="hidden flex-col gap-1.5">
+                            <select id="hub-whisper-target" class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[10px] font-bold text-purple-400 outline-none focus:border-purple-500 uppercase">
+                                <option value="">Selecione o alvo...</option>
+                                </select>
+                            <div class="flex gap-1 relative">
+                                <input type="text" id="hub-whisper-input" placeholder="Mensagem secreta..." class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs text-white outline-none focus:border-purple-500 transition-colors pr-8">
+                                <button id="hub-btn-whisper-send" class="absolute right-1 top-1 bottom-1 text-purple-500 hover:text-purple-300 px-2 transition-colors"><i class="fas fa-paper-plane text-xs"></i></button>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
                 
                 <div class="p-3 bg-slate-900/30 shrink-0">
