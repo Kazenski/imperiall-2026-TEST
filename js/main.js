@@ -1,9 +1,8 @@
 // ARQUIVO: js/main.js
 
-import { auth, db, storage, signInWithEmailAndPassword, signOut, onAuthStateChanged, collection, getDocs, doc, getDoc, onSnapshot, query, where, orderBy, writeBatch, runTransaction, deleteField, increment, updateDoc } from './core/firebase.js';
+import { auth, db, storage, signInWithEmailAndPassword, signOut, onAuthStateChanged, collection, getDocs, doc, getDoc, onSnapshot, query, where, orderBy, writeBatch, runTransaction, deleteField, increment, updateDoc, addDoc, serverTimestamp } from './core/firebase.js';
 import { globalState, ADMIN_EMAIL, PLACEHOLDER_IMAGE_URL, COINS } from './core/state.js';
 import { createBonusObject, calculateMainStats, getFomeDebuffMultiplier } from './core/calculos.js';
-
 import { renderPainelFichas, renderFichaEditor } from './tabs/painelFichas.js';
 import { renderRolagemDados } from './tabs/rolagemDados.js';
 import { renderCalculadoraCombate } from './tabs/calcCombate.js';
@@ -1122,6 +1121,243 @@ window.updateGlobalBars = function() {
     setWidth('bar-fome-fill', Math.max(0, Math.min(100, (fomeAtual / fomeMax) * 100)));
 };
 
+// ==========================================
+// --- HUB VTT: CHAT E DADOS POR SESSÃO ---
+// ==========================================
+let unsubscribeChat = null;
+let currentHubTab = 'hub-dice';
+
+window.switchHubTab = function(tabId) {
+    currentHubTab = tabId;
+    
+    // Atualiza botões
+    document.querySelectorAll('.hub-tab-btn').forEach(btn => {
+        if (btn.dataset.target === tabId) {
+            btn.classList.add('active');
+            const badge = btn.querySelector('span');
+            if(badge) badge.classList.add('hidden'); // Remove notificação ao ler
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    // Atualiza rodapés
+    document.getElementById('hub-footer-dice')?.classList.toggle('hidden', tabId !== 'hub-dice');
+    document.getElementById('hub-footer-chat')?.classList.toggle('hidden', tabId !== 'hub-chat' && tabId !== 'hub-master');
+    document.getElementById('hub-footer-whisper')?.classList.toggle('hidden', tabId !== 'hub-whisper');
+    
+    // Muda o placeholder dependendo se é Chat Geral ou Mestre
+    const inputChat = document.getElementById('hub-chat-input');
+    if(inputChat) {
+        inputChat.placeholder = tabId === 'hub-master' ? "Aviso do Mestre..." : "Enviar para todos...";
+    }
+
+    renderHubMessages(); // Re-renderiza o painel aplicando o filtro correto
+};
+
+window.sendHubMessage = async function(type) {
+    if (!globalState.selectedCharacterId && !globalState.isAdmin) return alert("Selecione um personagem.");
+    if (!globalState.activeSessionId || globalState.activeSessionId === 'world') return alert("Selecione uma Mesa na sessão para usar o chat.");
+    
+    if (type === 'mestre' && !globalState.isAdmin) return alert("Apenas o Mestre pode mandar avisos globais.");
+
+    let inputEl, text, targetId = null, targetName = null;
+
+    if (type === 'whisper') {
+        inputEl = document.getElementById('hub-whisper-input');
+        const sel = document.getElementById('hub-whisper-target');
+        targetId = sel?.value;
+        if (!targetId) return alert("Selecione para quem deseja sussurrar.");
+        targetName = sel.options[sel.selectedIndex].text;
+    } else {
+        inputEl = document.getElementById('hub-chat-input');
+    }
+
+    text = inputEl?.value.trim();
+    if (!text) return;
+
+    let remetenteId = "master";
+    let remetenteNome = "Mestre";
+    
+    if (globalState.selectedCharacterData && globalState.selectedCharacterData.ficha) {
+        remetenteId = globalState.selectedCharacterId;
+        remetenteNome = globalState.selectedCharacterData.ficha.nome;
+    }
+
+    const payload = {
+        tipo: type, // 'geral', 'mestre' ou 'whisper'
+        remetenteId,
+        remetenteNome,
+        mensagem: text,
+        timestamp: serverTimestamp()
+    };
+
+    if (type === 'whisper') {
+        payload.destinatarioId = targetId;
+        payload.destinatarioNome = targetName;
+    }
+
+    inputEl.value = ''; // Limpa antes pra não dar double click
+
+    try {
+        await addDoc(collection(db, "rpg_sessions", globalState.activeSessionId, "chat_log"), payload);
+    } catch(e) {
+        console.error("Erro ao enviar mensagem:", e);
+        alert("Erro ao enviar mensagem.");
+    }
+};
+
+window.listenToSessionChat = function(sessionId) {
+    if (unsubscribeChat) {
+        unsubscribeChat();
+        unsubscribeChat = null;
+    }
+    
+    globalState.currentChatLogs = [];
+    renderHubMessages(); // Limpa a tela
+
+    if (!sessionId || sessionId === 'world') return;
+
+    const q = query(collection(db, "rpg_sessions", sessionId, "chat_log"), orderBy("timestamp", "desc"));
+    
+    let isFirstLoad = true;
+
+    unsubscribeChat = onSnapshot(q, (snap) => {
+        const changes = snap.docChanges();
+        
+        snap.forEach(d => {
+            const data = { id: d.id, ...d.data() };
+            // Se for novo (adicionado agora) e não for o primeiro carregamento da tela
+            const isNew = changes.find(c => c.type === 'added' && c.doc.id === d.id);
+            if (isNew && !isFirstLoad) {
+                // Lógica de notificação na aba
+                let targetAba = '';
+                if(data.tipo === 'dice') targetAba = 'hub-dice';
+                else if(data.tipo === 'geral') targetAba = 'hub-chat';
+                else if(data.tipo === 'mestre') targetAba = 'hub-master';
+                else if(data.tipo === 'whisper') {
+                     // Só notifica sussurro se eu for o mestre, o alvo, ou o remetente (pra não apitar pros outros)
+                     if(globalState.isAdmin || data.destinatarioId === globalState.selectedCharacterId || data.remetenteId === globalState.selectedCharacterId) {
+                         targetAba = 'hub-whisper';
+                     }
+                }
+                
+                if (targetAba && currentHubTab !== targetAba) {
+                    const badge = document.getElementById(`badge-${targetAba}`);
+                    if(badge) badge.classList.remove('hidden');
+                }
+            }
+        });
+
+        isFirstLoad = false;
+        globalState.currentChatLogs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderHubMessages();
+    });
+};
+
+function renderHubMessages() {
+    const container = document.getElementById('hub-log-container');
+    if (!container) return;
+
+    if (!globalState.activeSessionId || globalState.activeSessionId === 'world') {
+        container.innerHTML = '<div class="text-slate-600 italic text-center text-[9px] py-6 px-4">Selecione uma Sessão na barra inferior para acessar o Chat e as Rolagens conjuntas.</div>';
+        return;
+    }
+
+    const logs = globalState.currentChatLogs || [];
+    
+    // Filtra com base na aba atual
+    const filteredLogs = logs.filter(log => {
+        if (currentHubTab === 'hub-dice') return log.tipo === 'dice';
+        if (currentHubTab === 'hub-chat') return log.tipo === 'geral';
+        if (currentHubTab === 'hub-master') return log.tipo === 'mestre';
+        if (currentHubTab === 'hub-whisper') {
+             if (log.tipo !== 'whisper') return false;
+             if (globalState.isAdmin) return true; // Mestre vê tudo
+             const myId = globalState.selectedCharacterId;
+             return log.remetenteId === myId || log.destinatarioId === myId;
+        }
+        return true;
+    });
+
+    if (filteredLogs.length === 0) {
+        container.innerHTML = '<div class="text-slate-600 italic text-center text-[9px] py-6 px-4">Nenhum registro nesta aba ainda.</div>';
+        return;
+    }
+
+    let html = '';
+    // Como pedimos desc no Firebase, os novos tão index 0, mas queremos ler de cima pra baixo, invertemos pra desenhar
+    [...filteredLogs].reverse().forEach(log => {
+        const timeStr = log.timestamp ? log.timestamp.toDate().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}) : '...';
+        
+        if (log.tipo === 'dice') {
+             html += `
+                <div class="bg-slate-900 border border-slate-700 rounded p-2 text-[10px] shadow-sm">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-sky-400 font-bold">${log.remetenteNome}</span>
+                        <span class="text-slate-500 text-[8px]">${timeStr}</span>
+                    </div>
+                    <div class="text-slate-300">Rolou <strong class="text-white">${log.dado}</strong> e tirou <span class="text-amber-400 font-black text-sm ml-1">${log.valor}</span></div>
+                </div>`;
+        } 
+        else if (log.tipo === 'geral') {
+             html += `
+                <div class="bg-slate-900/50 border-l-2 border-slate-600 pl-2 py-1 mb-1">
+                    <div class="flex justify-between items-baseline mb-0.5">
+                        <span class="text-amber-500 font-bold text-[9px]">${log.remetenteNome}</span>
+                        <span class="text-slate-500 text-[8px]">${timeStr}</span>
+                    </div>
+                    <div class="text-slate-200 text-[10px] break-words leading-tight">${log.mensagem}</div>
+                </div>`;
+        }
+        else if (log.tipo === 'mestre') {
+             html += `
+                <div class="bg-red-900/20 border border-red-900/50 rounded p-2 mb-1 shadow-inner">
+                    <div class="text-red-500 font-bold text-[9px] uppercase tracking-widest mb-1 flex justify-between">
+                        <span><i class="fas fa-crown"></i> ${log.remetenteNome}</span>
+                        <span class="text-[8px] opacity-60">${timeStr}</span>
+                    </div>
+                    <div class="text-red-200 text-[10px] break-words italic leading-relaxed">${log.mensagem}</div>
+                </div>`;
+        }
+        else if (log.tipo === 'whisper') {
+             const isMe = log.remetenteId === globalState.selectedCharacterId;
+             html += `
+                <div class="bg-purple-900/20 border-l-2 border-purple-500 pl-2 py-1 mb-1">
+                    <div class="flex justify-between items-baseline mb-0.5">
+                        <span class="text-purple-400 font-bold text-[9px]">${isMe ? 'Para: ' + log.destinatarioNome : 'De: ' + log.remetenteNome}</span>
+                        <span class="text-slate-500 text-[8px]">${timeStr}</span>
+                    </div>
+                    <div class="text-purple-200 text-[10px] break-words italic leading-tight">"${log.mensagem}"</div>
+                </div>`;
+        }
+    });
+
+    container.innerHTML = html;
+    container.scrollTop = container.scrollHeight; // Auto-scroll pro final
+}
+
+// Binds de Eventos de Tela do Hub
+document.addEventListener('DOMContentLoaded', () => {
+    // Clique nas abas
+    document.querySelectorAll('.hub-tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => window.switchHubTab(e.currentTarget.dataset.target));
+    });
+
+    // Enviar Chat Geral/Mestre
+    const btnSend = document.getElementById('hub-btn-send');
+    const inputChat = document.getElementById('hub-chat-input');
+    if(btnSend) btnSend.addEventListener('click', () => window.sendHubMessage(currentHubTab === 'hub-master' ? 'mestre' : 'geral'));
+    if(inputChat) inputChat.addEventListener('keypress', (e) => { if (e.key === 'Enter') window.sendHubMessage(currentHubTab === 'hub-master' ? 'mestre' : 'geral'); });
+
+    // Enviar Sussurro
+    const btnSendW = document.getElementById('hub-btn-whisper-send');
+    const inputW = document.getElementById('hub-whisper-input');
+    if(btnSendW) btnSendW.addEventListener('click', () => window.sendHubMessage('whisper'));
+    if(inputW) inputW.addEventListener('keypress', (e) => { if (e.key === 'Enter') window.sendHubMessage('whisper'); });
+});
+// ==========================================
+
 // --- GESTÃO DE SESSÕES ---
 async function updateCharacterSessions(charId) {
     const sessionSelect = document.getElementById('session-select');
@@ -1173,8 +1409,31 @@ document.addEventListener('change', (e) => {
         renderHeaderWidget();
         const arenaTab = document.getElementById('arena-combate-content');
         if (arenaTab && !arenaTab.classList.contains('hidden') && window.arena?.init) window.arena.init();
+        
+        // NOVO: Reinicia o listener do chat e popula a lista de sussurros
+        if(window.listenToSessionChat) window.listenToSessionChat(e.target.value);
+        popularSussurros();
     }
 });
+
+function popularSussurros() {
+    const sel = document.getElementById('hub-whisper-target');
+    if(!sel) return;
+    sel.innerHTML = '<option value="">Selecione o alvo...</option>';
+    
+    if(!globalState.activeSessionId || globalState.activeSessionId === 'world') return;
+    
+    const sess = globalState.userSessions?.find(s => s.id === globalState.activeSessionId);
+    if(sess && sess.playerIds) {
+        sess.playerIds.forEach(pId => {
+            if(pId === globalState.selectedCharacterId) return; // Não pode sussurrar pra si mesmo
+            const char = globalState.cache.all_personagens.get(pId);
+            if(char) {
+                sel.add(new Option(char.nome, pId));
+            }
+        });
+    }
+}
 
 // --- HEADER DO MUNDO ---
 window.getSessionTimeAndPeriod = function() {
