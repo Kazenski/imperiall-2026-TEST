@@ -51,6 +51,7 @@ import { renderFirebaseMudaAllTab } from './admin/firebaseMudaAll.js';
 import { renderFirebaseMudaIfTab } from './admin/firebaseMudaIf.js';
 import { renderGerarTabelaXpTab } from './admin/gerarTabelaXp.js';
 import { renderMapaMundialTab } from './admin/mapaMundial.js';
+import { rtdb, rtdbRef, push, set, onValue, off, rtdbQuery, limitToLast, rtdbServerTimestamp } from './core/firebase.js';
 
 const dom = {};
 document.querySelectorAll('[id]').forEach(el => dom[el.id.replace(/-/g, '_')] = el);
@@ -731,47 +732,47 @@ window.renderSidebarDice = function() {
     c.innerHTML = dice.map(d => `<button onclick="window.rollDiceSidebar('${d.id}', ${d.sides}, '${d.label}')" class="bg-slate-800 hover:bg-amber-600 border border-slate-700 hover:border-amber-500 text-slate-300 hover:text-black font-bold text-[9px] h-8 rounded transition-colors shadow flex items-center justify-center cursor-pointer">${d.label}</button>`).join('');
 };
 
-window.rollDiceSidebar = async function(id, sides, label) {
-    const charId = globalState.selectedCharacterId;
-    if (!charId) return alert("Selecione um personagem primeiro para rolar dados!");
+// window.rollDiceSidebar = async function(id, sides, label) {
+//     const charId = globalState.selectedCharacterId;
+//     if (!charId) return alert("Selecione um personagem primeiro para rolar dados!");
 
-    const result = id === 'moeda' ? (Math.random() < 0.5 ? 'Cara' : 'Coroa') : Math.floor(Math.random() * sides) + 1;
-    const novoLog = { dado: label, valor: result, timestamp: Date.now() };
+//     const result = id === 'moeda' ? (Math.random() < 0.5 ? 'Cara' : 'Coroa') : Math.floor(Math.random() * sides) + 1;
+//     const novoLog = { dado: label, valor: result, timestamp: Date.now() };
 
-    const ficha = globalState.selectedCharacterData.ficha;
-    const logsAtuais = ficha.log_rolagens || [];
-    logsAtuais.unshift(novoLog);
-    if (logsAtuais.length > 50) logsAtuais.pop();
-    ficha.log_rolagens = logsAtuais;
+//     const ficha = globalState.selectedCharacterData.ficha;
+//     const logsAtuais = ficha.log_rolagens || [];
+//     logsAtuais.unshift(novoLog);
+//     if (logsAtuais.length > 50) logsAtuais.pop();
+//     ficha.log_rolagens = logsAtuais;
 
-    window.renderSidebarDiceLog();
+//     window.renderSidebarDiceLog();
 
-    try {
-        await updateDoc(doc(db, "rpg_fichas", charId), {
-            [`rolagens.${id}`]: result,
-            log_rolagens: logsAtuais
-        });
-    } catch(e) { console.error("Erro ao rolar:", e); }
-};
+//     try {
+//         await updateDoc(doc(db, "rpg_fichas", charId), {
+//             [`rolagens.${id}`]: result,
+//             log_rolagens: logsAtuais
+//         });
+//     } catch(e) { console.error("Erro ao rolar:", e); }
+// };
 
-window.renderSidebarDiceLog = function() {
-    const container = document.getElementById('sidebar-dice-log');
-    if (!container) return;
-    const logs = globalState.selectedCharacterData?.ficha?.log_rolagens || [];
+// window.renderSidebarDiceLog = function() {
+//     const container = document.getElementById('sidebar-dice-log');
+//     if (!container) return;
+//     const logs = globalState.selectedCharacterData?.ficha?.log_rolagens || [];
     
-    if (logs.length === 0) {
-        container.innerHTML = '<div class="text-slate-600 italic text-center text-[9px] py-6">Nenhuma rolagem feita ainda.</div>';
-        return;
-    }
+//     if (logs.length === 0) {
+//         container.innerHTML = '<div class="text-slate-600 italic text-center text-[9px] py-6">Nenhuma rolagem feita ainda.</div>';
+//         return;
+//     }
     
-    container.innerHTML = logs.slice(0, 15).map(log => `
-        <div class="flex justify-between items-center border-b border-slate-800/50 pb-1 mb-1">
-            <span class="text-[8px] text-slate-500">${new Date(log.timestamp).toLocaleTimeString('pt-BR')}</span>
-            <span class="text-slate-300 font-bold text-[9px]">${log.dado}</span>
-            <span class="text-amber-400 font-black text-xs">${log.valor}</span>
-        </div>
-    `).join('');
-};
+//     container.innerHTML = logs.slice(0, 15).map(log => `
+//         <div class="flex justify-between items-center border-b border-slate-800/50 pb-1 mb-1">
+//             <span class="text-[8px] text-slate-500">${new Date(log.timestamp).toLocaleTimeString('pt-BR')}</span>
+//             <span class="text-slate-300 font-bold text-[9px]">${log.dado}</span>
+//             <span class="text-amber-400 font-black text-xs">${log.valor}</span>
+//         </div>
+//     `).join('');
+// };
 
 // --- GERENCIAMENTO DE CACHES E ATUALIZAÇÃO LATERAL ---
 async function loadCache() {
@@ -1124,41 +1125,34 @@ window.updateGlobalBars = function() {
 // ==========================================
 // --- HUB VTT: CHAT E DADOS POR SESSÃO ---
 // ==========================================
-let unsubscribeChat = null;
 let currentHubTab = 'hub-dice';
+let activeChatRef = null; // Usado para desligar o RTDB quando trocar de sessão
 
 window.switchHubTab = function(tabId) {
     currentHubTab = tabId;
-    
-    // Atualiza botões
     document.querySelectorAll('.hub-tab-btn').forEach(btn => {
         if (btn.dataset.target === tabId) {
             btn.classList.add('active');
             const badge = btn.querySelector('span');
-            if(badge) badge.classList.add('hidden'); // Remove notificação ao ler
+            if(badge) badge.classList.add('hidden'); 
         } else {
             btn.classList.remove('active');
         }
     });
 
-    // Atualiza rodapés
     document.getElementById('hub-footer-dice')?.classList.toggle('hidden', tabId !== 'hub-dice');
     document.getElementById('hub-footer-chat')?.classList.toggle('hidden', tabId !== 'hub-chat' && tabId !== 'hub-master');
     document.getElementById('hub-footer-whisper')?.classList.toggle('hidden', tabId !== 'hub-whisper');
     
-    // Muda o placeholder dependendo se é Chat Geral ou Mestre
     const inputChat = document.getElementById('hub-chat-input');
-    if(inputChat) {
-        inputChat.placeholder = tabId === 'hub-master' ? "Aviso do Mestre..." : "Enviar para todos...";
-    }
+    if(inputChat) inputChat.placeholder = tabId === 'hub-master' ? "Aviso do Mestre..." : "Enviar para todos...";
 
-    renderHubMessages(); // Re-renderiza o painel aplicando o filtro correto
+    renderHubMessages(); 
 };
 
 window.sendHubMessage = async function(type) {
     if (!globalState.selectedCharacterId && !globalState.isAdmin) return alert("Selecione um personagem.");
     if (!globalState.activeSessionId || globalState.activeSessionId === 'world') return alert("Selecione uma Mesa na sessão para usar o chat.");
-    
     if (type === 'mestre' && !globalState.isAdmin) return alert("Apenas o Mestre pode mandar avisos globais.");
 
     let inputEl, text, targetId = null, targetName = null;
@@ -1176,81 +1170,80 @@ window.sendHubMessage = async function(type) {
     text = inputEl?.value.trim();
     if (!text) return;
 
-    let remetenteId = "master";
-    let remetenteNome = "Mestre";
-    
+    let remetenteId = "master"; let remetenteNome = "Mestre";
     if (globalState.selectedCharacterData && globalState.selectedCharacterData.ficha) {
         remetenteId = globalState.selectedCharacterId;
         remetenteNome = globalState.selectedCharacterData.ficha.nome;
     }
 
     const payload = {
-        tipo: type, // 'geral', 'mestre' ou 'whisper'
+        tipo: type,
         remetenteId,
         remetenteNome,
         mensagem: text,
-        timestamp: serverTimestamp()
+        timestamp: rtdbServerTimestamp() // Usa o Timestamp do Realtime
     };
 
-    if (type === 'whisper') {
-        payload.destinatarioId = targetId;
-        payload.destinatarioNome = targetName;
-    }
-
-    inputEl.value = ''; // Limpa antes pra não dar double click
+    if (type === 'whisper') { payload.destinatarioId = targetId; payload.destinatarioNome = targetName; }
+    inputEl.value = ''; 
 
     try {
-        await addDoc(collection(db, "rpg_sessions", globalState.activeSessionId, "chat_log"), payload);
+        // Envia para o Realtime Database
+        const chatRef = rtdbRef(rtdb, `session_chats/${globalState.activeSessionId}`);
+        const newMsgRef = push(chatRef);
+        await set(newMsgRef, payload);
     } catch(e) {
-        console.error("Erro ao enviar mensagem:", e);
-        alert("Erro ao enviar mensagem.");
+        console.error("Erro ao enviar:", e); alert("Erro ao enviar mensagem.");
     }
 };
 
 window.listenToSessionChat = function(sessionId) {
-    if (unsubscribeChat) {
-        unsubscribeChat();
-        unsubscribeChat = null;
+    if (activeChatRef) {
+        off(activeChatRef); // Desliga a escuta da sessão antiga
+        activeChatRef = null;
     }
     
     globalState.currentChatLogs = [];
-    renderHubMessages(); // Limpa a tela
+    renderHubMessages(); 
 
     if (!sessionId || sessionId === 'world') return;
 
-    const q = query(collection(db, "rpg_sessions", sessionId, "chat_log"), orderBy("timestamp", "desc"));
+    const baseRef = rtdbRef(rtdb, `session_chats/${sessionId}`);
+    activeChatRef = rtdbQuery(baseRef, limitToLast(100)); // Baixa só os últimos 100 pra ser ultra rápido
     
     let isFirstLoad = true;
 
-    unsubscribeChat = onSnapshot(q, (snap) => {
-        const changes = snap.docChanges();
+    onValue(activeChatRef, (snapshot) => {
+        const data = snapshot.val();
+        const logs = [];
         
-        snap.forEach(d => {
-            const data = { id: d.id, ...d.data() };
-            // Se for novo (adicionado agora) e não for o primeiro carregamento da tela
-            const isNew = changes.find(c => c.type === 'added' && c.doc.id === d.id);
-            if (isNew && !isFirstLoad) {
-                // Lógica de notificação na aba
+        if (data) {
+            Object.keys(data).forEach(key => logs.push({ id: key, ...data[key] }));
+            logs.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0)); // Crescente
+        }
+
+        if (!isFirstLoad) {
+            const oldIds = new Set(globalState.currentChatLogs.map(l => l.id));
+            const newLogs = logs.filter(l => !oldIds.has(l.id));
+            
+            newLogs.forEach(d => {
                 let targetAba = '';
-                if(data.tipo === 'dice') targetAba = 'hub-dice';
-                else if(data.tipo === 'geral') targetAba = 'hub-chat';
-                else if(data.tipo === 'mestre') targetAba = 'hub-master';
-                else if(data.tipo === 'whisper') {
-                     // Só notifica sussurro se eu for o mestre, o alvo, ou o remetente (pra não apitar pros outros)
-                     if(globalState.isAdmin || data.destinatarioId === globalState.selectedCharacterId || data.remetenteId === globalState.selectedCharacterId) {
-                         targetAba = 'hub-whisper';
-                     }
+                if(d.tipo === 'dice') targetAba = 'hub-dice';
+                else if(d.tipo === 'geral') targetAba = 'hub-chat';
+                else if(d.tipo === 'mestre') targetAba = 'hub-master';
+                else if(d.tipo === 'whisper') {
+                     if(globalState.isAdmin || d.destinatarioId === globalState.selectedCharacterId || d.remetenteId === globalState.selectedCharacterId) targetAba = 'hub-whisper';
                 }
                 
                 if (targetAba && currentHubTab !== targetAba) {
                     const badge = document.getElementById(`badge-${targetAba}`);
                     if(badge) badge.classList.remove('hidden');
                 }
-            }
-        });
+            });
+        }
 
         isFirstLoad = false;
-        globalState.currentChatLogs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        globalState.currentChatLogs = logs.reverse(); // Deixa o mais recente no index 0
         renderHubMessages();
     });
 };
@@ -1266,14 +1259,13 @@ function renderHubMessages() {
 
     const logs = globalState.currentChatLogs || [];
     
-    // Filtra com base na aba atual
     const filteredLogs = logs.filter(log => {
         if (currentHubTab === 'hub-dice') return log.tipo === 'dice';
         if (currentHubTab === 'hub-chat') return log.tipo === 'geral';
         if (currentHubTab === 'hub-master') return log.tipo === 'mestre';
         if (currentHubTab === 'hub-whisper') {
              if (log.tipo !== 'whisper') return false;
-             if (globalState.isAdmin) return true; // Mestre vê tudo
+             if (globalState.isAdmin) return true;
              const myId = globalState.selectedCharacterId;
              return log.remetenteId === myId || log.destinatarioId === myId;
         }
@@ -1286,9 +1278,9 @@ function renderHubMessages() {
     }
 
     let html = '';
-    // Como pedimos desc no Firebase, os novos tão index 0, mas queremos ler de cima pra baixo, invertemos pra desenhar
     [...filteredLogs].reverse().forEach(log => {
-        const timeStr = log.timestamp ? log.timestamp.toDate().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}) : '...';
+        // Correção do Timestamp para RTDB (Ele retorna millisegundos inteiros)
+        const timeStr = log.timestamp ? new Date(log.timestamp).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}) : '...';
         
         if (log.tipo === 'dice') {
              html += `
@@ -1334,25 +1326,15 @@ function renderHubMessages() {
     });
 
     container.innerHTML = html;
-    container.scrollTop = container.scrollHeight; // Auto-scroll pro final
+    container.scrollTop = container.scrollHeight; 
 }
 
-// Binds de Eventos de Tela do Hub
 document.addEventListener('DOMContentLoaded', () => {
-    // Clique nas abas
-    document.querySelectorAll('.hub-tab-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => window.switchHubTab(e.currentTarget.dataset.target));
-    });
-
-    // Enviar Chat Geral/Mestre
-    const btnSend = document.getElementById('hub-btn-send');
-    const inputChat = document.getElementById('hub-chat-input');
+    document.querySelectorAll('.hub-tab-btn').forEach(btn => btn.addEventListener('click', (e) => window.switchHubTab(e.currentTarget.dataset.target)));
+    const btnSend = document.getElementById('hub-btn-send'); const inputChat = document.getElementById('hub-chat-input');
     if(btnSend) btnSend.addEventListener('click', () => window.sendHubMessage(currentHubTab === 'hub-master' ? 'mestre' : 'geral'));
     if(inputChat) inputChat.addEventListener('keypress', (e) => { if (e.key === 'Enter') window.sendHubMessage(currentHubTab === 'hub-master' ? 'mestre' : 'geral'); });
-
-    // Enviar Sussurro
-    const btnSendW = document.getElementById('hub-btn-whisper-send');
-    const inputW = document.getElementById('hub-whisper-input');
+    const btnSendW = document.getElementById('hub-btn-whisper-send'); const inputW = document.getElementById('hub-whisper-input');
     if(btnSendW) btnSendW.addEventListener('click', () => window.sendHubMessage('whisper'));
     if(inputW) inputW.addEventListener('keypress', (e) => { if (e.key === 'Enter') window.sendHubMessage('whisper'); });
 });

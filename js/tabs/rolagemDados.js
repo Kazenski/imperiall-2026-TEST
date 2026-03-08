@@ -1,5 +1,4 @@
-// ARQUIVO: js/tabs/rolagemDados.js
-import { db, addDoc, collection, serverTimestamp } from '../core/firebase.js';
+import { rtdb, rtdbRef, push, set, rtdbServerTimestamp } from '../core/firebase.js';
 import { globalState } from '../core/state.js';
 
 const DICE_TYPES = [
@@ -13,18 +12,15 @@ const DICE_TYPES = [
     { id: 'd100', sides: 100, icon: 'fa-dice-d20', label: 'D100' },
 ];
 
-// Essa função é chamada pelos botõezinhos da BARRA LATERAL (main.js)
 window.rollDiceSidebar = async function(id, sides, label) {
     const die = DICE_TYPES.find(d => d.id === id);
     if(die) handleRoll(die);
 };
 
-// Mantemos a sua renderização da TELA GRANDE
 export function renderRolagemDados() {
     const container = document.getElementById('dice-container');
     if (container) {
         container.innerHTML = '';
-        
         DICE_TYPES.forEach(die => {
             const btn = document.createElement('div');
             btn.className = `die-button ${!globalState.selectedCharacterId && !globalState.isAdmin ? 'disabled' : ''}`;
@@ -37,11 +33,9 @@ export function renderRolagemDados() {
             container.appendChild(btn);
         });
     }
-    
     renderLogRolagens();
 }
 
-// O Motor de Rolagem agora manda para o CHAT DA SESSÃO, e não para a Ficha
 async function handleRoll(die) {
     const charId = globalState.selectedCharacterId;
     if (!charId && !globalState.isAdmin) return alert("Selecione um personagem primeiro para rolar dados!");
@@ -49,43 +43,39 @@ async function handleRoll(die) {
 
     const result = die.id === 'moeda' ? (Math.random() < 0.5 ? 'Cara' : 'Coroa') : Math.floor(Math.random() * die.sides) + 1;
     
-    // Animação UI (na tela grande, se ela estiver aberta)
     const resEl = document.querySelector(`#result-${die.id}`);
     if (resEl) {
         resEl.textContent = result;
         resEl.classList.remove('rolled');
-        void resEl.offsetWidth; // Trigger reflow
+        void resEl.offsetWidth; 
         resEl.classList.add('rolled');
     }
 
-    // Define quem está rolando
-    let remetenteId = "master";
-    let remetenteNome = "Mestre";
-    
+    let remetenteId = "master"; let remetenteNome = "Mestre";
     if (globalState.selectedCharacterData && globalState.selectedCharacterData.ficha) {
         remetenteId = charId;
         remetenteNome = globalState.selectedCharacterData.ficha.nome;
     }
 
-    // Prepara o pacote para a Sessão
     const payload = {
         tipo: 'dice',
         remetenteId: remetenteId,
         remetenteNome: remetenteNome,
         dado: die.label,
         valor: result,
-        timestamp: serverTimestamp()
+        timestamp: rtdbServerTimestamp() // Timestamp do Realtime Database
     };
 
     try {
-        // Agora salva no Chat da Sessão! Assim todos na mesa veem.
-        await addDoc(collection(db, "rpg_sessions", globalState.activeSessionId, "chat_log"), payload);
+        // Grava no Realtime Database!
+        const chatRef = rtdbRef(rtdb, `session_chats/${globalState.activeSessionId}`);
+        const newMsgRef = push(chatRef);
+        await set(newMsgRef, payload);
     } catch(e) { 
-        console.error("Erro ao enviar rolagem para sessão:", e); 
+        console.error("Erro ao enviar rolagem:", e); 
     }
 }
 
-// Mantemos o Log Grande, mas agora ele lê do Histórico da Sessão
 export function renderLogRolagens() {
     const logContainerWrapper = document.getElementById('log-rolagens-container');
     if (!logContainerWrapper) return;
@@ -95,7 +85,6 @@ export function renderLogRolagens() {
 
     container.innerHTML = '';
     
-    // Pega o Log do Chat do main.js e filtra só os dados
     const allLogs = globalState.currentChatLogs || [];
     const diceLogs = allLogs.filter(log => log.tipo === 'dice');
     
@@ -104,12 +93,12 @@ export function renderLogRolagens() {
         return;
     }
 
-    // Desenha na tela grande
     diceLogs.forEach(log => {
         const div = document.createElement('div');
         div.className = 'log-item bg-slate-900 border border-slate-700 rounded p-3 mb-2 shadow-sm flex justify-between items-center';
         
-        const dataStr = log.timestamp ? log.timestamp.toDate().toLocaleString('pt-BR') : '...';
+        // RTDB lida com timestamps diferentemente (são milisegundos inteiros)
+        const dataStr = log.timestamp ? new Date(log.timestamp).toLocaleString('pt-BR') : '...';
         
         div.innerHTML = `
             <div>
