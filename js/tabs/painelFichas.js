@@ -189,8 +189,8 @@ export async function renderFichaEditor(fichaId) {
                                 <input type="number" id="editor-experiencia" class="w-full bg-slate-900 border border-amber-900/50 rounded px-2 py-1.5 text-sm text-center font-bold text-amber-400 outline-none focus:border-amber-500">
                             </div>
                             <div class="w-2/3 mt-4">
-                                <div class="w-full relative h-6 bg-black rounded border border-slate-600 overflow-hidden shadow-inner" id="xp-bar-container">
-                                    <div id="xp-bar-fill" class="absolute top-0 left-0 h-full bg-gradient-to-r from-orange-600 to-amber-400 transition-all w-0"></div>
+                                <div class="w-full relative h-11 bg-black rounded border border-slate-600 overflow-hidden shadow-inner" id="xp-bar-container">
+                                    <div id="xp-bar-fill" class="absolute top-0 left-0 h-full bg-gradient-to-r from-purple-900 to-indigo-600 transition-all w-0"></div>
                                     <div id="xp-bar-text" class="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white text-shadow-sm">0/0</div>
                                 </div>
                             </div>
