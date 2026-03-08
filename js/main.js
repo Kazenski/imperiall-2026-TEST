@@ -1303,20 +1303,14 @@ function renderHubMessages() {
         const timeStr = log.timestamp ? new Date(log.timestamp).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}) : '...';
         
         if (log.tipo === 'dice') {
-             // NOVO VISUAL DO DADO UNIFICADO E LIMPO!
              html += `
-                <div class="bg-slate-900/80 border border-slate-700/60 rounded p-2 mb-1 shadow flex justify-between items-center group hover:bg-slate-800 transition-colors">
-                    <div class="flex items-center gap-1.5 overflow-hidden">
-                        <span class="text-sky-400 font-bold text-[10px] uppercase tracking-wider truncate max-w-[100px]" title="${log.remetenteNome}">${log.remetenteNome}</span>
-                        <span class="text-slate-500 text-[10px] shrink-0">rolou</span>
-                        <strong class="text-white text-[10px] shrink-0">${log.dado}</strong>
-                    </div>
-                    <div class="flex items-baseline gap-2 shrink-0">
-                        <span class="text-amber-400 font-black text-base leading-none">${log.valor}</span>
-                        <span class="text-slate-600 text-[8px] font-mono">${timeStr}</span>
-                    </div>
+                <div class="bg-slate-900/30 border-l-2 border-amber-500 pl-2 py-1 mb-1 flex items-center flex-wrap gap-1.5">
+                    <span class="text-sky-400 font-bold text-[9px]">${log.remetenteNome}</span>
+                    <span class="text-slate-400 text-[10px]">rolou <strong class="text-slate-200">${log.dado}</strong> <i class="fas fa-arrow-right text-[8px] text-slate-600 mx-0.5"></i></span>
+                    <span class="text-amber-400 font-black text-[12px] drop-shadow-md leading-none">${log.valor}</span>
+                    <span class="text-slate-600 text-[8px] ml-auto">${timeStr}</span>
                 </div>`;
-        } 
+        }
         else if (log.tipo === 'geral') {
              html += `
                 <div class="bg-slate-900/50 border-l-2 border-slate-600 pl-2 py-1 mb-1">

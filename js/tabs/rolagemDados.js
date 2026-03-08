@@ -95,20 +95,16 @@ export function renderLogRolagens() {
 
     diceLogs.forEach(log => {
         const div = document.createElement('div');
-        div.className = 'log-item bg-slate-900 border border-slate-700 rounded p-3 mb-2 shadow-sm flex justify-between items-center';
+        // Visual alinhado horizontalmente com flex
+        div.className = 'bg-slate-900/50 border-l-4 border-amber-500 pl-3 py-2 mb-2 rounded-r flex items-center flex-wrap gap-2 shadow-sm';
         
-        // RTDB lida com timestamps diferentemente (são milisegundos inteiros)
-        const dataStr = log.timestamp ? new Date(log.timestamp).toLocaleString('pt-BR') : '...';
+        const dataStr = log.timestamp ? new Date(log.timestamp).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}) : '...';
         
         div.innerHTML = `
-            <div>
-                <span class="text-sky-400 font-bold mr-2">${log.remetenteNome}</span>
-                <span class="text-slate-300">Rolou <strong>${log.dado}</strong></span>
-            </div>
-            <div class="flex items-center gap-4">
-                <span class="text-amber-400 font-black text-xl">${log.valor}</span>
-                <span class="log-timestamp text-xs text-slate-500">${dataStr}</span>
-            </div>
+            <span class="text-sky-400 font-bold text-xs uppercase tracking-wider">${log.remetenteNome}</span>
+            <span class="text-slate-400 text-xs">rolou <strong class="text-slate-200">${log.dado}</strong> <i class="fas fa-long-arrow-alt-right text-[10px] text-slate-600 mx-1"></i></span>
+            <span class="text-amber-400 font-black text-lg drop-shadow-md leading-none">${log.valor}</span>
+            <span class="text-slate-600 text-[10px] ml-auto">${dataStr}</span>
         `;
         container.appendChild(div);
     });
