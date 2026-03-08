@@ -149,7 +149,7 @@ export async function renderFichaEditor(fichaId) {
         fichaData = fullData.ficha;
     }
 
-    const inputClass = "w-full bg-slate-900 border border-slate-700 rounded text-slate-200 px-3 py-2 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition outline-none font-medium shadow-inner text-lg text-amber-400 font-cinzel ";
+    const inputClass = "w-full bg-slate-900 border border-slate-700 rounded text-slate-200 px-3 py-3 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition outline-none font-medium shadow-inner text-lg text-amber-400 font-cinzel ";
 
     container.innerHTML = `
         <div class="w-full h-full flex flex-col gap-4 animate-fade-in pb-4">
@@ -202,7 +202,7 @@ export async function renderFichaEditor(fichaId) {
                             </div>
                             <div class="space-y-1">
                                 <label class="text-[9px] text-purple-400 font-bold uppercase tracking-widest block  mb-1">Pts. Mestre</label>
-                                <input type="number" id="editor-pontosExtrasMestre" lass="${inputClass} outline-none" placeholder="0">
+                                <input type="number" id="editor-pontosExtrasMestre" class="w-full bg-slate-900 border border-purple-900/30 rounded px-2 py-1.5 text-xs text-center font-bold text-purple-300 outline-none" placeholder="0">
                             </div>
                         </div>
                     </div>
