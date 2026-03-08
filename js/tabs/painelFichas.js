@@ -433,7 +433,7 @@ function setupImageGallery(container, urls, mainKey) {
 
     grid.innerHTML = '';
     
-    for (let i = 1; i <= 18; i++) {
+    for (let i = 1; i <= 26; i++) {
         const key = `imagem${i}`;
         const rawUrl = urls[key];
         
