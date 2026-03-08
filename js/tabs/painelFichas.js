@@ -149,7 +149,7 @@ export async function renderFichaEditor(fichaId) {
         fichaData = fullData.ficha;
     }
 
-    const inputClass = "w-full bg-slate-900 border border-slate-700 rounded text-slate-200 px-3 py-2 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition outline-none font-medium shadow-inner text-lg text-amber-400 font-cinzel ";
+    const inputClass = "w-full bg-slate-900 border border-slate-700 rounded text-slate-200 px-3 py-3 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition outline-none font-medium shadow-inner text-lg text-amber-400 font-cinzel ";
 
     container.innerHTML = `
         <div class="w-full h-full flex flex-col gap-4 animate-fade-in pb-4">
