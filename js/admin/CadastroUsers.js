@@ -217,11 +217,13 @@ window.userAdminTools = {
                     const userUid = credential.user.uid;
 
                     // Salva o registro na coleção rpg_users usando o UID correto do aluno
+                    // Adicionado registroAtivo e merge: true para não sobrescrever caso o jogador já exista
                     await setDoc(doc(db, "rpg_users", userUid), {
                         email: email,
                         role: "jogador",
-                        criadoEm: serverTimestamp()
-                    });
+                        registroAtivo: true,
+                        atualizadoEm: serverTimestamp()
+                    }, { merge: true });
 
                     // Desloga da instância secundária imediatamente
                     await signOut(authInstance);
@@ -230,16 +232,25 @@ window.userAdminTools = {
                     successCount++;
                 } catch (error) {
                     console.error(error);
-                    // Se a senha colocada na lista não for a mesma do aluno já existente, dará 'invalid-credential'
-                    const msgErro = error.code === 'auth/invalid-credential'
-                        ? 'Senha incorreta para aluno já existente.'
-                        : error.message;
+
+                    let msgErro = error.message;
+                    if (error.code === 'auth/invalid-credential') msgErro = 'Senha incorreta para aluno já existente.';
+                    if (error.code === 'auth/too-many-requests') msgErro = 'Bloqueio temporário (Too many requests).';
 
                     logArea.innerHTML += `<div class="text-red-400">[ERRO] ${email}: ${msgErro}</div>`;
                     failCount++;
+
+                    // Se a API bloqueou por excesso, interrompe o loop para proteger a conta
+                    if (error.code === 'auth/too-many-requests') {
+                        logArea.innerHTML += `<div class="text-amber-400 font-bold mt-2">> Processamento pausado por segurança. Aguarde alguns minutos e processe os que faltaram.</div>`;
+                        break;
+                    }
                 }
 
                 logArea.scrollTop = logArea.scrollHeight;
+
+                // Atraso artificial de 1.8 segundos entre cada usuário para evitar bloqueio do Firebase
+                await new Promise(resolve => setTimeout(resolve, 1800));
             }
 
             logArea.innerHTML += `<div class="text-amber-400 font-bold mt-2">> Fim do lote. Sucessos: ${successCount} | Falhas: ${failCount}</div>`;
