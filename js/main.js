@@ -467,7 +467,7 @@ const MASTER_ARCHITECTURE = {
         { id: 'firebase-muda-all', icon: 'fa-biohazard', label: 'Injeção DB', render: () => window.showTab('firebase-muda-all-content'), requiresAdmin: true },
         { id: 'firebase-muda-if', icon: 'fa-filter', label: 'Mutação DB (IF)', render: () => window.showTab('firebase-muda-if-content'), requiresAdmin: true },
         { id: 'gerar-tabela-xp', icon: 'fa-chart-line', label: 'Engine de Níveis', render: () => window.showTab('gerar-tabela-xp-content'), requiresAdmin: true },
-        { id: 'mapa-mundial', icon: 'fa-map', label: 'Mapa (Fog of War)', render: () => window.showTab('mapa-mundial-content'), requiresAdmin: true }
+        { id: 'mapa-mundial', icon: 'fa-map', label: 'Mapa (Fog of War)', render: () => window.showTab('mapa-mundial-content'), requiresAdmin: true },
         { id: 'cadastro-users', icon: 'fa-users-cog', label: 'Controle de Usuários', render: () => window.showTab('cadastro-users-content'), requiresAdmin: true }
     ],
     'Ao Jogador': [
