@@ -1,7 +1,7 @@
 import { db } from '../core/firebase.js';
 import { collection, getDocs, doc, setDoc, updateDoc, serverTimestamp, query } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { initializeApp, getApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { escapeHTML } from '../core/utils.js';
 
 let usersCache = [];
@@ -200,22 +200,42 @@ window.userAdminTools = {
                 }
 
                 try {
-                    const credential = await createUserWithEmailAndPassword(authInstance, email, password);
-                    const newUid = credential.user.uid;
+                    let credential;
+                    try {
+                        // 1. Tenta criar a conta normalmente (para novos alunos)
+                        credential = await createUserWithEmailAndPassword(authInstance, email, password);
+                    } catch (err) {
+                        // 2. Se o aluno já existir no Firebase Auth (do seu outro site), o Firebase recusa a criação.
+                        // Então interceptamos o erro e fazemos apenas o LOGIN para resgatar o UID existente!
+                        if (err.code === 'auth/email-already-in-use') {
+                            credential = await signInWithEmailAndPassword(authInstance, email, password);
+                        } else {
+                            throw err; // Se for erro de senha fraca ou formato, repassa o erro para fora
+                        }
+                    }
 
-                    await setDoc(doc(db, "rpg_users", newUid), {
+                    const userUid = credential.user.uid;
+
+                    // Salva o registro na coleção rpg_users usando o UID correto do aluno
+                    await setDoc(doc(db, "rpg_users", userUid), {
                         email: email,
                         role: "jogador",
                         criadoEm: serverTimestamp()
                     });
 
+                    // Desloga da instância secundária imediatamente
                     await signOut(authInstance);
 
-                    logArea.innerHTML += `<div class="text-emerald-400">[SUCESSO] ${email} cadastrado com ID: ${newUid}</div>`;
+                    logArea.innerHTML += `<div class="text-emerald-400">[SUCESSO] ${email} processado e vinculado na base!</div>`;
                     successCount++;
                 } catch (error) {
                     console.error(error);
-                    logArea.innerHTML += `<div class="text-red-400">[ERRO] ${email}: ${error.message}</div>`;
+                    // Se a senha colocada na lista não for a mesma do aluno já existente, dará 'invalid-credential'
+                    const msgErro = error.code === 'auth/invalid-credential'
+                        ? 'Senha incorreta para aluno já existente.'
+                        : error.message;
+
+                    logArea.innerHTML += `<div class="text-red-400">[ERRO] ${email}: ${msgErro}</div>`;
                     failCount++;
                 }
 
