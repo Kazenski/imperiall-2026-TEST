@@ -5,7 +5,8 @@ export function renderDropsMonstrosTab() {
     const container = document.getElementById('drops-monstros-content');
     if (!container) return;
 
-    // Estrutura Base - Ocupando 100% (w-full) e removendo scroll (overflow-hidden)
+
+    // Estrutura Base - Ocupando 100% (w-full) e removendo scroll (overflow-hidden) ok
     container.innerHTML = `
         <div class="w-full h-full flex flex-col overflow-hidden animate-fade-in">
             
