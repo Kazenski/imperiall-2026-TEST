@@ -53,6 +53,7 @@ import { renderGerarTabelaXpTab } from './admin/gerarTabelaXp.js';
 import { renderMapaMundialTab } from './admin/mapaMundial.js';
 import { renderCadastroUsersTab } from './admin/CadastroUsers.js';
 import { renderDropsMonstrosTab } from './aoMestre/dropsMonstros.js';
+import { renderManualGeralTab } from './manualRegras/manualGeral.js';
 
 import { rtdb, rtdbRef, push, set, onValue, off, rtdbQuery, limitToLast, rtdbServerTimestamp } from './core/firebase.js';
 
@@ -172,6 +173,13 @@ window.showTab = function (tabId) {
     if (tabId === 'conheca-mundo-content' || tabId === 'conheca-mundo') {
         target.innerHTML = '';
         if (typeof renderConhecaMundoTab === 'function') renderConhecaMundoTab();
+        return;
+    }
+
+    // Aba "Bases do RPG e Manual"
+    if (tabId === 'manual-geral-content' || tabId === 'manual-geral') {
+        target.innerHTML = '';
+        if (typeof renderManualGeralTab === 'function') renderManualGeralTab();
         return;
     }
 
@@ -448,7 +456,7 @@ const MASTER_ARCHITECTURE = {
         { id: 'npcs-geral', icon: 'fa-users', label: 'NPCs Importantes', render: () => window.showTab('npcs-geral-content') }
     ],
     'Manual e Regras': [
-        { id: 'blank', icon: 'fa-book', label: 'Manual', render: () => window.renderBlankPage('Manual') },
+        { id: 'manual-geral', icon: 'fa-book-open', label: 'Bases e Manual', render: () => window.showTab('manual-geral-content') },
         { id: 'racas', icon: 'fa-dna', label: 'Raças', render: () => window.showTab('racas-content') },
         { id: 'classes', icon: 'fa-khanda', label: 'Classes', render: () => window.showTab('classes-content') },
         { id: 'subclasses', icon: 'fa-project-diagram', label: 'Subclasses', render: () => window.showTab('subclasses-content') },
