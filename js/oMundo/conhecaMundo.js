@@ -15,7 +15,11 @@ const cancoesDoBardo = [
     { id: 3, tipo: 'musica', titulo: 'A Sombra dos Quatro', src: 'audios/A Sombra dos Quatro.mp3' },
     { id: 4, tipo: 'musica', titulo: 'O Sacrifício', src: 'audios/O Sacrifício (A Prisão de Cristal).mp3' },
     { id: 5, tipo: 'musica', titulo: 'A Balada de Androa', src: 'audios/A Balada de Androa.mp3' },
-    { id: 6, tipo: 'podcast', titulo: 'Criação Celestial de Gallandra', src: 'audios/A_Deusa_Gallandra_Criou_a_Ganância.mp3' }
+    { id: 6, tipo: 'podcast', titulo: 'Criação Celestial de Gallandra', src: 'audios/A_Deusa_Gallandra_Criou_a_Ganância.mp3' },
+    { id: 7, tipo: 'musica', titulo: 'Balada Sombria - A Sombra de Finbetur', src: 'audios/Balada Sombria - A Sombra de Finbetur.mp3' },
+    { id: 8, tipo: 'musica', titulo: 'O Portal de Androa', src: 'audios/O Portal de Androa.mp3' },
+    { id: 9, tipo: 'musica', titulo: 'Tributo a Balun — O Grande Torneio', src: 'audios/Tributo a Balun — O Grande Torneio.mp3' }
+
 ];
 
 export function renderConhecaMundoTab() {
