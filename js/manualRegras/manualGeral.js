@@ -8,10 +8,9 @@ export async function renderManualGeralTab() {
     if (!container) return;
 
     // Determina se o usuário logado possui privilégios administrativos
-    // Ajuste esta validação se o seu sistema utilizar outro campo/Role no globalState
     const isAdmin = globalState.currentUser?.email === 'kazenski.developer@gmail.com' || globalState.currentUser?.role === 'admin';
 
-    // Renderização da casca estrutural ocupando 100% da largura útil
+    // Renderização da casca estrutural
     container.innerHTML = `
         <div class="w-full h-full flex flex-col overflow-hidden animate-fade-in text-gray-200">
             <div class="bg-slate-800/60 border-b border-slate-700 shrink-0 p-4 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-md sm:px-6 lg:px-8">
@@ -26,7 +25,7 @@ export async function renderManualGeralTab() {
                 ` : ''}
             </div>
 
-            <div id="manual-rules-feed" class="flex-grow w-full overflow-y-auto custom-scrollbar p-4 sm:p-6 lg:p-8 space-y-6 bg-slate-900/20 min-h-0">
+            <div id="manual-rules-feed" class="flex-grow w-full overflow-y-auto custom-scrollbar p-4 sm:p-6 lg:p-8 space-y-4 bg-slate-900/20 min-h-0">
                 <div class="text-center py-12 text-slate-500">
                     <i class="fas fa-spinner fa-spin text-3xl text-amber-500 mb-3"></i>
                     <p class="font-mono text-xs uppercase tracking-wider">Sincronizando Tomos de Regras...</p>
@@ -39,7 +38,6 @@ export async function renderManualGeralTab() {
         container.querySelector('#btn-nova-regra').addEventListener('click', () => abrirModalFormRegra(null, null));
     }
 
-    // Carrega os dados direto do Firebase
     await carregarRegrasDoManual(isAdmin);
 }
 
@@ -78,19 +76,19 @@ async function carregarRegrasDoManual(isAdmin) {
             // Se a regra estiver oculta e o usuário não for Admin, ela não aparece na página
             if (regra.oculto && !isAdmin) return;
 
-            const card = document.createElement('div');
-            // Se estiver oculta, exibe opaca e tracejada para o Admin saber o status
-            card.className = `w-full bg-slate-800/50 border ${regra.oculto ? 'border-dashed border-red-500/40 opacity-60' : 'border-slate-700'} rounded-xl shadow-lg overflow-hidden transition-all duration-300`;
+            // Transforma a casca em um elemento expansível (<details>)
+            const card = document.createElement('details');
+            card.className = `group w-full bg-slate-800/50 border ${regra.oculto ? 'border-dashed border-red-500/40 opacity-60' : 'border-slate-700'} rounded-xl shadow-lg overflow-hidden transition-all duration-300`;
 
-            // Renderiza o bloco de imagens laterais ou em grade
+            // Renderiza grade de imagens se houver
             let imagensGrid = '';
             if (regra.imageUrls && Object.keys(regra.imageUrls).length > 0) {
                 imagensGrid = `<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-6">`;
                 Object.values(regra.imageUrls).forEach(url => {
                     if (url) {
                         imagensGrid += `
-                            <div class="aspect-video bg-slate-950 rounded-lg overflow-hidden border border-slate-700 group cursor-zoom-in relative">
-                                <img src="${url}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 img-preview-trigger" />
+                            <div class="aspect-video bg-slate-950 rounded-lg overflow-hidden border border-slate-700 cursor-zoom-in relative group/img">
+                                <img src="${url}" class="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-300 img-preview-trigger" />
                             </div>
                         `;
                     }
@@ -102,29 +100,34 @@ async function carregarRegrasDoManual(isAdmin) {
                 ? new Date(regra.updatedAt.seconds * 1000).toLocaleDateString('pt-BR')
                 : new Date().toLocaleDateString('pt-BR');
 
+            // O <summary> é o cabeçalho clicável, o restante fica oculto até o click
             card.innerHTML = `
-                <div class="p-6">
-                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 border-b border-slate-700/60 pb-3 mb-4">
-                        <div>
-                            <div class="flex flex-wrap items-center gap-2">
-                                <h2 class="text-xl sm:text-2xl font-bold font-cinzel text-white">${regra.titulo}</h2>
-                                ${regra.oculto ? '<span class="text-[9px] bg-red-600/20 text-red-400 font-black uppercase border border-red-500/30 px-2 py-0.5 rounded">Oculto do Site</span>' : ''}
-                            </div>
-                            <p class="text-[10px] text-slate-500 uppercase tracking-widest mt-1">Modificado em: <strong class="text-slate-400">${dataFormatada}</strong> por <strong class="text-amber-500/90">${regra.autorNome || 'Mestre/Admin'}</strong></p>
+                <summary class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 cursor-pointer p-5 bg-slate-900/40 hover:bg-slate-800/80 transition-colors list-none outline-none [&::-webkit-details-marker]:hidden">
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h2 class="text-xl sm:text-2xl font-bold font-cinzel text-white group-hover:text-amber-400 transition-colors">${regra.titulo}</h2>
+                            ${regra.oculto ? '<span class="text-[9px] bg-red-600/20 text-red-400 font-black uppercase border border-red-500/30 px-2 py-0.5 rounded shadow">Oculto</span>' : ''}
                         </div>
-                        
-                        ${isAdmin ? `
-                            <div class="flex gap-2 shrink-0 w-full sm:w-auto">
-                                <button data-id="${regra.id}" class="btn-editar-regra flex-grow sm:flex-grow-0 px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs uppercase rounded transition-colors"><i class="fas fa-edit mr-1"></i>Editar</button>
-                                <button data-id="${regra.id}" class="btn-deletar-regra px-3 py-1.5 bg-red-600/30 border border-red-500/50 hover:bg-red-600 text-red-200 hover:text-white font-bold text-xs uppercase rounded transition-all"><i class="fas fa-trash-alt"></i></button>
-                            </div>
-                        ` : ''}
+                        <p class="text-[10px] text-slate-500 uppercase tracking-widest mt-1">Modificado em: <strong class="text-slate-400">${dataFormatada}</strong> por <strong class="text-amber-500/90">${regra.autorNome || 'Mestre/Admin'}</strong></p>
                     </div>
                     
+                    <div class="flex items-center gap-4 shrink-0 w-full sm:w-auto justify-between sm:justify-end">
+                        ${isAdmin ? `
+                            <div class="flex gap-2">
+                                <button data-id="${regra.id}" class="btn-editar-regra px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs uppercase rounded transition-colors shadow"><i class="fas fa-edit sm:mr-1"></i><span class="hidden sm:inline">Editar</span></button>
+                                <button data-id="${regra.id}" class="btn-deletar-regra px-3 py-2 bg-red-600/30 border border-red-500/50 hover:bg-red-600 text-red-200 hover:text-white font-bold text-xs uppercase rounded transition-all shadow"><i class="fas fa-trash-alt"></i></button>
+                            </div>
+                        ` : ''}
+                        <div class="w-8 h-8 rounded-full bg-slate-800/80 flex items-center justify-center border border-slate-600">
+                            <i class="fas fa-chevron-down text-amber-500 text-lg transition-transform duration-300 group-open:rotate-180"></i>
+                        </div>
+                    </div>
+                </summary>
+                
+                <div class="p-6 pt-5 border-t border-slate-700/60 bg-slate-900/20">
                     <div class="text-slate-300 text-sm sm:text-base whitespace-pre-wrap leading-relaxed">
                         ${regra.descricao}
                     </div>
-
                     ${imagensGrid}
                 </div>
             `;
@@ -132,22 +135,31 @@ async function carregarRegrasDoManual(isAdmin) {
             feed.appendChild(card);
         });
 
-        // Eventos de visualização de imagem em tela cheia (Lightbox Overlay)
+        // Eventos de visualização de imagem
         feed.querySelectorAll('.img-preview-trigger').forEach(img => {
-            img.addEventListener('click', () => abrirLightboxImagem(img.src));
+            img.addEventListener('click', (e) => {
+                e.preventDefault();
+                abrirLightboxImagem(img.src);
+            });
         });
 
-        // Eventos Admin
+        // Eventos Admin com trava de propagação para não abrir a sanfona ao clicar em editar
         if (isAdmin) {
             feed.querySelectorAll('.btn-editar-regra').forEach(btn => {
-                btn.addEventListener('click', () => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation(); // Impede o clique de vazar pro <summary> e abrir a aba
                     const rFound = listaRegras.find(r => r.id === btn.dataset.id);
                     if (rFound) abrirModalFormRegra(btn.dataset.id, rFound);
                 });
             });
 
             feed.querySelectorAll('.btn-deletar-regra').forEach(btn => {
-                btn.addEventListener('click', () => deletarRegraDoManual(btn.dataset.id));
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    deletarRegraDoManual(btn.dataset.id);
+                });
             });
         }
 
@@ -177,7 +189,7 @@ function abrirModalFormRegra(id, dados) {
                     </div>
                     
                     <div>
-                        <label class="block text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1">Descrição Textual Completa:</label>
+                        <label class="block text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1">Descrição Textual Completa (Aceita HTML):</label>
                         <textarea id="form-regra-desc" rows="6" class="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-amber-500 custom-scrollbar leading-relaxed">${isEdit ? dados.descricao : ''}</textarea>
                     </div>
 
@@ -237,7 +249,6 @@ function abrirModalFormRegra(id, dados) {
         btnSave.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Processando Mídias...';
 
         try {
-            // Rotina de compressão nativa via Canvas para reduzir drasticamente peso no Storage
             const compressImage = async (file) => {
                 return new Promise((resolve) => {
                     if (!file || !file.type.match(/image.*/)) return resolve(null);
@@ -247,17 +258,13 @@ function abrirModalFormRegra(id, dados) {
                         const img = new Image();
                         img.src = e.target.result;
                         img.onload = () => {
-                            let w = img.width;
-                            let h = img.height;
-                            const max = 800;
+                            let w = img.width; let h = img.height; const max = 800;
                             if (w > h && w > max) { h = Math.round((h * max) / w); w = max; }
                             else if (h > max) { w = Math.round((w * max) / h); h = max; }
                             const canvas = document.createElement('canvas');
                             canvas.width = w; canvas.height = h;
                             canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                            canvas.toBlob((blob) => {
-                                resolve(blob ? new File([blob], file.name, { type: 'image/jpeg' }) : file);
-                            }, 'image/jpeg', 0.7);
+                            canvas.toBlob((blob) => resolve(blob ? new File([blob], file.name, { type: 'image/jpeg' }) : file), 'image/jpeg', 0.7);
                         };
                     };
                 });
@@ -266,14 +273,11 @@ function abrirModalFormRegra(id, dados) {
             const urls = isEdit ? { ...(dados.imageUrls || {}) } : {};
             const docId = isEdit ? id : doc(collection(db, COLLECTION_NAME)).id;
 
-            // Loop seguro pelos 3 inputs de mídias
             for (let i = 1; i <= 3; i++) {
-                const fileEl = modal.querySelector(`#form-regra-img1`);
                 const file = modal.querySelector(`#form-regra-img${i}`).files[0];
                 if (file) {
                     const compFile = await compressImage(file);
                     if (compFile) {
-                        // Deleta imagem antiga do storage para economizar espaço
                         if (urls[`img${i}`] && urls[`img${i}`].includes('firebasestorage')) {
                             try { await deleteObject(ref(storage, urls[`img${i}`])); } catch (e) { }
                         }
@@ -296,10 +300,7 @@ function abrirModalFormRegra(id, dados) {
             if (isEdit) {
                 await updateDoc(doc(db, COLLECTION_NAME, docId), payload);
             } else {
-                await setDoc(doc(db, COLLECTION_NAME, docId), {
-                    ...payload,
-                    createdAt: serverTimestamp()
-                });
+                await setDoc(doc(db, COLLECTION_NAME, docId), { ...payload, createdAt: serverTimestamp() });
             }
 
             modal.remove();
@@ -314,9 +315,8 @@ function abrirModalFormRegra(id, dados) {
     });
 }
 
-// Deleta regra do banco e limpa arquivos anexados no Storage
 async function deletarRegraDoManual(id) {
-    if (!confirm("Tem certeza absoluta que deseja remover este capítulo permanentemente das crônicas do manual?")) return;
+    if (!confirm("Tem certeza absoluta que deseja remover este capítulo permanentemente?")) return;
 
     try {
         const snap = await getDocs(collection(db, COLLECTION_NAME));
@@ -340,7 +340,6 @@ async function deletarRegraDoManual(id) {
     }
 }
 
-// Lightbox nativo para visualização expandida das imagens
 function abrirLightboxImagem(src) {
     const existing = document.getElementById('lightbox-manual-overlay');
     if (existing) existing.remove();
