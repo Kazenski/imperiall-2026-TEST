@@ -461,9 +461,13 @@ const MASTER_ARCHITECTURE = {
         //{ id: 'blank', icon: 'fa-tools', label: 'Cad. Crafts', render: () => window.renderBlankPage('Cad. Crafts') },
         { id: 'cadastro-monstros', icon: 'fa-dragon', label: 'Cad. Monstros', render: () => window.showTab('cadastro-monstros-content') },
         { id: 'cadastro-itens', icon: 'fa-gem', label: 'Cad. Itens', render: () => window.showTab('cadastro-itens-content') },
+        { id: 'cadastro-craft', icon: 'fa-tools', label: 'Engenharia Craft', render: () => window.showTab('cadastro-craft-content'), requiresAdmin: true },
+        { id: 'cadastro-pets', icon: 'fa-paw', label: 'Gestor Bestiário', render: () => window.showTab('cadastro-pets-content'), requiresAdmin: true },
+        { id: 'cadastro-reputacao', icon: 'fa-chess-rook', label: 'Gestor Império', render: () => window.showTab('cadastro-reputacao-content'), requiresAdmin: true },
         { id: 'lore-personagens', icon: 'fa-scroll', label: 'Lore Personagens', render: () => window.showTab('lore-personagens-content') },
         { id: 'drops-monstros', icon: 'fa-gift', label: 'Drops Monstros', render: () => window.showTab('drops-monstros-content') },
         { id: 'mapa-mundial', icon: 'fa-map', label: 'Mapa (Fog of War)', render: () => window.showTab('mapa-mundial-content') }
+
 
     ],
     'Painel Admin': [
