@@ -52,6 +52,8 @@ import { renderFirebaseMudaIfTab } from './admin/firebaseMudaIf.js';
 import { renderGerarTabelaXpTab } from './admin/gerarTabelaXp.js';
 import { renderMapaMundialTab } from './admin/mapaMundial.js';
 import { renderCadastroUsersTab } from './admin/CadastroUsers.js';
+import { renderDropsMonstrosTab } from './aoMestre/dropsMonstros.js';
+
 import { rtdb, rtdbRef, push, set, onValue, off, rtdbQuery, limitToLast, rtdbServerTimestamp } from './core/firebase.js';
 
 const dom = {};
@@ -264,6 +266,13 @@ window.showTab = function (tabId) {
         return;
     }
 
+    // Aba "Drops de Monstros"
+    if (tabId === 'drops-monstros-content' || tabId === 'drops-monstros') {
+        target.innerHTML = '';
+        if (typeof renderDropsMonstrosTab === 'function') renderDropsMonstrosTab();
+        return;
+    }
+
     // Aba "Backoffice" (Admin)
     if (tabId === 'backoffice-content' || tabId === 'backoffice') {
         target.innerHTML = '';
@@ -451,9 +460,11 @@ const MASTER_ARCHITECTURE = {
         //{ id: 'blank', icon: 'fa-tools', label: 'Cad. Crafts', render: () => window.renderBlankPage('Cad. Crafts') },
         { id: 'cadastro-monstros', icon: 'fa-dragon', label: 'Cad. Monstros', render: () => window.showTab('cadastro-monstros-content') },
         { id: 'cadastro-itens', icon: 'fa-gem', label: 'Cad. Itens', render: () => window.showTab('cadastro-itens-content') },
-        { id: 'lore-personagens', icon: 'fa-scroll', label: 'Lore Personagens', render: () => window.showTab('lore-personagens-content') }
+        { id: 'lore-personagens', icon: 'fa-scroll', label: 'Lore Personagens', render: () => window.showTab('lore-personagens-content') },
+        { id: 'drops-monstros', icon: 'fa-gift', label: 'Drops Monstros', render: () => window.showTab('drops-monstros-content') }
     ],
     'Painel Admin': [
+        { id: 'drops-monstros', icon: 'fa-gift', label: 'Drops Monstros', render: () => window.showTab('drops-monstros-content'), requiresAdmin: true },
         { id: 'backoffice', icon: 'fa-database', label: 'Backoffice', render: () => window.showTab('backoffice-content'), requiresAdmin: true },
         { id: 'backups', icon: 'fa-server', label: 'Backups', render: () => window.showTab('backups-content'), requiresAdmin: true },
         { id: 'cadastro-constelacoes', icon: 'fa-project-diagram', label: 'Matriz de Estrelas', render: () => window.showTab('cadastro-constelacoes-content'), requiresAdmin: true },
