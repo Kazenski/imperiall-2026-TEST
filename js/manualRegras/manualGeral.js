@@ -53,11 +53,16 @@ async function carregarRegrasDoManual(isAdmin) {
             listaRegras.push({ id: d.id, ...d.data() });
         });
 
-        // Ordena por data de criação ou modificação mais recente
+        // // Ordena por data de criação ou modificação mais recente
+        // listaRegras.sort((a, b) => {
+        //     const timeA = a.createdAt?.seconds || 0;
+        //     const timeB = b.createdAt?.seconds || 0;
+        //     return timeB - timeA;
+        // });
+
+        // Ordena por título (A-Z)
         listaRegras.sort((a, b) => {
-            const timeA = a.createdAt?.seconds || 0;
-            const timeB = b.createdAt?.seconds || 0;
-            return timeB - timeA;
+            return (a.titulo || "").localeCompare(b.titulo || "");
         });
 
         if (listaRegras.length === 0) {
