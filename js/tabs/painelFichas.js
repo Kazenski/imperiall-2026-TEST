@@ -1,4 +1,4 @@
-import { db, doc, updateDoc, setDoc, deleteDoc, runTransaction, serverTimestamp, storage, ref, uploadBytes, getDownloadURL, deleteObject } from '../core/firebase.js';
+import { db, doc, updateDoc, setDoc, deleteDoc, runTransaction, serverTimestamp, storage, ref, uploadBytes, getDownloadURL, deleteObject, collection } from '../core/firebase.js';
 import { globalState, PLACEHOLDER_IMAGE_URL } from '../core/state.js';
 import { escapeHTML } from '../core/utils.js';
 import { calculateMainStats, calculateDynamicAttributes, calculateWeightStats, getFomeDebuffMultiplier } from '../core/calculos.js';
@@ -19,7 +19,7 @@ export function renderPainelFichas() {
                 <input type="text" id="admin-busca" placeholder="Mestre: Buscar ficha de qualquer jogador..." class="w-full bg-slate-900 border border-slate-600 rounded text-slate-200 px-4 py-2 text-sm focus:border-amber-500 outline-none transition-colors">
             </div>
         </div>` : '';
-    
+
     container.innerHTML = `
         <div class="w-full h-full flex flex-col animate-fade-in">
             <div class="flex flex-wrap justify-between items-end mb-6 border-b border-slate-700 pb-4 shrink-0 gap-4">
@@ -38,10 +38,10 @@ export function renderPainelFichas() {
                 <div class="col-span-full flex justify-center py-10"><div class="animate-spin rounded-full h-10 w-10 border-t-2 border-amber-500"></div></div>
             </div>
         </div>`;
-    
+
     container.querySelector('#btn-create-new').addEventListener('click', () => renderFichaEditor(null));
-    
-    if(globalState.isAdmin) {
+
+    if (globalState.isAdmin) {
         container.querySelector('#admin-busca').addEventListener('input', (e) => {
             renderListaPersonagens(container, e.target.value);
         });
@@ -54,24 +54,24 @@ function renderListaPersonagens(container, filtro) {
     const listEl = container.querySelector('#character-list');
     if (!listEl) return;
     listEl.innerHTML = '';
-    
+
     const termo = filtro.toLowerCase();
     const source = globalState.isAdmin ? globalState.cache.all_personagens : globalState.cache.personagens;
-    
+
     const filtered = [];
     source.forEach(char => {
-        if(char.nome?.toLowerCase().includes(termo)) filtered.push(char);
+        if (char.nome?.toLowerCase().includes(termo)) filtered.push(char);
     });
 
-    if(filtered.length === 0) {
+    if (filtered.length === 0) {
         listEl.innerHTML = '<p class="col-span-full text-center text-slate-500 italic py-10">Nenhum personagem encontrado.</p>';
         return;
     }
 
-    filtered.sort((a,b)=>(a.nome||'').localeCompare(b.nome)).forEach(data => {
+    filtered.sort((a, b) => (a.nome || '').localeCompare(b.nome)).forEach(data => {
         const item = document.createElement('div');
         item.className = 'bg-slate-800/80 p-4 rounded-xl border border-slate-700 hover:border-amber-500 hover:bg-slate-800 hover:shadow-[0_4px_20px_rgba(245,158,11,0.15)] cursor-pointer transition-all flex flex-col relative group h-36';
-        
+
         const date = data.lastAccessed?.toDate ? data.lastAccessed.toDate().toLocaleDateString('pt-BR') : 'Nunca';
         const img = (data.imagemPrincipal && data.imageUrls && data.imageUrls[data.imagemPrincipal]) ? data.imageUrls[data.imagemPrincipal] : PLACEHOLDER_IMAGE_URL;
 
@@ -96,23 +96,23 @@ function renderListaPersonagens(container, filtro) {
                 <div class="text-[9px] text-slate-600">Modificado: ${date}</div>
             </div>
         `;
-        
+
         item.addEventListener('click', e => {
-            if(!e.target.closest('.btn-delete-char')) renderFichaEditor(data.id);
+            if (!e.target.closest('.btn-delete-char')) renderFichaEditor(data.id);
         });
-        
-        if(globalState.isAdmin) {
+
+        if (globalState.isAdmin) {
             item.querySelector('.btn-delete-char')?.addEventListener('click', e => {
                 e.stopPropagation();
-                if(confirm(`Excluir permanentemente ${data.nome}? Isso não pode ser desfeito.`)) {
-                    deleteDoc(doc(db,"rpg_fichas",data.id)).then(() => {
+                if (confirm(`Excluir permanentemente ${data.nome}? Isso não pode ser desfeito.`)) {
+                    deleteDoc(doc(db, "rpg_fichas", data.id)).then(() => {
                         globalState.cache.personagens.delete(data.id);
                         globalState.cache.all_personagens.delete(data.id);
                         renderPainelFichas();
                         if (globalState.selectedCharacterId === data.id) {
                             const sel = document.getElementById('character-select');
-                            if(sel) sel.value = "";
-                            if(window.handleCharacterSelect) window.handleCharacterSelect("");
+                            if (sel) sel.value = "";
+                            if (window.handleCharacterSelect) window.handleCharacterSelect("");
                         }
                     });
                 }
@@ -127,9 +127,9 @@ function renderListaPersonagens(container, filtro) {
 // ============================================================================
 export async function renderFichaEditor(fichaId) {
     const container = document.getElementById('painel-fichas-content');
-    if(!container) return;
-    
-    let activeBottomTab = 'historia'; 
+    if (!container) return;
+
+    let activeBottomTab = 'historia';
     const currentActiveBtn = container.querySelector('.bottom-tab-btn.active');
     if (currentActiveBtn) {
         if (currentActiveBtn.textContent.toLowerCase().includes('anotações')) activeBottomTab = 'anotacoes';
@@ -137,12 +137,12 @@ export async function renderFichaEditor(fichaId) {
     }
 
     container.innerHTML = `<div class="flex justify-center items-center h-full"><div class="animate-spin rounded-full h-16 w-16 border-t-4 border-amber-500"></div></div>`;
-    
+
     globalState.painelFichas.pontos = { disponiveis: 0, baseAtk: 0, baseDef: 0, baseEva: 0, tempAtk: 0, tempDef: 0, tempEva: 0 };
-    globalState.painelFichas.bonusBase = { hpMax:0, mpMax:0, iniciativa:0, movimento:0, apMax:0, atk:0, def:0, eva:0 };
+    globalState.painelFichas.bonusBase = { hpMax: 0, mpMax: 0, iniciativa: 0, movimento: 0, apMax: 0, atk: 0, def: 0, eva: 0 };
 
     let fichaData = {};
-    let fullData = { bonusItens: { hpMax:0, mpMax:0, iniciativa:0, movimento:0, apMax:0, atk:0, def:0, eva:0 } };
+    let fullData = { bonusItens: { hpMax: 0, mpMax: 0, iniciativa: 0, movimento: 0, apMax: 0, atk: 0, def: 0, eva: 0 } };
 
     if (fichaId && window.gatherAllCharacterData) {
         fullData = await window.gatherAllCharacterData(fichaId);
@@ -243,7 +243,7 @@ export async function renderFichaEditor(fichaId) {
                             </div>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                            ${['atk','def','eva'].map(stat => `
+                            ${['atk', 'def', 'eva'].map(stat => `
                             <div class="bg-slate-900/80 rounded-lg p-2 border border-slate-700 flex flex-col shadow-inner">
                                 <div class="text-center mb-1">
                                     <h4 class="font-bold text-slate-400 text-[10px] uppercase tracking-wider">${stat === 'atk' ? 'Ataque' : (stat === 'def' ? 'Defesa' : 'Evasão')}</h4>
@@ -261,7 +261,7 @@ export async function renderFichaEditor(fichaId) {
                                     <div class="flex justify-between"><span>Ego:</span><span id="detail-${stat}-ego" class="text-pink-400">0</span></div>
                                 </div>
                             </div>`
-                            ).join('')}
+    ).join('')}
                         </div>
                     </div>
                 </div>
@@ -314,51 +314,51 @@ export async function renderFichaEditor(fichaId) {
         </div>`;
 
     // PREENCHIMENTO DOS DADOS
-    const populate = (id, map) => { 
-        const sel = container.querySelector('#'+id); 
+    const populate = (id, map) => {
+        const sel = container.querySelector('#' + id);
         sel.innerHTML = '<option value="" class="bg-slate-900 text-slate-500">-- Selecione --</option>';
-        
-        [...map.values()].sort((a,b)=>a.nome.localeCompare(b.nome)).forEach(d => {
+
+        [...map.values()].sort((a, b) => a.nome.localeCompare(b.nome)).forEach(d => {
             const opt = new Option(d.nome, d.id);
-            opt.className = "bg-slate-900 text-slate-200 font-sans"; 
+            opt.className = "bg-slate-900 text-slate-200 font-sans";
             sel.add(opt);
-        }); 
-        sel.value = fichaData[id.replace('editor-','')] || ''; 
+        });
+        sel.value = fichaData[id.replace('editor-', '')] || '';
     };
-    
-    populate('editor-racaId', globalState.cache.racas); 
-    populate('editor-classeId', globalState.cache.classes); 
+
+    populate('editor-racaId', globalState.cache.racas);
+    populate('editor-classeId', globalState.cache.classes);
     populate('editor-subclasseId', globalState.cache.subclasses);
-    
-    const getEl = id => container.querySelector('#'+id);
+
+    const getEl = id => container.querySelector('#' + id);
     getEl('editor-jogador').value = fichaData.jogador || '';
     getEl('editor-nome').value = fichaData.nome || '';
     getEl('editor-experiencia').value = fichaData.experienciapersonagemBase || 0;
     getEl('editor-pontosExtrasMestre').value = fichaData.pontosExtrasMestre || 0;
     getEl('editor-historia').value = fichaData.historia || '';
     getEl('editor-anotacoes').value = fichaData.anotacoes || '';
-    
+
     setupImageGallery(container, fichaData.imageUrls || {}, fichaData.imagemPrincipal);
-    
+
     // BLOQUEIO DE EDIÇÃO DO MESTRE
     const fichaJaExiste = !!fichaId;
     const usuarioEhJogador = !globalState.isAdmin;
     const bloquearGeral = fichaJaExiste && usuarioEhJogador;
-    const bloquearApenasMestre = usuarioEhJogador; 
+    const bloquearApenasMestre = usuarioEhJogador;
 
     ['editor-nome', 'editor-racaId', 'editor-classeId', 'editor-jogador'].forEach(id => {
         const el = container.querySelector('#' + id);
-        if(el) {
+        if (el) {
             el.disabled = bloquearGeral;
-            if(bloquearGeral) el.classList.add('opacity-60', 'cursor-not-allowed');
+            if (bloquearGeral) el.classList.add('opacity-60', 'cursor-not-allowed');
         }
     });
 
     ['editor-subclasseId', 'editor-pontosExtrasMestre'].forEach(id => {
         const el = container.querySelector('#' + id);
-        if(el) {
+        if (el) {
             el.disabled = bloquearApenasMestre;
-            if(bloquearApenasMestre) {
+            if (bloquearApenasMestre) {
                 el.classList.add('opacity-60', 'cursor-not-allowed');
                 el.title = "Apenas o Mestre pode alterar este campo.";
             }
@@ -366,15 +366,15 @@ export async function renderFichaEditor(fichaId) {
     });
 
     const elXP = container.querySelector('#editor-experiencia');
-    if(elXP) elXP.disabled = usuarioEhJogador;
+    if (elXP) elXP.disabled = usuarioEhJogador;
 
     // LISTENERS DE BOTÃO
     getEl('btn-salvar-ficha').addEventListener('click', () => salvarFicha(fichaId, container));
     getEl('btn-voltar-painel').addEventListener('click', renderPainelFichas);
-    
-    ['editor-racaId','editor-classeId','editor-experiencia'].forEach(id => getEl(id).addEventListener('change', () => recalculateEditor(container, fichaData, fullData)));
-    
-    ['atk','def','eva'].forEach(stat => {
+
+    ['editor-racaId', 'editor-classeId', 'editor-experiencia'].forEach(id => getEl(id).addEventListener('change', () => recalculateEditor(container, fichaData, fullData)));
+
+    ['atk', 'def', 'eva'].forEach(stat => {
         const btnMais = container.querySelector(`#btn-${stat}-mais`);
         const btnMenos = container.querySelector(`#btn-${stat}-menos`);
 
@@ -384,7 +384,7 @@ export async function renderFichaEditor(fichaId) {
 
     if (fichaId) {
         renderObjectivesManager(fichaData);
-        window.switchBottomTab(activeBottomTab); 
+        window.switchBottomTab(activeBottomTab);
     } else {
         document.getElementById('objectives-root').innerHTML = '<p class="text-slate-500 italic">Salve a ficha primeiro para adicionar objetivos.</p>';
     }
@@ -393,9 +393,9 @@ export async function renderFichaEditor(fichaId) {
 }
 
 // Lógica de Abas Inferiores
-window.switchBottomTab = function(tabName) {
+window.switchBottomTab = function (tabName) {
     const container = document.getElementById('painel-fichas-content');
-    if(!container) return;
+    if (!container) return;
 
     const btns = container.querySelectorAll('.bottom-tab-btn');
     btns.forEach(btn => {
@@ -408,14 +408,14 @@ window.switchBottomTab = function(tabName) {
 
     container.querySelectorAll('.bottom-tab-content').forEach(el => el.classList.add('hidden'));
     const target = container.querySelector(`#tab-bottom-${tabName}`);
-    if(target) target.classList.remove('hidden');
+    if (target) target.classList.remove('hidden');
 };
 
 function setupImageGallery(container, urls, mainKey) {
     const grid = container.querySelector('#image-upload-grid');
     const mainDisplay = container.querySelector('#main-image-display');
     const placeholderIcon = container.querySelector('#main-image-placeholder-icon');
-    
+
     const updateMainDisplay = (src) => {
         if (src && src !== '' && src !== PLACEHOLDER_IMAGE_URL) {
             mainDisplay.src = src;
@@ -432,23 +432,23 @@ function setupImageGallery(container, urls, mainKey) {
     updateMainDisplay(initialUrl);
 
     grid.innerHTML = '';
-    
+
     for (let i = 1; i <= 26; i++) {
         const key = `imagem${i}`;
         const rawUrl = urls[key];
-        
+
         const hasImage = rawUrl && typeof rawUrl === 'string' && (rawUrl.startsWith('http') || rawUrl.startsWith('blob:'));
         const imageUrl = hasImage ? rawUrl : '';
         const isMain = (mainKey === key);
-        
+
         const slot = document.createElement('div');
-        
+
         let classes = 'upload-slot w-14 h-14 relative rounded-md border-2 flex items-center justify-center cursor-pointer overflow-hidden transition-all group shrink-0 ';
         if (isMain) classes += 'is-main border-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)] ';
         else classes += hasImage ? 'border-slate-600 ' : 'border-slate-700 border-dashed hover:border-sky-500 hover:bg-slate-700/50 ';
 
         slot.className = classes;
-        if(isMain) slot.dataset.isMain = "true";
+        if (isMain) slot.dataset.isMain = "true";
 
         slot.innerHTML = `
             <button type="button" class="star-btn absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 flex items-center justify-center z-30 transition-all ${isMain ? 'text-amber-500 opacity-100' : 'text-slate-400 opacity-0 group-hover:opacity-100 hover:text-amber-400 hover:scale-110'}" title="Definir como Principal">
@@ -464,7 +464,7 @@ function setupImageGallery(container, urls, mainKey) {
             
             <input type="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer" title="${hasImage ? 'Alterar imagem' : 'Adicionar imagem'}">
         `;
-        
+
         grid.appendChild(slot);
 
         const input = slot.querySelector('input');
@@ -473,29 +473,29 @@ function setupImageGallery(container, urls, mainKey) {
         const starBtn = slot.querySelector('.star-btn');
 
         userImg.onerror = () => {
-            userImg.classList.add('hidden'); 
-            userImg.src = ''; 
-            placeholderDiv.classList.remove('hidden'); 
+            userImg.classList.add('hidden');
+            userImg.src = '';
+            placeholderDiv.classList.remove('hidden');
             placeholderDiv.classList.add('flex');
-            slot.classList.remove('has-image', 'border-slate-600', 'is-main', 'border-amber-500'); 
-            slot.classList.add('empty', 'border-slate-700', 'border-dashed'); 
+            slot.classList.remove('has-image', 'border-slate-600', 'is-main', 'border-amber-500');
+            slot.classList.add('empty', 'border-slate-700', 'border-dashed');
         };
 
         input.addEventListener('change', e => {
             const file = e.target.files[0];
             if (file) {
                 const blobUrl = URL.createObjectURL(file);
-                
+
                 userImg.src = blobUrl;
                 userImg.classList.remove('hidden');
                 placeholderDiv.classList.remove('flex');
                 placeholderDiv.classList.add('hidden');
-                
+
                 slot.classList.remove('border-dashed', 'border-slate-700');
                 slot.classList.add('border-slate-600', 'has-image');
-                
+
                 if (slot.dataset.isMain === "true") updateMainDisplay(blobUrl);
-                
+
                 if (!grid.querySelector('.is-main')) starBtn.click();
             }
         });
@@ -504,19 +504,19 @@ function setupImageGallery(container, urls, mainKey) {
             e.stopPropagation(); e.preventDefault();
             grid.querySelectorAll('.upload-slot').forEach(s => {
                 s.classList.remove('is-main', 'border-amber-500', 'shadow-[0_0_8px_rgba(245,158,11,0.4)]');
-                if(s.querySelector('.user-img').src) s.classList.add('border-slate-600');
-                
+                if (s.querySelector('.user-img').src) s.classList.add('border-slate-600');
+
                 const btn = s.querySelector('.star-btn');
                 btn.classList.remove('text-amber-500', 'opacity-100');
                 btn.classList.add('text-slate-400', 'opacity-0');
-                
+
                 delete s.dataset.isMain;
             });
-            
+
             slot.classList.remove('border-slate-600');
             slot.classList.add('is-main', 'border-amber-500', 'shadow-[0_0_8px_rgba(245,158,11,0.4)]');
             slot.dataset.isMain = "true";
-            
+
             starBtn.classList.remove('text-slate-400', 'opacity-0');
             starBtn.classList.add('text-amber-500', 'opacity-100');
 
@@ -532,13 +532,13 @@ function setupImageGallery(container, urls, mainKey) {
 function changePoints(stat, direction, container, event) {
     const p = globalState.painelFichas.pontos;
     const capKey = stat.charAt(0).toUpperCase() + stat.slice(1);
-    const tempKey = `temp${capKey}`; 
-    const baseKey = `base${capKey}`; 
+    const tempKey = `temp${capKey}`;
+    const baseKey = `base${capKey}`;
 
     let amount = 1;
     if (event) {
-        if (event.ctrlKey || event.metaKey) amount = 50; 
-        else if (event.shiftKey) amount = 10;            
+        if (event.ctrlKey || event.metaKey) amount = 50;
+        else if (event.shiftKey) amount = 10;
     }
 
     const currentVal = p[tempKey];
@@ -548,10 +548,10 @@ function changePoints(stat, direction, container, event) {
         const actualAdd = Math.min(amount, p.disponiveis);
         p[tempKey] += actualAdd;
         p.disponiveis -= actualAdd;
-    } 
+    }
     else {
         const distanceToBase = currentVal - p[baseKey];
-        if (distanceToBase <= 0) return; 
+        if (distanceToBase <= 0) return;
         const actualRemove = Math.min(amount, distanceToBase);
         p[tempKey] -= actualRemove;
         p.disponiveis += actualRemove;
@@ -560,35 +560,35 @@ function changePoints(stat, direction, container, event) {
 }
 
 async function recalculateEditor(container, originalFicha, fullData) {
-    const getElVal = id => container.querySelector('#'+id).value;
-    const fakeFicha = { 
-        ...originalFicha, 
-        racaId: getElVal('editor-racaId'), 
-        classeId: getElVal('editor-classeId'), 
-        subclasseId: getElVal('editor-subclasseId'), 
-        experienciapersonagemBase: Number(getElVal('editor-experiencia')) 
+    const getElVal = id => container.querySelector('#' + id).value;
+    const fakeFicha = {
+        ...originalFicha,
+        racaId: getElVal('editor-racaId'),
+        classeId: getElVal('editor-classeId'),
+        subclasseId: getElVal('editor-subclasseId'),
+        experienciapersonagemBase: Number(getElVal('editor-experiencia'))
     };
-    
+
     const simulado = {
         ficha: fakeFicha,
-        raca: globalState.cache.racas.get(fakeFicha.racaId)||{},
-        classe: globalState.cache.classes.get(fakeFicha.classeId)||{},
-        subclasse: globalState.cache.subclasses.get(fakeFicha.subclasseId)||{},
+        raca: globalState.cache.racas.get(fakeFicha.racaId) || {},
+        classe: globalState.cache.classes.get(fakeFicha.classeId) || {},
+        subclasse: globalState.cache.subclasses.get(fakeFicha.subclasseId) || {},
         bonusItens: fullData.bonusItens,
         constellationTemplate: fullData.constellationTemplate
     };
 
-    const stats = calculateMainStats(simulado, {atk:0,def:0,eva:0});
-    
+    const stats = calculateMainStats(simulado, { atk: 0, def: 0, eva: 0 });
+
     container.querySelector('#view-level').value = stats.level;
     container.querySelector('#view-hp').value = stats.hpMax;
     container.querySelector('#view-mp').value = stats.mpMax;
     container.querySelector('#view-iniciativa').value = stats.iniciativa;
     container.querySelector('#view-ap').value = stats.ap;
-    
+
     const movEl = container.querySelector('#view-movimento');
-    movEl.value = Math.max(0, stats.movimento - stats.weightPenalty); 
-    
+    movEl.value = Math.max(0, stats.movimento - stats.weightPenalty);
+
     if (stats.weightPenalty > 0) {
         movEl.classList.remove('text-white');
         movEl.classList.add('text-red-500', 'font-bold');
@@ -598,47 +598,47 @@ async function recalculateEditor(container, originalFicha, fullData) {
         movEl.classList.add('text-white');
         movEl.title = '';
     }
-    
+
     const p = globalState.painelFichas.pontos;
-    p.breakdowns = stats.breakdowns; 
+    p.breakdowns = stats.breakdowns;
 
     const extra = Number(getElVal('editor-pontosExtrasMestre') || originalFicha.pontosExtrasMestre || 0);
     const totalPoints = ((stats.level - 1) * 3) + extra;
-    
-    if(p.tempAtk === 0 && p.tempDef === 0 && p.tempEva === 0 && originalFicha.pontosDistribuidosAtk !== undefined) {
+
+    if (p.tempAtk === 0 && p.tempDef === 0 && p.tempEva === 0 && originalFicha.pontosDistribuidosAtk !== undefined) {
         p.tempAtk = originalFicha.pontosDistribuidosAtk || 0;
         p.tempDef = originalFicha.pontosDistribuidosDef || 0;
         p.tempEva = originalFicha.pontosDistribuidosEva || 0;
     }
-    
+
     const gastos = p.tempAtk + p.tempDef + p.tempEva;
     p.disponiveis = Math.max(0, totalPoints - gastos);
-    
+
     updateEditorUI(container);
 }
 
 function updateEditorUI(container) {
     const p = globalState.painelFichas.pontos;
-    const bd = p.breakdowns; 
+    const bd = p.breakdowns;
 
     const dispEl = container.querySelector('#pontos-disponiveis');
     dispEl.textContent = p.disponiveis;
-    if(p.disponiveis === 0) dispEl.classList.add('text-slate-600'); else dispEl.classList.remove('text-slate-600');
+    if (p.disponiveis === 0) dispEl.classList.add('text-slate-600'); else dispEl.classList.remove('text-slate-600');
 
-    ['atk','def','eva'].forEach(stat => {
+    ['atk', 'def', 'eva'].forEach(stat => {
         const capKey = stat.charAt(0).toUpperCase() + stat.slice(1);
-        const tempVal = p[`temp${capKey}`]; 
-        const statBd = bd[stat]; 
+        const tempVal = p[`temp${capKey}`];
+        const statBd = bd[stat];
 
         container.querySelector(`#detail-${stat}-base`).textContent = statBd.base;
         container.querySelector(`#detail-${stat}-equip`).textContent = statBd.equip;
         container.querySelector(`#detail-${stat}-const`).textContent = statBd.const;
-        
+
         const elEgo = container.querySelector(`#detail-${stat}-ego`);
-        if(elEgo) elEgo.textContent = statBd.ego || 0; 
-        
+        if (elEgo) elEgo.textContent = statBd.ego || 0;
+
         container.querySelector(`#display-${stat}`).textContent = tempVal;
-        
+
         let total = statBd.base + statBd.equip + statBd.const + tempVal + (statBd.ego || 0);
 
         let debuffFome = 1;
@@ -657,98 +657,98 @@ function updateEditorUI(container) {
             displayTotalEl.classList.remove('text-red-500');
             displayTotalEl.classList.add('text-amber-400');
         }
-        
+
         const btnMais = container.querySelector(`#btn-${stat}-mais`);
         const btnMenos = container.querySelector(`#btn-${stat}-menos`);
-        if(btnMais) { btnMais.disabled = (p.disponiveis <= 0); btnMais.classList.toggle('opacity-50', p.disponiveis <= 0); }
-        if(btnMenos) { btnMenos.disabled = (tempVal <= 0); btnMenos.classList.toggle('opacity-50', tempVal <= 0); }
+        if (btnMais) { btnMais.disabled = (p.disponiveis <= 0); btnMais.classList.toggle('opacity-50', p.disponiveis <= 0); }
+        if (btnMenos) { btnMenos.disabled = (tempVal <= 0); btnMenos.classList.toggle('opacity-50', tempVal <= 0); }
     });
 
     const xpInput = container.querySelector('#editor-experiencia');
     const currentXp = Number(xpInput.value) || 0;
     const tabela = globalState.cache.tabela_xp;
-    
+
     if (tabela && tabela.niveis) {
-        const levels = Object.keys(tabela.niveis).map(Number).sort((a,b)=>a-b);
+        const levels = Object.keys(tabela.niveis).map(Number).sort((a, b) => a - b);
         let currentLevel = 1;
-        let xpFloor = 0;        
-        let xpCeiling = 1000;   
+        let xpFloor = 0;
+        let xpCeiling = 1000;
         let isMaxLevel = false;
 
         for (let i = 0; i < levels.length; i++) {
             const lvl = levels[i];
             const reqProximo = tabela.niveis[lvl].experienciaParaProximoNivel;
-            
+
             if (currentXp < reqProximo) {
                 currentLevel = lvl;
-                xpFloor = (i === 0) ? 0 : tabela.niveis[levels[i-1]].experienciaParaProximoNivel;
+                xpFloor = (i === 0) ? 0 : tabela.niveis[levels[i - 1]].experienciaParaProximoNivel;
                 xpCeiling = reqProximo;
                 break;
             }
-            
+
             if (i === levels.length - 1) {
-                currentLevel = lvl; 
+                currentLevel = lvl;
                 isMaxLevel = true;
             }
         }
 
         const xpTextElement = container.querySelector('#xp-bar-text');
         const xpFillElement = container.querySelector('#xp-bar-fill');
-        const xpContainer = container.querySelector('#xp-bar-container'); 
+        const xpContainer = container.querySelector('#xp-bar-container');
 
         if (isMaxLevel) {
-            if(xpTextElement) xpTextElement.textContent = `Nível ${currentLevel} (Máx)`;
-            if(xpFillElement) xpFillElement.style.width = "100%";
+            if (xpTextElement) xpTextElement.textContent = `Nível ${currentLevel} (Máx)`;
+            if (xpFillElement) xpFillElement.style.width = "100%";
         } else {
             const xpRelativo = currentXp - xpFloor;
             const xpNecessario = xpCeiling - xpFloor;
             const pct = Math.min(100, Math.max(0, (xpRelativo / xpNecessario) * 100));
-            
-            if(xpTextElement) xpTextElement.textContent = `Nvl ${currentLevel} - ${Math.floor(pct)}%`;
-            if(xpFillElement) xpFillElement.style.width = `${pct}%`;
-            if(xpContainer) xpContainer.title = `XP Atual: ${currentXp}\nProgresso do Nível: ${xpRelativo} / ${xpNecessario}`;
+
+            if (xpTextElement) xpTextElement.textContent = `Nvl ${currentLevel} - ${Math.floor(pct)}%`;
+            if (xpFillElement) xpFillElement.style.width = `${pct}%`;
+            if (xpContainer) xpContainer.title = `XP Atual: ${currentXp}\nProgresso do Nível: ${xpRelativo} / ${xpNecessario}`;
         }
     }
 }
 
 async function salvarFicha(id, container) {
     const user = globalState.currentUser;
-    if(!user) return;
-    
+    if (!user) return;
+
     const btnSalvar = container.querySelector('#btn-salvar-ficha');
     const originalText = btnSalvar.innerHTML;
     btnSalvar.disabled = true;
     btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Salvando...';
 
-    const getVal = i => container.querySelector('#'+i).value;
+    const getVal = i => container.querySelector('#' + i).value;
     const fichaOriginal = id ? globalState.cache.all_personagens.get(id) : {};
-    
+
     const urls = {};
     const slots = container.querySelectorAll('.upload-slot');
     let mainKey = null;
 
-    for(let i=0; i<slots.length; i++) {
-        const idx = i+1;
+    for (let i = 0; i < slots.length; i++) {
+        const idx = i + 1;
         const input = slots[i].querySelector('input');
         const file = input ? input.files[0] : null;
         const key = `imagem${idx}`;
-        if(slots[i].dataset.isMain === "true") mainKey = key;
+        if (slots[i].dataset.isMain === "true") mainKey = key;
 
-        if(file) {
+        if (file) {
             try {
-                if(window.compressImage) {
+                if (window.compressImage) {
                     const compressedBlob = await window.compressImage(file, 800, 800, 0.7);
                     if (fichaOriginal.imageUrls && fichaOriginal.imageUrls[key]) {
                         const oldUrl = fichaOriginal.imageUrls[key];
                         if (oldUrl.includes('firebasestorage')) {
                             try {
                                 await deleteObject(ref(storage, oldUrl));
-                            } catch(err) {
+                            } catch (err) {
                                 console.warn(`Aviso: Não foi possível deletar a imagem antiga (${key}).`);
                             }
                         }
                     }
-                    const refImg = ref(storage, `imagens_rpg/${id||'temp'}/${key}_${Date.now()}.jpg`);
+                    const refImg = ref(storage, `imagens_rpg/${id || 'temp'}/${key}_${Date.now()}.jpg`);
                     urls[key] = await getDownloadURL((await uploadBytes(refImg, compressedBlob)).ref);
                 }
             } catch (imgError) {
@@ -758,21 +758,21 @@ async function salvarFicha(id, container) {
         } else {
             const imgTag = slots[i].querySelector('.user-img');
             const prevSrc = imgTag ? imgTag.src : null;
-            if(prevSrc && !prevSrc.startsWith('blob:') && !prevSrc.includes('placeholder')) {
+            if (prevSrc && !prevSrc.startsWith('blob:') && !prevSrc.includes('placeholder')) {
                 urls[key] = prevSrc;
             }
         }
     }
 
-    const fakeFicha = { 
+    const fakeFicha = {
         ...fichaOriginal,
-        racaId: getVal('editor-racaId'), 
-        classeId: getVal('editor-classeId'), 
-        subclasseId: getVal('editor-subclasseId'), 
-        experienciapersonagemBase: Number(getVal('editor-experiencia')), 
+        racaId: getVal('editor-racaId'),
+        classeId: getVal('editor-classeId'),
+        subclasseId: getVal('editor-subclasseId'),
+        experienciapersonagemBase: Number(getVal('editor-experiencia')),
     };
 
-    let bonusItens = { hpMax:0, mpMax:0, iniciativa:0, movimento:0, apMax:0, atk:0, def:0, eva:0 };
+    let bonusItens = { hpMax: 0, mpMax: 0, iniciativa: 0, movimento: 0, apMax: 0, atk: 0, def: 0, eva: 0 };
     let constellationTemplate = null;
 
     if (id && window.gatherAllCharacterData) {
@@ -784,45 +784,45 @@ async function salvarFicha(id, container) {
             console.warn("Ficha nova ou erro ao buscar dados extras:", e);
         }
     }
-    
+
     const stats = calculateMainStats({
         ficha: fakeFicha,
-        raca: globalState.cache.racas.get(fakeFicha.racaId)||{},
-        classe: globalState.cache.classes.get(fakeFicha.classeId)||{},
-        subclasse: globalState.cache.subclasses.get(fakeFicha.subclasseId)||{},
+        raca: globalState.cache.racas.get(fakeFicha.racaId) || {},
+        classe: globalState.cache.classes.get(fakeFicha.classeId) || {},
+        subclasse: globalState.cache.subclasses.get(fakeFicha.subclasseId) || {},
         bonusItens: bonusItens,
         constellationTemplate: constellationTemplate
-    }, { 
-        atk: globalState.painelFichas.pontos.tempAtk, 
-        def: globalState.painelFichas.pontos.tempDef, 
-        eva: globalState.painelFichas.pontos.tempEva 
+    }, {
+        atk: globalState.painelFichas.pontos.tempAtk,
+        def: globalState.painelFichas.pontos.tempDef,
+        eva: globalState.painelFichas.pontos.tempEva
     });
 
     const oldMaxAP = Number(fichaOriginal.apMaxPersonagemBase || 0);
     const oldCurrentAP = (fichaOriginal.apPersonagemBase !== undefined) ? Number(fichaOriginal.apPersonagemBase) : oldMaxAP;
     const newMaxAP = Number(stats.ap);
-    let finalCurrentAP = newMaxAP; 
+    let finalCurrentAP = newMaxAP;
 
-    if (id) { 
-        const diff = newMaxAP - oldMaxAP; 
+    if (id) {
+        const diff = newMaxAP - oldMaxAP;
         finalCurrentAP = Math.max(0, oldCurrentAP + diff);
     }
 
     const racaFinal = globalState.cache.racas.get(fakeFicha.racaId) || {};
     const classeFinal = globalState.cache.classes.get(fakeFicha.classeId) || {};
     const subclasseFinal = globalState.cache.subclasses.get(fakeFicha.subclasseId) || {};
-    
+
     const novosAtributosDinamicos = calculateDynamicAttributes(fichaOriginal, racaFinal, classeFinal, subclasseFinal);
 
     const hpShieldMult = Number(novosAtributosDinamicos.defesaCorporalNativaTotal) || 0;
-    const hpExtraMult  = Number(novosAtributosDinamicos.pontosHPExtraTotal) || 0;
+    const hpExtraMult = Number(novosAtributosDinamicos.pontosHPExtraTotal) || 0;
     const mpShieldMult = Number(novosAtributosDinamicos.defesaMagicaNativaTotal) || 0;
-    const mpExtraMult  = Number(novosAtributosDinamicos.pontosMPExtraTotal) || 0;
+    const mpExtraMult = Number(novosAtributosDinamicos.pontosMPExtraTotal) || 0;
 
     const hpShieldMax = Math.floor(stats.hpMax * hpShieldMult);
-    const hpExtraMax  = Math.floor(stats.hpMax * hpExtraMult);
+    const hpExtraMax = Math.floor(stats.hpMax * hpExtraMult);
     const mpShieldMax = Math.floor(stats.mpMax * mpShieldMult);
-    const mpExtraMax  = Math.floor(stats.mpMax * mpExtraMult);
+    const mpExtraMax = Math.floor(stats.mpMax * mpExtraMult);
 
     novosAtributosDinamicos.defesaCorporalNativaTotal = hpShieldMax;
     novosAtributosDinamicos.pontosHPExtraTotal = hpExtraMax;
@@ -830,12 +830,12 @@ async function salvarFicha(id, container) {
     novosAtributosDinamicos.pontosMPExtraTotal = mpExtraMax;
 
     const hpShieldAtual = Math.min(fichaOriginal.hpShieldAtual !== undefined ? Number(fichaOriginal.hpShieldAtual) : hpShieldMax, hpShieldMax);
-    const hpExtraAtual  = Math.min(fichaOriginal.hpExtraAtual !== undefined ? Number(fichaOriginal.hpExtraAtual) : hpExtraMax, hpExtraMax);
+    const hpExtraAtual = Math.min(fichaOriginal.hpExtraAtual !== undefined ? Number(fichaOriginal.hpExtraAtual) : hpExtraMax, hpExtraMax);
     const mpShieldAtual = Math.min(fichaOriginal.mpShieldAtual !== undefined ? Number(fichaOriginal.mpShieldAtual) : mpShieldMax, mpShieldMax);
-    const mpExtraAtual  = Math.min(fichaOriginal.mpExtraAtual !== undefined ? Number(fichaOriginal.mpExtraAtual) : mpExtraMax, mpExtraMax);
+    const mpExtraAtual = Math.min(fichaOriginal.mpExtraAtual !== undefined ? Number(fichaOriginal.mpExtraAtual) : mpExtraMax, mpExtraMax);
 
     const weightStats = calculateWeightStats(fakeFicha, stats.level);
-    
+
     const data = {
         jogadorUid: fichaOriginal.jogadorUid || user.uid,
         jogador: getVal('editor-jogador'),
@@ -844,27 +844,27 @@ async function salvarFicha(id, container) {
         imagemPrincipal: mainKey || fichaOriginal.imagemPrincipal,
         historia: getVal('editor-historia'),
         anotacoes: getVal('editor-anotacoes'),
-        
+
         racaId: fakeFicha.racaId,
         classeId: fakeFicha.classeId,
         subclasseId: fakeFicha.subclasseId,
-        
+
         experienciapersonagemBase: fakeFicha.experienciapersonagemBase,
         pontosExtrasMestre: Number(getVal('editor-pontosExtrasMestre')),
-        
+
         pontosDistribuidosAtk: globalState.painelFichas.pontos.tempAtk,
         pontosDistribuidosDef: globalState.painelFichas.pontos.tempDef,
         pontosDistribuidosEva: globalState.painelFichas.pontos.tempEva,
-        
+
         levelPersonagemBase: stats.level,
         hpMaxPersonagemBase: stats.hpMax,
         mpMaxPersonagemBase: stats.mpMax,
-        
+
         pesoMaximoPersonagemBase: weightStats.max,
-        
+
         hpPersonagemBase: Math.min(fichaOriginal.hpPersonagemBase !== undefined ? Number(fichaOriginal.hpPersonagemBase) : stats.hpMax, stats.hpMax),
         mpPersonagemBase: Math.min(fichaOriginal.mpPersonagemBase !== undefined ? Number(fichaOriginal.mpPersonagemBase) : stats.mpMax, stats.mpMax),
-        
+
         hpShieldAtual: hpShieldAtual,
         hpExtraAtual: hpExtraAtual,
         mpShieldAtual: mpShieldAtual,
@@ -872,48 +872,48 @@ async function salvarFicha(id, container) {
 
         iniciativaPersonagemBase: stats.iniciativa,
         movimentoPersonagemBase: stats.movimento,
-        
+
         apMaxPersonagemBase: newMaxAP,
-        apPersonagemBase: finalCurrentAP, 
-        
+        apPersonagemBase: finalCurrentAP,
+
         atkPersonagemBase: stats.atk,
         defPersonagemBase: stats.def,
         evaPersonagemBase: stats.eva,
 
         atributosBasePersonagem: novosAtributosDinamicos,
-        
+
         lastAccessed: serverTimestamp()
     };
 
     try {
-        if(id) {
-            await updateDoc(doc(db,"rpg_fichas",id), data);
+        if (id) {
+            await updateDoc(doc(db, "rpg_fichas", id), data);
         } else {
-            await setDoc(doc(collection(db,"rpg_fichas")), {
-                ...data, 
-                createdAt: serverTimestamp(), 
-                equipamento:{}, 
-                mochila:{}, 
-                rolagens:{},
+            await setDoc(doc(collection(db, "rpg_fichas")), {
+                ...data,
+                createdAt: serverTimestamp(),
+                equipamento: {},
+                mochila: {},
+                rolagens: {},
                 constelacao_unlocked: []
             });
         }
-        
+
         btnSalvar.innerHTML = '<i class="fas fa-check mr-2"></i> Sucesso!';
         btnSalvar.classList.replace('bg-amber-600', 'bg-green-600');
-        
+
         setTimeout(() => {
             btnSalvar.innerHTML = originalText;
             btnSalvar.disabled = false;
             btnSalvar.classList.replace('bg-green-600', 'bg-amber-600');
-            
-            if(window.preencherCacheTodosPersonagens) window.preencherCacheTodosPersonagens();
-            if(!id && window.carregarPersonagensNoSeletor) window.carregarPersonagensNoSeletor(user); 
+
+            if (window.preencherCacheTodosPersonagens) window.preencherCacheTodosPersonagens();
+            if (!id && window.carregarPersonagensNoSeletor) window.carregarPersonagensNoSeletor(user);
         }, 1500);
 
-    } catch(e) { 
-        console.error(e); 
-        alert("Erro ao salvar: " + e.message); 
+    } catch (e) {
+        console.error(e);
+        alert("Erro ao salvar: " + e.message);
         btnSalvar.innerHTML = originalText;
         btnSalvar.disabled = false;
     }
@@ -922,12 +922,12 @@ async function salvarFicha(id, container) {
 // --- GESTÃO DE OBJETIVOS ---
 function renderObjectivesManager(ficha) {
     const container = document.getElementById('objectives-root');
-    if(!container) return;
+    if (!container) return;
 
-    const objetivos = ficha.objetivos || []; 
-    const logs = ficha.log_objetivos || []; 
+    const objetivos = ficha.objetivos || [];
+    const logs = ficha.log_objetivos || [];
 
-    objetivos.sort((a,b) => {
+    objetivos.sort((a, b) => {
         if (a.adminHidden !== b.adminHidden) return a.adminHidden ? 1 : -1;
         const aDone = a.checks >= 3;
         const bDone = b.checks >= 3;
@@ -961,7 +961,7 @@ function renderObjectivesManager(ficha) {
     `;
 
     html += `<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-8">`;
-    
+
     if (objetivos.length === 0) {
         html += `<div class="col-span-full text-center text-slate-500 italic py-12 border-2 border-dashed border-slate-700 rounded-lg">A lista de objetivos está vazia no momento.</div>`;
     } else {
@@ -969,30 +969,30 @@ function renderObjectivesManager(ficha) {
             if (obj.adminHidden && !isMaster) return;
 
             const isCompleted = obj.checks >= 3;
-            
+
             let checksHtml = '';
-            for(let i=1; i<=3; i++) {
+            for (let i = 1; i <= 3; i++) {
                 const checked = obj.checks >= i;
                 const isNext = (i === obj.checks + 1);
                 const isCurrent = (i === obj.checks);
-                
+
                 const canInteract = isMaster && (isNext || isCurrent);
                 const action = isCurrent ? 'uncheck' : 'check';
-                
+
                 let cursorClass = canInteract ? 'cursor-pointer hover:border-white hover:bg-white/10 hover:scale-110' : 'cursor-default';
                 let colorClass = checked ? 'checked' : 'opacity-30';
-                
+
                 checksHtml += `
                     <div onclick="${canInteract ? `window.toggleObjCheck('${obj.id}', ${i}, '${action}')` : ''}" 
                          class="obj-check-btn ${colorClass} ${cursorClass}"
-                         title="${canInteract ? (action==='check'?'Marcar (+Rep)':'Desmarcar (-Rep)') : ''}">
+                         title="${canInteract ? (action === 'check' ? 'Marcar (+Rep)' : 'Desmarcar (-Rep)') : ''}">
                         <i class="fas fa-check text-xs"></i>
                     </div>
                 `;
             }
 
             let borderClass = isCompleted ? 'border-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.2)]' : (obj.adminHidden ? 'border-purple-500 border-dashed opacity-70' : 'border-slate-600 hover:border-slate-500');
-            
+
             html += `
                 <div class="objective-card ${borderClass} relative group bg-slate-900/40 transition-colors">
                     <div class="absolute top-2 right-2 flex gap-2 opacity-100 transition-opacity z-10 bg-slate-800/80 px-2 py-1 rounded backdrop-blur">
@@ -1032,13 +1032,13 @@ function renderObjectivesManager(ficha) {
         </div>
     `;
     container.innerHTML = html;
-} 
+}
 
-window.addNewObjective = async function() {
+window.addNewObjective = async function () {
     const input = document.getElementById('new-obj-text');
     const text = input.value.trim();
     if (!text) return alert("Digite o objetivo.");
-    
+
     const charId = globalState.selectedCharacterId;
     if (!confirm("Confirmar objetivo? Após criar, você não poderá editar o texto.")) return;
 
@@ -1062,23 +1062,23 @@ window.addNewObjective = async function() {
                 text: `Objetivo criado: "${text}"`
             };
 
-            t.update(ref, { 
+            t.update(ref, {
                 objetivos: [newObj, ...objs],
                 log_objetivos: [newLog, ...logs]
             });
         });
-        input.value = ''; 
-    } catch(e) { alert("Erro: " + e); }
+        input.value = '';
+    } catch (e) { alert("Erro: " + e); }
 };
 
-window.toggleObjCheck = async function(objId, checkIndex, action) {
+window.toggleObjCheck = async function (objId, checkIndex, action) {
     if (!globalState.isAdmin) return alert("Apenas o Mestre pode alterar o progresso.");
 
     const charId = globalState.selectedCharacterId;
     const isUncheck = action === 'uncheck';
     const verb = isUncheck ? "REVERTER" : "CONFIRMAR";
-    
-    if(!confirm(`Mestre: ${verb} etapa ${checkIndex}/3?\n${isUncheck ? 'A Reputação será removida.' : 'A Reputação será concedida.'}`)) return;
+
+    if (!confirm(`Mestre: ${verb} etapa ${checkIndex}/3?\n${isUncheck ? 'A Reputação será removida.' : 'A Reputação será concedida.'}`)) return;
 
     try {
         await runTransaction(db, async (t) => {
@@ -1087,41 +1087,41 @@ window.toggleObjCheck = async function(objId, checkIndex, action) {
             const objs = d.objetivos || [];
             const logs = d.log_objetivos || [];
             const recursos = d.recursos || {};
-            
-            const objIndex = objs.findIndex(o => o.id === objId);
-            if(objIndex === -1) throw "Objetivo não encontrado.";
 
-            let repChange = 2; 
-            if (checkIndex === 3) repChange += 4; 
+            const objIndex = objs.findIndex(o => o.id === objId);
+            if (objIndex === -1) throw "Objetivo não encontrado.";
+
+            let repChange = 2;
+            if (checkIndex === 3) repChange += 4;
 
             let logText = "";
-            
+
             if (isUncheck) {
                 if (objs[objIndex].checks !== checkIndex) throw "Sincronia incorreta. Recarregue.";
-                objs[objIndex].checks = checkIndex - 1; 
-                
+                objs[objIndex].checks = checkIndex - 1;
+
                 recursos.reputacaoObjetivos = (recursos.reputacaoObjetivos || 0) - repChange;
                 logText = `Mestre reverteu etapa ${checkIndex} de "${objs[objIndex].text}" (-${repChange} Rep)`;
             } else {
                 if (objs[objIndex].checks !== checkIndex - 1) throw "Marque na ordem correta.";
                 objs[objIndex].checks = checkIndex;
-                
+
                 recursos.reputacaoObjetivos = (recursos.reputacaoObjetivos || 0) + repChange;
                 logText = `Mestre validou etapa ${checkIndex}/3 em "${objs[objIndex].text}" (+${repChange} Rep)`;
                 if (checkIndex === 3) logText += " - CONCLUÍDO!";
             }
 
             const newLog = { date: new Date().toLocaleString('pt-BR'), text: logText };
-            t.update(ref, { 
+            t.update(ref, {
                 objetivos: objs,
                 log_objetivos: [newLog, ...logs],
                 recursos: recursos
             });
         });
-    } catch(e) { alert("Erro: " + e); }
-}; 
+    } catch (e) { alert("Erro: " + e); }
+};
 
-window.editObjective = async function(objId, currentText) {
+window.editObjective = async function (objId, currentText) {
     const newText = prompt("Editar objetivo:", currentText);
     if (newText === null || newText.trim() === "") return;
     if (newText === currentText) return;
@@ -1132,17 +1132,17 @@ window.editObjective = async function(objId, currentText) {
             const ref = doc(db, "rpg_fichas", charId);
             const d = (await t.get(ref)).data();
             const objs = d.objetivos || [];
-            
+
             const idx = objs.findIndex(o => o.id === objId);
             if (idx === -1) throw "Não encontrado.";
-            
+
             objs[idx].text = newText;
             t.update(ref, { objetivos: objs });
         });
-    } catch(e) { alert("Erro ao editar: " + e); }
+    } catch (e) { alert("Erro ao editar: " + e); }
 };
 
-window.deleteObjective = async function(objId) {
+window.deleteObjective = async function (objId) {
     if (!confirm("Excluir este objetivo?\n\nUse isso para limpar objetivos já concluídos da tela.\nA reputação ganha e o histórico serão mantidos no Log.")) return;
 
     const charId = globalState.selectedCharacterId;
@@ -1152,27 +1152,27 @@ window.deleteObjective = async function(objId) {
             const d = (await t.get(ref)).data();
             const objs = d.objetivos || [];
             const logs = d.log_objetivos || [];
-            
+
             const deletedObj = objs.find(o => o.id === objId);
             if (!deletedObj) throw "Já excluído.";
 
             const newObjs = objs.filter(o => o.id !== objId);
-            
-            const newLog = { 
-                date: new Date().toLocaleString('pt-BR'), 
-                text: `Objetivo removido da lista: "${deletedObj.text}" (Progresso: ${deletedObj.checks}/3)` 
+
+            const newLog = {
+                date: new Date().toLocaleString('pt-BR'),
+                text: `Objetivo removido da lista: "${deletedObj.text}" (Progresso: ${deletedObj.checks}/3)`
             };
 
-            t.update(ref, { 
+            t.update(ref, {
                 objetivos: newObjs,
                 log_objetivos: [newLog, ...logs]
             });
         });
-    } catch(e) { alert("Erro ao excluir: " + e); }
+    } catch (e) { alert("Erro ao excluir: " + e); }
 };
 
-window.toggleObjAdminHide = async function(objId) {
-    if (!globalState.isAdmin) return; 
+window.toggleObjAdminHide = async function (objId) {
+    if (!globalState.isAdmin) return;
 
     const charId = globalState.selectedCharacterId;
     if (!charId) return;
@@ -1182,22 +1182,22 @@ window.toggleObjAdminHide = async function(objId) {
             const ref = doc(db, "rpg_fichas", charId);
             const d = (await t.get(ref)).data();
             const objs = d.objetivos || [];
-            
+
             const objIndex = objs.findIndex(o => o.id === objId);
-            if(objIndex === -1) throw "Objetivo não encontrado";
+            if (objIndex === -1) throw "Objetivo não encontrado";
 
             const newState = !objs[objIndex].adminHidden;
             objs[objIndex].adminHidden = newState;
 
             t.update(ref, { objetivos: objs });
         });
-    } catch(e) { 
+    } catch (e) {
         console.error(e);
-        alert("Erro ao alterar visibilidade administrativa: " + e.message); 
+        alert("Erro ao alterar visibilidade administrativa: " + e.message);
     }
 };
 
-window.toggleObjHide = async function(objId) {
+window.toggleObjHide = async function (objId) {
     const charId = globalState.selectedCharacterId;
     try {
         await runTransaction(db, async (t) => {
@@ -1205,9 +1205,9 @@ window.toggleObjHide = async function(objId) {
             const d = (await t.get(ref)).data();
             const objs = d.objetivos || [];
             const objIndex = objs.findIndex(o => o.id === objId);
-            
-            if(objIndex === -1) return;
-            
+
+            if (objIndex === -1) return;
+
             const newState = !objs[objIndex].hidden;
             objs[objIndex].hidden = newState;
 
@@ -1219,5 +1219,5 @@ window.toggleObjHide = async function(objId) {
 
             t.update(ref, { objetivos: objs, log_objetivos: logs });
         });
-    } catch(e) { console.error(e); }
+    } catch (e) { console.error(e); }
 }; 
