@@ -246,6 +246,7 @@ window.showTab = function (tabId) {
         return;
     }
 
+
     // Aba "Cad. Monstros"
     if (tabId === 'cadastro-monstros-content' || tabId === 'cadastro-monstros') {
         target.innerHTML = '';
