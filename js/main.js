@@ -53,7 +53,6 @@ import { renderGerarTabelaXpTab } from './admin/gerarTabelaXp.js';
 import { renderMapaMundialTab } from './admin/mapaMundial.js';
 import { renderCadastroUsersTab } from './admin/CadastroUsers.js';
 import { renderDropsMonstrosTab } from './aoMestre/dropsMonstros.js';
-import { renderMapaMundialMestreTab } from './aoMestre/mapaMundialMestre.js';
 
 import { rtdb, rtdbRef, push, set, onValue, off, rtdbQuery, limitToLast, rtdbServerTimestamp } from './core/firebase.js';
 
