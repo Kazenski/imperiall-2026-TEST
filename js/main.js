@@ -469,7 +469,7 @@ const MASTER_ARCHITECTURE = {
         { id: 'cadastro-monstros', icon: 'fa-dragon', label: 'Cad. Monstros', render: () => window.showTab('cadastro-monstros-content') },
         { id: 'cadastro-itens', icon: 'fa-gem', label: 'Cad. Itens', render: () => window.showTab('cadastro-itens-content') },
         { id: 'lore-personagens', icon: 'fa-scroll', label: 'Lore Personagens', render: () => window.showTab('lore-personagens-content') },
-        { id: 'drops-monstros', icon: 'fa-gift', label: 'Drops Monstros', render: () => window.showTab('drops-monstros-content') }
+        { id: 'drops-monstros', icon: 'fa-gift', label: 'Drops Monstros', render: () => window.showTab('drops-monstros-content') },
         { id: 'mapa-mundial-mestre', icon: 'fa-map-marked-alt', label: 'Sessões e FOW', render: () => window.showTab('mapa-mundial-mestre-content') }
     ],
     'Painel Admin': [
