@@ -724,6 +724,40 @@ async function salvarFicha(id, container) {
         const getVal = i => container.querySelector('#' + i).value;
         const fichaOriginal = id ? globalState.cache.all_personagens.get(id) : {};
 
+        // --- Função de compressão de imagens interna e garantida ---
+        const compressImage = async (file, maxWidth = 800, maxHeight = 800, quality = 0.7) => {
+            return new Promise((resolve) => {
+                if (!file.type.match(/image.*/)) return resolve(file);
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        let { width, height } = img;
+                        if (width > height && width > maxWidth) {
+                            height = Math.round((height * maxWidth) / width);
+                            width = maxWidth;
+                        } else if (height > maxHeight) {
+                            width = Math.round((width * maxHeight) / height);
+                            height = maxHeight;
+                        }
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        canvas.toBlob((blob) => {
+                            if (blob) resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+                            else resolve(file);
+                        }, 'image/jpeg', quality);
+                    };
+                    img.onerror = () => resolve(file);
+                };
+                reader.onerror = () => resolve(file);
+            });
+        };
+
         const urls = {};
         const slots = container.querySelectorAll('.upload-slot');
         let mainKey = null;
@@ -737,40 +771,39 @@ async function salvarFicha(id, container) {
 
             if (file) {
                 try {
-                    let fileToUpload = file;
-                    // Se a função de compressão existir, usa ela. Senão, faz o upload do arquivo original direto
-                    if (window.compressImage) {
-                        try {
-                            fileToUpload = await window.compressImage(file, 800, 800, 0.7);
-                        } catch (compErr) {
-                            console.warn("Falha ao comprimir imagem, usando original:", compErr);
-                        }
-                    }
+                    const compressedFile = await compressImage(file, 800, 800, 0.7);
 
                     if (fichaOriginal.imageUrls && fichaOriginal.imageUrls[key]) {
                         const oldUrl = fichaOriginal.imageUrls[key];
                         if (oldUrl.includes('firebasestorage')) {
-                            try {
-                                await deleteObject(ref(storage, oldUrl));
-                            } catch (err) {
-                                console.warn(`Aviso: Não foi possível deletar a imagem antiga (${key}).`);
-                            }
+                            try { await deleteObject(ref(storage, oldUrl)); } catch (err) { /* Ignora se já foi deletada */ }
                         }
                     }
                     const refImg = ref(storage, `imagens_rpg/${id || 'temp'}/${key}_${Date.now()}.jpg`);
-                    urls[key] = await getDownloadURL((await uploadBytes(refImg, fileToUpload)).ref);
+                    urls[key] = await getDownloadURL((await uploadBytes(refImg, compressedFile)).ref);
                 } catch (imgError) {
-                    console.error("Erro ao processar/enviar imagem:", imgError);
-                    urls[key] = fichaOriginal.imageUrls?.[key] || "";
+                    console.error("Erro ao processar imagem:", imgError);
                 }
             } else {
                 const imgTag = slots[i].querySelector('.user-img');
-                const prevSrc = imgTag ? imgTag.src : null;
-                if (prevSrc && !prevSrc.startsWith('blob:') && !prevSrc.includes('placeholder')) {
+                const prevSrc = imgTag ? imgTag.getAttribute('src') : null;
+
+                if (prevSrc && prevSrc.trim() !== '' && prevSrc.startsWith('http')) {
                     urls[key] = prevSrc;
+                } else {
+                    urls[key] = null; // Marca como nulo para limpar depois
                 }
             }
         }
+
+        const finalImageUrls = { ...(fichaOriginal.imageUrls || {}), ...urls };
+
+        // Remove completamente dados de imagens corrompidas, nulas ou vazias
+        Object.keys(finalImageUrls).forEach(k => {
+            if (!finalImageUrls[k] || finalImageUrls[k].trim() === '') {
+                delete finalImageUrls[k];
+            }
+        });
 
         const fakeFicha = {
             ...fichaOriginal,
@@ -848,8 +881,8 @@ async function salvarFicha(id, container) {
             jogadorUid: fichaOriginal.jogadorUid || user.uid,
             jogador: getVal('editor-jogador'),
             nome: getVal('editor-nome'),
-            imageUrls: { ...fichaOriginal.imageUrls, ...urls },
-            imagemPrincipal: mainKey || fichaOriginal.imagemPrincipal,
+            imageUrls: finalImageUrls,
+            imagemPrincipal: mainKey || fichaOriginal.imagemPrincipal || null,
             historia: getVal('editor-historia'),
             anotacoes: getVal('editor-anotacoes'),
 
