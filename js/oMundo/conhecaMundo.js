@@ -69,11 +69,11 @@ export function renderConhecaMundoTab() {
                     </p>
                     
                     <p>
-                        <strong class="text-sky-400 font-cinzel tracking-wider">Legina</strong>, o Leviatã Monstruoso, deu origem a seres imponentes e aterrorizantes. Seu continente é banhado por dois oceanos: o do Kraken e o Lendário. Ele possui um temperamento hostil, cruel e de sangue frio. Sua arma símbolo é um arco e flechas. Os habitantes de seu continente reverenciam Legina com temor e respeito, acreditando que sua crueldade é uma prova de força necessária para sobreviver em um ambiente tão implacável.
+                        <strong class="text-sky-400 font-cinzel tracking-wider">Legina</strong>, o Leviatã Monstruoso, deu origem a seres imponentes e aterrorizantes. Seu continente é banhado por dois oceanos: o do Kraken e o Lendário. Ele possui um temperamento hostil, cruel e de sangue frio. Sua arma símbolo é uma marreta de duas mãos. Os habitantes de seu continente reverenciam Legina com temor e respeito, acreditando que sua crueldade é uma prova de força necessária para sobreviver em um ambiente tão implacável.
                     </p>
                     
                     <p>
-                        <strong class="text-emerald-400 font-cinzel tracking-wider">Renstenci</strong>, o Leviatã do Planeta, é abençoado com beleza e graça. Seu continente é um paraíso de criaturas mágicas, fadas e uma diversidade infinita de plantas e seres vegetais, sempre em constante criação. Este continente é banhado pelos oceanos Gélido e Lendário, e está próximo às Ilhas da Morte. Sua arma símbolo é uma marreta de duas mãos. Os habitantes de Renstenci vivem em harmonia com a natureza, vendo o Leviatã como um guardião benevolente que lhes concede a beleza e a magia do mundo ao seu redor.
+                        <strong class="text-emerald-400 font-cinzel tracking-wider">Renstenci</strong>, o Leviatã do Planeta, é abençoado com beleza e graça. Seu continente é um paraíso de criaturas mágicas, fadas e uma diversidade infinita de plantas e seres vegetais, sempre em constante criação. Este continente é banhado pelos oceanos Gélido e Lendário, e está próximo às Ilhas da Morte.  Sua arma símbolo é um arco e flechas. Os habitantes de Renstenci vivem em harmonia com a natureza, vendo o Leviatã como um guardião benevolente que lhes concede a beleza e a magia do mundo ao seu redor.
                     </p>
                     
                     <p>
@@ -157,7 +157,7 @@ export function renderConhecaMundoTab() {
 
 // Controla interações globais da aba Conheça o Mundo
 window.conhecaMundo = {
-    openMapa: function(url) {
+    openMapa: function (url) {
         const modal = document.getElementById('modal-mapa-mundo');
         const img = document.getElementById('img-modal-mapa');
         if (modal && img) {
@@ -168,7 +168,7 @@ window.conhecaMundo = {
     },
 
     // Funções do Mini Player dos Bardos
-    carregarAudio: function(src, titulo) {
+    carregarAudio: function (src, titulo) {
         const audio = document.getElementById('bardo-audio-engine');
         const tituloEl = document.getElementById('bardo-now-playing');
         const container = document.getElementById('bardo-player-container');
@@ -183,7 +183,7 @@ window.conhecaMundo = {
 
         // Ativa o container do player visualmente
         container.classList.remove('opacity-50', 'pointer-events-none');
-        
+
         // Atualiza UI com o nome da música e o source do áudio
         tituloEl.textContent = titulo;
         audio.src = src;
@@ -202,7 +202,7 @@ window.conhecaMundo = {
         };
     },
 
-    togglePlay: function() {
+    togglePlay: function () {
         const audio = document.getElementById('bardo-audio-engine');
         const btnPlay = document.getElementById('bardo-btn-play');
         const pulse = document.getElementById('bardo-pulse');
@@ -223,7 +223,7 @@ window.conhecaMundo = {
         }
     },
 
-    mudarVolume: function(valor) {
+    mudarVolume: function (valor) {
         const audio = document.getElementById('bardo-audio-engine');
         if (audio) {
             audio.volume = valor;
