@@ -53,6 +53,7 @@ import { renderGerarTabelaXpTab } from './admin/gerarTabelaXp.js';
 import { renderMapaMundialTab } from './admin/mapaMundial.js';
 import { renderCadastroUsersTab } from './admin/CadastroUsers.js';
 import { renderDropsMonstrosTab } from './aoMestre/dropsMonstros.js';
+import { renderMapaMundialMestreTab } from './aoMestre/mapaMundialMestre.js';
 
 import { rtdb, rtdbRef, push, set, onValue, off, rtdbQuery, limitToLast, rtdbServerTimestamp } from './core/firebase.js';
 
@@ -231,7 +232,7 @@ window.showTab = function (tabId) {
         return;
     }
 
-    // --- NOVA ABA: COMANDOS DO MESTRE ---
+    // COMANDOS DO MESTRE 
     if (tabId === 'comandos-mestre-content' || tabId === 'comandos-mestre') {
         target.innerHTML = '';
         if (typeof renderComandosMestreTab === 'function') renderComandosMestreTab();
@@ -270,6 +271,13 @@ window.showTab = function (tabId) {
     if (tabId === 'drops-monstros-content' || tabId === 'drops-monstros') {
         target.innerHTML = '';
         if (typeof renderDropsMonstrosTab === 'function') renderDropsMonstrosTab();
+        return;
+    }
+
+    // Aba "Sessões e FOW" (Mestre)
+    if (tabId === 'mapa-mundial-mestre-content' || tabId === 'mapa-mundial-mestre') {
+        target.innerHTML = '';
+        if (typeof renderMapaMundialMestreTab === 'function') renderMapaMundialMestreTab();
         return;
     }
 
@@ -462,6 +470,7 @@ const MASTER_ARCHITECTURE = {
         { id: 'cadastro-itens', icon: 'fa-gem', label: 'Cad. Itens', render: () => window.showTab('cadastro-itens-content') },
         { id: 'lore-personagens', icon: 'fa-scroll', label: 'Lore Personagens', render: () => window.showTab('lore-personagens-content') },
         { id: 'drops-monstros', icon: 'fa-gift', label: 'Drops Monstros', render: () => window.showTab('drops-monstros-content') }
+        { id: 'mapa-mundial-mestre', icon: 'fa-map-marked-alt', label: 'Sessões e FOW', render: () => window.showTab('mapa-mundial-mestre-content') }
     ],
     'Painel Admin': [
         { id: 'drops-monstros', icon: 'fa-gift', label: 'Drops Monstros', render: () => window.showTab('drops-monstros-content'), requiresAdmin: true },
