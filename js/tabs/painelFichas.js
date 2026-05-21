@@ -720,24 +720,33 @@ async function salvarFicha(id, container) {
     btnSalvar.disabled = true;
     btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Salvando...';
 
-    const getVal = i => container.querySelector('#' + i).value;
-    const fichaOriginal = id ? globalState.cache.all_personagens.get(id) : {};
+    try {
+        const getVal = i => container.querySelector('#' + i).value;
+        const fichaOriginal = id ? globalState.cache.all_personagens.get(id) : {};
 
-    const urls = {};
-    const slots = container.querySelectorAll('.upload-slot');
-    let mainKey = null;
+        const urls = {};
+        const slots = container.querySelectorAll('.upload-slot');
+        let mainKey = null;
 
-    for (let i = 0; i < slots.length; i++) {
-        const idx = i + 1;
-        const input = slots[i].querySelector('input');
-        const file = input ? input.files[0] : null;
-        const key = `imagem${idx}`;
-        if (slots[i].dataset.isMain === "true") mainKey = key;
+        for (let i = 0; i < slots.length; i++) {
+            const idx = i + 1;
+            const input = slots[i].querySelector('input');
+            const file = input ? input.files[0] : null;
+            const key = `imagem${idx}`;
+            if (slots[i].dataset.isMain === "true") mainKey = key;
 
-        if (file) {
-            try {
-                if (window.compressImage) {
-                    const compressedBlob = await window.compressImage(file, 800, 800, 0.7);
+            if (file) {
+                try {
+                    let fileToUpload = file;
+                    // Se a função de compressão existir, usa ela. Senão, faz o upload do arquivo original direto
+                    if (window.compressImage) {
+                        try {
+                            fileToUpload = await window.compressImage(file, 800, 800, 0.7);
+                        } catch (compErr) {
+                            console.warn("Falha ao comprimir imagem, usando original:", compErr);
+                        }
+                    }
+
                     if (fichaOriginal.imageUrls && fichaOriginal.imageUrls[key]) {
                         const oldUrl = fichaOriginal.imageUrls[key];
                         if (oldUrl.includes('firebasestorage')) {
@@ -749,143 +758,141 @@ async function salvarFicha(id, container) {
                         }
                     }
                     const refImg = ref(storage, `imagens_rpg/${id || 'temp'}/${key}_${Date.now()}.jpg`);
-                    urls[key] = await getDownloadURL((await uploadBytes(refImg, compressedBlob)).ref);
+                    urls[key] = await getDownloadURL((await uploadBytes(refImg, fileToUpload)).ref);
+                } catch (imgError) {
+                    console.error("Erro ao processar/enviar imagem:", imgError);
+                    urls[key] = fichaOriginal.imageUrls?.[key] || "";
                 }
-            } catch (imgError) {
-                console.error("Erro ao processar imagem:", imgError);
-                urls[key] = fichaOriginal.imageUrls?.[key] || "";
-            }
-        } else {
-            const imgTag = slots[i].querySelector('.user-img');
-            const prevSrc = imgTag ? imgTag.src : null;
-            if (prevSrc && !prevSrc.startsWith('blob:') && !prevSrc.includes('placeholder')) {
-                urls[key] = prevSrc;
+            } else {
+                const imgTag = slots[i].querySelector('.user-img');
+                const prevSrc = imgTag ? imgTag.src : null;
+                if (prevSrc && !prevSrc.startsWith('blob:') && !prevSrc.includes('placeholder')) {
+                    urls[key] = prevSrc;
+                }
             }
         }
-    }
 
-    const fakeFicha = {
-        ...fichaOriginal,
-        racaId: getVal('editor-racaId'),
-        classeId: getVal('editor-classeId'),
-        subclasseId: getVal('editor-subclasseId'),
-        experienciapersonagemBase: Number(getVal('editor-experiencia')),
-    };
+        const fakeFicha = {
+            ...fichaOriginal,
+            racaId: getVal('editor-racaId'),
+            classeId: getVal('editor-classeId'),
+            subclasseId: getVal('editor-subclasseId'),
+            experienciapersonagemBase: Number(getVal('editor-experiencia')),
+        };
 
-    let bonusItens = { hpMax: 0, mpMax: 0, iniciativa: 0, movimento: 0, apMax: 0, atk: 0, def: 0, eva: 0 };
-    let constellationTemplate = null;
+        let bonusItens = { hpMax: 0, mpMax: 0, iniciativa: 0, movimento: 0, apMax: 0, atk: 0, def: 0, eva: 0 };
+        let constellationTemplate = null;
 
-    if (id && window.gatherAllCharacterData) {
-        try {
-            const fullData = await window.gatherAllCharacterData(id);
-            bonusItens = fullData.bonusItens;
-            constellationTemplate = fullData.constellationTemplate;
-        } catch (e) {
-            console.warn("Ficha nova ou erro ao buscar dados extras:", e);
+        if (id && window.gatherAllCharacterData) {
+            try {
+                const fullData = await window.gatherAllCharacterData(id);
+                bonusItens = fullData.bonusItens;
+                constellationTemplate = fullData.constellationTemplate;
+            } catch (e) {
+                console.warn("Ficha nova ou erro ao buscar dados extras:", e);
+            }
         }
-    }
 
-    const stats = calculateMainStats({
-        ficha: fakeFicha,
-        raca: globalState.cache.racas.get(fakeFicha.racaId) || {},
-        classe: globalState.cache.classes.get(fakeFicha.classeId) || {},
-        subclasse: globalState.cache.subclasses.get(fakeFicha.subclasseId) || {},
-        bonusItens: bonusItens,
-        constellationTemplate: constellationTemplate
-    }, {
-        atk: globalState.painelFichas.pontos.tempAtk,
-        def: globalState.painelFichas.pontos.tempDef,
-        eva: globalState.painelFichas.pontos.tempEva
-    });
+        const stats = calculateMainStats({
+            ficha: fakeFicha,
+            raca: globalState.cache.racas.get(fakeFicha.racaId) || {},
+            classe: globalState.cache.classes.get(fakeFicha.classeId) || {},
+            subclasse: globalState.cache.subclasses.get(fakeFicha.subclasseId) || {},
+            bonusItens: bonusItens,
+            constellationTemplate: constellationTemplate
+        }, {
+            atk: globalState.painelFichas.pontos.tempAtk,
+            def: globalState.painelFichas.pontos.tempDef,
+            eva: globalState.painelFichas.pontos.tempEva
+        });
 
-    const oldMaxAP = Number(fichaOriginal.apMaxPersonagemBase || 0);
-    const oldCurrentAP = (fichaOriginal.apPersonagemBase !== undefined) ? Number(fichaOriginal.apPersonagemBase) : oldMaxAP;
-    const newMaxAP = Number(stats.ap);
-    let finalCurrentAP = newMaxAP;
+        const oldMaxAP = Number(fichaOriginal.apMaxPersonagemBase || 0);
+        const oldCurrentAP = (fichaOriginal.apPersonagemBase !== undefined) ? Number(fichaOriginal.apPersonagemBase) : oldMaxAP;
+        const newMaxAP = Number(stats.ap);
+        let finalCurrentAP = newMaxAP;
 
-    if (id) {
-        const diff = newMaxAP - oldMaxAP;
-        finalCurrentAP = Math.max(0, oldCurrentAP + diff);
-    }
+        if (id) {
+            const diff = newMaxAP - oldMaxAP;
+            finalCurrentAP = Math.max(0, oldCurrentAP + diff);
+        }
 
-    const racaFinal = globalState.cache.racas.get(fakeFicha.racaId) || {};
-    const classeFinal = globalState.cache.classes.get(fakeFicha.classeId) || {};
-    const subclasseFinal = globalState.cache.subclasses.get(fakeFicha.subclasseId) || {};
+        const racaFinal = globalState.cache.racas.get(fakeFicha.racaId) || {};
+        const classeFinal = globalState.cache.classes.get(fakeFicha.classeId) || {};
+        const subclasseFinal = globalState.cache.subclasses.get(fakeFicha.subclasseId) || {};
 
-    const novosAtributosDinamicos = calculateDynamicAttributes(fichaOriginal, racaFinal, classeFinal, subclasseFinal);
+        const novosAtributosDinamicos = calculateDynamicAttributes(fichaOriginal, racaFinal, classeFinal, subclasseFinal);
 
-    const hpShieldMult = Number(novosAtributosDinamicos.defesaCorporalNativaTotal) || 0;
-    const hpExtraMult = Number(novosAtributosDinamicos.pontosHPExtraTotal) || 0;
-    const mpShieldMult = Number(novosAtributosDinamicos.defesaMagicaNativaTotal) || 0;
-    const mpExtraMult = Number(novosAtributosDinamicos.pontosMPExtraTotal) || 0;
+        const hpShieldMult = Number(novosAtributosDinamicos.defesaCorporalNativaTotal) || 0;
+        const hpExtraMult = Number(novosAtributosDinamicos.pontosHPExtraTotal) || 0;
+        const mpShieldMult = Number(novosAtributosDinamicos.defesaMagicaNativaTotal) || 0;
+        const mpExtraMult = Number(novosAtributosDinamicos.pontosMPExtraTotal) || 0;
 
-    const hpShieldMax = Math.floor(stats.hpMax * hpShieldMult);
-    const hpExtraMax = Math.floor(stats.hpMax * hpExtraMult);
-    const mpShieldMax = Math.floor(stats.mpMax * mpShieldMult);
-    const mpExtraMax = Math.floor(stats.mpMax * mpExtraMult);
+        const hpShieldMax = Math.floor(stats.hpMax * hpShieldMult);
+        const hpExtraMax = Math.floor(stats.hpMax * hpExtraMult);
+        const mpShieldMax = Math.floor(stats.mpMax * mpShieldMult);
+        const mpExtraMax = Math.floor(stats.mpMax * mpExtraMult);
 
-    novosAtributosDinamicos.defesaCorporalNativaTotal = hpShieldMax;
-    novosAtributosDinamicos.pontosHPExtraTotal = hpExtraMax;
-    novosAtributosDinamicos.defesaMagicaNativaTotal = mpShieldMax;
-    novosAtributosDinamicos.pontosMPExtraTotal = mpExtraMax;
+        novosAtributosDinamicos.defesaCorporalNativaTotal = hpShieldMax;
+        novosAtributosDinamicos.pontosHPExtraTotal = hpExtraMax;
+        novosAtributosDinamicos.defesaMagicaNativaTotal = mpShieldMax;
+        novosAtributosDinamicos.pontosMPExtraTotal = mpExtraMax;
 
-    const hpShieldAtual = Math.min(fichaOriginal.hpShieldAtual !== undefined ? Number(fichaOriginal.hpShieldAtual) : hpShieldMax, hpShieldMax);
-    const hpExtraAtual = Math.min(fichaOriginal.hpExtraAtual !== undefined ? Number(fichaOriginal.hpExtraAtual) : hpExtraMax, hpExtraMax);
-    const mpShieldAtual = Math.min(fichaOriginal.mpShieldAtual !== undefined ? Number(fichaOriginal.mpShieldAtual) : mpShieldMax, mpShieldMax);
-    const mpExtraAtual = Math.min(fichaOriginal.mpExtraAtual !== undefined ? Number(fichaOriginal.mpExtraAtual) : mpExtraMax, mpExtraMax);
+        const hpShieldAtual = Math.min(fichaOriginal.hpShieldAtual !== undefined ? Number(fichaOriginal.hpShieldAtual) : hpShieldMax, hpShieldMax);
+        const hpExtraAtual = Math.min(fichaOriginal.hpExtraAtual !== undefined ? Number(fichaOriginal.hpExtraAtual) : hpExtraMax, hpExtraMax);
+        const mpShieldAtual = Math.min(fichaOriginal.mpShieldAtual !== undefined ? Number(fichaOriginal.mpShieldAtual) : mpShieldMax, mpShieldMax);
+        const mpExtraAtual = Math.min(fichaOriginal.mpExtraAtual !== undefined ? Number(fichaOriginal.mpExtraAtual) : mpExtraMax, mpExtraMax);
 
-    const weightStats = calculateWeightStats(fakeFicha, stats.level);
+        const weightStats = calculateWeightStats(fakeFicha, stats.level);
 
-    const data = {
-        jogadorUid: fichaOriginal.jogadorUid || user.uid,
-        jogador: getVal('editor-jogador'),
-        nome: getVal('editor-nome'),
-        imageUrls: { ...fichaOriginal.imageUrls, ...urls },
-        imagemPrincipal: mainKey || fichaOriginal.imagemPrincipal,
-        historia: getVal('editor-historia'),
-        anotacoes: getVal('editor-anotacoes'),
+        const data = {
+            jogadorUid: fichaOriginal.jogadorUid || user.uid,
+            jogador: getVal('editor-jogador'),
+            nome: getVal('editor-nome'),
+            imageUrls: { ...fichaOriginal.imageUrls, ...urls },
+            imagemPrincipal: mainKey || fichaOriginal.imagemPrincipal,
+            historia: getVal('editor-historia'),
+            anotacoes: getVal('editor-anotacoes'),
 
-        racaId: fakeFicha.racaId,
-        classeId: fakeFicha.classeId,
-        subclasseId: fakeFicha.subclasseId,
+            racaId: fakeFicha.racaId,
+            classeId: fakeFicha.classeId,
+            subclasseId: fakeFicha.subclasseId,
 
-        experienciapersonagemBase: fakeFicha.experienciapersonagemBase,
-        pontosExtrasMestre: Number(getVal('editor-pontosExtrasMestre')),
+            experienciapersonagemBase: fakeFicha.experienciapersonagemBase,
+            pontosExtrasMestre: Number(getVal('editor-pontosExtrasMestre')),
 
-        pontosDistribuidosAtk: globalState.painelFichas.pontos.tempAtk,
-        pontosDistribuidosDef: globalState.painelFichas.pontos.tempDef,
-        pontosDistribuidosEva: globalState.painelFichas.pontos.tempEva,
+            pontosDistribuidosAtk: globalState.painelFichas.pontos.tempAtk,
+            pontosDistribuidosDef: globalState.painelFichas.pontos.tempDef,
+            pontosDistribuidosEva: globalState.painelFichas.pontos.tempEva,
 
-        levelPersonagemBase: stats.level,
-        hpMaxPersonagemBase: stats.hpMax,
-        mpMaxPersonagemBase: stats.mpMax,
+            levelPersonagemBase: stats.level,
+            hpMaxPersonagemBase: stats.hpMax,
+            mpMaxPersonagemBase: stats.mpMax,
 
-        pesoMaximoPersonagemBase: weightStats.max,
+            pesoMaximoPersonagemBase: weightStats.max,
 
-        hpPersonagemBase: Math.min(fichaOriginal.hpPersonagemBase !== undefined ? Number(fichaOriginal.hpPersonagemBase) : stats.hpMax, stats.hpMax),
-        mpPersonagemBase: Math.min(fichaOriginal.mpPersonagemBase !== undefined ? Number(fichaOriginal.mpPersonagemBase) : stats.mpMax, stats.mpMax),
+            hpPersonagemBase: Math.min(fichaOriginal.hpPersonagemBase !== undefined ? Number(fichaOriginal.hpPersonagemBase) : stats.hpMax, stats.hpMax),
+            mpPersonagemBase: Math.min(fichaOriginal.mpPersonagemBase !== undefined ? Number(fichaOriginal.mpPersonagemBase) : stats.mpMax, stats.mpMax),
 
-        hpShieldAtual: hpShieldAtual,
-        hpExtraAtual: hpExtraAtual,
-        mpShieldAtual: mpShieldAtual,
-        mpExtraAtual: mpExtraAtual,
+            hpShieldAtual: hpShieldAtual,
+            hpExtraAtual: hpExtraAtual,
+            mpShieldAtual: mpShieldAtual,
+            mpExtraAtual: mpExtraAtual,
 
-        iniciativaPersonagemBase: stats.iniciativa,
-        movimentoPersonagemBase: stats.movimento,
+            iniciativaPersonagemBase: stats.iniciativa,
+            movimentoPersonagemBase: stats.movimento,
 
-        apMaxPersonagemBase: newMaxAP,
-        apPersonagemBase: finalCurrentAP,
+            apMaxPersonagemBase: newMaxAP,
+            apPersonagemBase: finalCurrentAP,
 
-        atkPersonagemBase: stats.atk,
-        defPersonagemBase: stats.def,
-        evaPersonagemBase: stats.eva,
+            atkPersonagemBase: stats.atk,
+            defPersonagemBase: stats.def,
+            evaPersonagemBase: stats.eva,
 
-        atributosBasePersonagem: novosAtributosDinamicos,
+            atributosBasePersonagem: novosAtributosDinamicos,
 
-        lastAccessed: serverTimestamp()
-    };
+            lastAccessed: serverTimestamp()
+        };
 
-    try {
         if (id) {
             await updateDoc(doc(db, "rpg_fichas", id), data);
         } else {
@@ -912,7 +919,7 @@ async function salvarFicha(id, container) {
         }, 1500);
 
     } catch (e) {
-        console.error(e);
+        console.error("Erro completo capturado no salvamento:", e);
         alert("Erro ao salvar: " + e.message);
         btnSalvar.innerHTML = originalText;
         btnSalvar.disabled = false;
