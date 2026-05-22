@@ -5,7 +5,14 @@ const mapasDoMundo = [
     "imagens/mapas/mapas3.webp",
     "imagens/mapas/mapas4.webp",
     "imagens/mapas/mapas5.webp",
-    "imagens/mapas/mapas6.webp"
+    "imagens/mapas/mapas6.webp",
+    "imagens/mapas/mapas7.webp",
+    "imagens/mapas/mapas8.webp",
+    "imagens/mapas/mapas9.webp",
+    "imagens/mapas/mapas10.webp",
+    "imagens/mapas/mapas11.webp",
+    "imagens/mapas/mapas12.webp",
+    "imagens/mapas/mapas13.webp"
 ];
 
 // Lista de Mídias dos Bardos com o caminho fornecido
