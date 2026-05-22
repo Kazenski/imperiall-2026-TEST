@@ -568,7 +568,8 @@ window.boTools = {
         btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Salvando...';
         btn.disabled = true;
 
-        const tab = document.querySelector('.bo-tab-btn.active').dataset.tab;
+        // Busca a aba ativa no estado do sistema e não no HTML
+        const tab = boState.activeTab;
         const collectionName = COLL_MAP[tab].c;
         const id = document.getElementById('f-id').value;
         const oldImg = document.getElementById('f-oldImg').value;
