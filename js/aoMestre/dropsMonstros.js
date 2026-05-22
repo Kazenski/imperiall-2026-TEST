@@ -1,4 +1,4 @@
-import { db, doc, updateDoc, increment } from '../core/firebase.js';
+import { db, doc, updateDoc, increment, collection, getDocs } from '../core/firebase.js';
 import { globalState } from '../core/state.js';
 
 export function renderDropsMonstrosTab() {
@@ -165,26 +165,32 @@ function renderMonsterCard(mob, displayContainer) {
     });
 }
 
-function abrirModalDrop(mob) {
+async function abrirModalDrop(mob) {
     const existing = document.getElementById('modal-drop-monstro');
     if (existing) existing.remove();
 
-    // 1. Prepara as opções de Personagens
+    // 1. Prepara as opções de Personagens do Cache
     const charArray = Array.from(globalState.cache.all_personagens.values()).sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
     let optionsHtml = '<option value="">-- Selecione o Aventureiro --</option>';
     charArray.forEach(char => {
         optionsHtml += `<option value="${char.id}">${char.nome} (${char.jogador || '???'})</option>`;
     });
 
-    // 2. Prepara as opções de Sessões
-    let sessoesArray = [];
-    if (globalState.cache.sessoes) {
-        sessoesArray = globalState.cache.sessoes instanceof Map ? Array.from(globalState.cache.sessoes.values()) : Object.values(globalState.cache.sessoes);
-    }
+    // NOVO: 2. Busca as Sessões direto da coleção rpg_sessions
     let sessoesOptionsHtml = '<option value="">-- Ou Selecione uma Sessão --</option>';
-    sessoesArray.forEach(sess => {
-        sessoesOptionsHtml += `<option value="${sess.id}">${sess.nome || sess.name}</option>`;
-    });
+    const sessoesCache = {}; // Guardamos na memória para usar na hora de distribuir o loot
+
+    try {
+        const querySnapshot = await getDocs(collection(db, "rpg_sessions"));
+        querySnapshot.forEach((docSnap) => {
+            const sess = docSnap.data();
+            sessoesCache[docSnap.id] = sess;
+            sessoesOptionsHtml += `<option value="${docSnap.id}">${sess.nome || sess.name || 'Sessão Sem Nome'}</option>`;
+        });
+    } catch (error) {
+        console.error("Erro ao buscar sessões do Fog of War:", error);
+        sessoesOptionsHtml = '<option value="">-- Erro ao carregar sessões --</option>';
+    }
 
     const modalHTML = `
         <div id="modal-drop-monstro" class="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] animate-fade-in p-4">
@@ -238,7 +244,6 @@ function abrirModalDrop(mob) {
     const selectChar = modal.querySelector('#drop-target-char');
     const selectSession = modal.querySelector('#drop-target-session');
 
-    // NOVO: Atualiza o texto da porcentagem em tempo real enquanto o mestre move o slider
     const chanceSlider = modal.querySelector('#drop-chance-slider');
     const chanceDisplay = modal.querySelector('#drop-chance-display');
     chanceSlider.addEventListener('input', (e) => {
@@ -264,7 +269,6 @@ function abrirModalDrop(mob) {
         const drops = mob.drops || {};
         const itemsToGrantTotal = {};
 
-        // NOVO: Pega o valor do slider, transforma em Integer e depois converte para decimal (ex: 70 vira 0.70)
         const chanceValue = parseInt(chanceSlider.value, 10);
         const DROP_CHANCE = chanceValue / 100;
 
@@ -288,17 +292,13 @@ function abrirModalDrop(mob) {
             // 2. VERIFICA O ALVO E APLICA A LÓGICA (Personagem vs Sessão)
             if (sessionId) {
                 // MODO SESSÃO
-                let sessionObj = null;
-                if (globalState.cache.sessoes instanceof Map) {
-                    sessionObj = globalState.cache.sessoes.get(sessionId);
-                } else {
-                    sessionObj = Object.values(globalState.cache.sessoes).find(s => s.id === sessionId);
-                }
+                const sessionObj = sessoesCache[sessionId];
 
-                const charsInSession = sessionObj?.playerIds || sessionObj?.personagensPresentes || [];
+                // Mapeia onde você pode ter salvo os IDs dos personagens na sessão
+                const charsInSession = sessionObj?.personagens || sessionObj?.playerIds || sessionObj?.personagensPresentes || sessionObj?.jogadores || [];
 
                 if (charsInSession.length === 0) {
-                    throw new Error("Esta sessão não possui personagens vinculados.");
+                    throw new Error("Esta sessão não possui personagens vinculados no banco de dados.");
                 }
 
                 const dist = {};
@@ -323,10 +323,8 @@ function abrirModalDrop(mob) {
                     if (Object.keys(dist[cId]).length > 0) {
                         const updates = {};
                         for (const [iId, q] of Object.entries(dist[cId])) {
-                            // Aqui o Firebase incrementa a quantidade direto no banco
-                            updates[`mochila.${iId}`] = typeof increment !== 'undefined' ? increment(q) : q; // Fallback caso increment não esteja importado corretamente
+                            updates[`mochila.${iId}`] = typeof increment !== 'undefined' ? increment(q) : q;
                         }
-                        // Assume importações no topo do arquivo (doc, updateDoc, db)
                         promises.push(updateDoc(doc(db, "rpg_fichas", cId), updates));
                     }
                 }
