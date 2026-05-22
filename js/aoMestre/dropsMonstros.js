@@ -169,26 +169,56 @@ function abrirModalDrop(mob) {
     const existing = document.getElementById('modal-drop-monstro');
     if (existing) existing.remove();
 
+    // 1. Prepara as opções de Personagens
     const charArray = Array.from(globalState.cache.all_personagens.values()).sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
     let optionsHtml = '<option value="">-- Selecione o Aventureiro --</option>';
     charArray.forEach(char => {
         optionsHtml += `<option value="${char.id}">${char.nome} (${char.jogador || '???'})</option>`;
     });
 
+    // 2. Prepara as opções de Sessões
+    let sessoesArray = [];
+    if (globalState.cache.sessoes) {
+        sessoesArray = globalState.cache.sessoes instanceof Map ? Array.from(globalState.cache.sessoes.values()) : Object.values(globalState.cache.sessoes);
+    }
+    let sessoesOptionsHtml = '<option value="">-- Ou Selecione uma Sessão --</option>';
+    sessoesArray.forEach(sess => {
+        sessoesOptionsHtml += `<option value="${sess.id}">${sess.nome || sess.name}</option>`;
+    });
+
     const modalHTML = `
         <div id="modal-drop-monstro" class="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] animate-fade-in p-4">
-            <div class="bg-slate-800 text-gray-200 p-6 rounded-lg shadow-2xl w-full max-w-md border border-slate-600 relative">
+            <div class="bg-slate-800 text-gray-200 p-6 rounded-lg shadow-2xl w-full max-w-md border border-slate-600 relative max-h-[90vh] overflow-y-auto custom-scrollbar">
                 <h2 class="text-2xl font-bold font-cinzel text-amber-400 mb-4 tracking-wider border-b border-slate-700 pb-3">Dropar de ${mob.nome}</h2>
                 <div class="space-y-4">
                     <div>
                         <label class="block text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-2" for="drop-target-char">Conceder para o inventário de:</label>
-                        <select id="drop-target-char" class="block w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-md text-amber-500 font-bold focus:outline-none focus:border-amber-500 shadow-inner">
+                        <select id="drop-target-char" class="block w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-md text-amber-500 font-bold focus:outline-none focus:border-amber-500 shadow-inner mb-3">
                             ${optionsHtml}
                         </select>
+
+                        <div class="flex items-center gap-2 mb-3">
+                            <hr class="flex-grow border-slate-600"><span class="text-[10px] font-bold text-slate-500 uppercase">OU DISTRIBUIR PARA</span><hr class="flex-grow border-slate-600">
+                        </div>
+
+                        <label class="block text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-2" for="drop-target-session">Todos os jogadores da Sessão:</label>
+                        <select id="drop-target-session" class="block w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-md text-purple-400 font-bold focus:outline-none focus:border-purple-500 shadow-inner">
+                            ${sessoesOptionsHtml}
+                        </select>
                     </div>
-                    <p class="text-xs text-slate-400 bg-slate-900/50 p-4 rounded-lg border border-slate-700 leading-relaxed">
-                        <i class="fas fa-info-circle text-sky-400 mr-1"></i> A engine possui <strong class="text-amber-500">70% de chance</strong> de validar cada item no pool. A quantidade rolada será sorteada entre <strong class="text-white">0 e a Máxima</strong> definida no cadastro.
-                    </p>
+                    
+                    <div class="bg-slate-900/50 p-4 rounded-lg border border-slate-700 leading-relaxed mb-4">
+                        <label class="flex justify-between items-center text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-3" for="drop-chance-slider">
+                            <span><i class="fas fa-sliders-h text-sky-400 mr-1"></i> Chance de Drop (Por Item)</span>
+                            <span id="drop-chance-display" class="text-amber-500 text-lg font-black">70%</span>
+                        </label>
+                        <input type="range" id="drop-chance-slider" min="1" max="100" value="70" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500 shadow-inner">
+                        <p class="text-[10px] text-slate-500 mt-3 leading-tight">
+                            A engine usará essa porcentagem para tentar validar cada item no pool. Se passar, a quantidade será sorteada entre <strong class="text-white">0 e a Máxima</strong>.
+                            <br><br><span class="text-purple-400"><i class="fas fa-users"></i> Na distribuição por sessão, o drop total é rolado UMA vez e dividido.</span>
+                        </p>
+                    </div>
+
                     <div class="flex gap-4 mt-8">
                         <button id="btn-confirm-drop" class="flex-grow py-3 px-6 bg-green-600 text-white font-bold uppercase tracking-widest text-[10px] rounded-md hover:bg-green-500 shadow-md transition-colors">
                             <i class="fas fa-check mr-2"></i> Confirmar Rolar Drops
@@ -205,56 +235,137 @@ function abrirModalDrop(mob) {
     document.body.insertAdjacentHTML('beforeend', modalHTML);
 
     const modal = document.getElementById('modal-drop-monstro');
+    const selectChar = modal.querySelector('#drop-target-char');
+    const selectSession = modal.querySelector('#drop-target-session');
+
+    // NOVO: Atualiza o texto da porcentagem em tempo real enquanto o mestre move o slider
+    const chanceSlider = modal.querySelector('#drop-chance-slider');
+    const chanceDisplay = modal.querySelector('#drop-chance-display');
+    chanceSlider.addEventListener('input', (e) => {
+        chanceDisplay.textContent = e.target.value + '%';
+    });
+
+    // Exclusão visual: Se escolher um char, zera a sessão e vice-versa
+    selectChar.addEventListener('change', () => { if (selectChar.value) selectSession.value = ""; });
+    selectSession.addEventListener('change', () => { if (selectSession.value) selectChar.value = ""; });
 
     modal.querySelector('#btn-cancel-drop').addEventListener('click', () => modal.remove());
 
     modal.querySelector('#btn-confirm-drop').addEventListener('click', async () => {
-        const charId = modal.querySelector('#drop-target-char').value;
-        if (!charId) return alert("Selecione um personagem para receber os drops.");
+        const charId = selectChar.value;
+        const sessionId = selectSession.value;
+
+        if (!charId && !sessionId) return alert("Selecione um personagem ou uma sessão para receber os drops.");
 
         const btnConf = modal.querySelector('#btn-confirm-drop');
         btnConf.disabled = true;
         btnConf.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Rolando...';
 
         const drops = mob.drops || {};
-        const itemsToGrant = {};
-        const dropLog = [];
-        const DROP_CHANCE = 0.70; // 70% de sucesso
+        const itemsToGrantTotal = {};
 
+        // NOVO: Pega o valor do slider, transforma em Integer e depois converte para decimal (ex: 70 vira 0.70)
+        const chanceValue = parseInt(chanceSlider.value, 10);
+        const DROP_CHANCE = chanceValue / 100;
+
+        // 1. ROLA O DROP TOTAL 
         for (const [itemId, maxQuantity] of Object.entries(drops)) {
             if (Math.random() <= DROP_CHANCE) {
-                // Sorteia a quantidade de 0 até maxQuantity
                 const quantityToDrop = Math.floor(Math.random() * (Number(maxQuantity) + 1));
-
                 if (quantityToDrop > 0) {
-                    itemsToGrant[itemId] = (itemsToGrant[itemId] || 0) + quantityToDrop;
-                    const itemData = globalState.cache.itens.get(itemId);
-                    dropLog.push(`- ${itemData?.nome || 'Item Desconhecido'} (x${quantityToDrop})`);
+                    itemsToGrantTotal[itemId] = (itemsToGrantTotal[itemId] || 0) + quantityToDrop;
                 }
             }
         }
 
-        if (Object.keys(itemsToGrant).length === 0) {
+        if (Object.keys(itemsToGrantTotal).length === 0) {
             alert(`O Monstro ${mob.nome} não dropou absolutamente nada desta vez. Falha nas rolagens.`);
             modal.remove();
             return;
         }
 
         try {
-            const updates = {};
-            for (const [itemId, quantity] of Object.entries(itemsToGrant)) {
-                updates[`mochila.${itemId}`] = increment(quantity);
+            // 2. VERIFICA O ALVO E APLICA A LÓGICA (Personagem vs Sessão)
+            if (sessionId) {
+                // MODO SESSÃO
+                let sessionObj = null;
+                if (globalState.cache.sessoes instanceof Map) {
+                    sessionObj = globalState.cache.sessoes.get(sessionId);
+                } else {
+                    sessionObj = Object.values(globalState.cache.sessoes).find(s => s.id === sessionId);
+                }
+
+                const charsInSession = sessionObj?.playerIds || sessionObj?.personagensPresentes || [];
+
+                if (charsInSession.length === 0) {
+                    throw new Error("Esta sessão não possui personagens vinculados.");
+                }
+
+                const dist = {};
+                charsInSession.forEach(id => dist[id] = {});
+                const distribLog = {};
+
+                for (const [itemId, totalQty] of Object.entries(itemsToGrantTotal)) {
+                    const itemData = globalState.cache.itens.get(itemId);
+                    const itemName = itemData?.nome || 'Item Desconhecido';
+
+                    for (let i = 0; i < totalQty; i++) {
+                        const randomCharId = charsInSession[Math.floor(Math.random() * charsInSession.length)];
+                        dist[randomCharId][itemId] = (dist[randomCharId][itemId] || 0) + 1;
+
+                        if (!distribLog[randomCharId]) distribLog[randomCharId] = [];
+                        distribLog[randomCharId].push(itemName);
+                    }
+                }
+
+                const promises = [];
+                for (const cId of charsInSession) {
+                    if (Object.keys(dist[cId]).length > 0) {
+                        const updates = {};
+                        for (const [iId, q] of Object.entries(dist[cId])) {
+                            // Aqui o Firebase incrementa a quantidade direto no banco
+                            updates[`mochila.${iId}`] = typeof increment !== 'undefined' ? increment(q) : q; // Fallback caso increment não esteja importado corretamente
+                        }
+                        // Assume importações no topo do arquivo (doc, updateDoc, db)
+                        promises.push(updateDoc(doc(db, "rpg_fichas", cId), updates));
+                    }
+                }
+                await Promise.all(promises);
+
+                let successMsg = `SUCESSO! O loot de ${mob.nome} foi dividido entre a Sessão:\n\n`;
+                for (const cId of charsInSession) {
+                    const charName = globalState.cache.all_personagens.get(cId)?.nome || 'Desconhecido';
+                    if (distribLog[cId] && distribLog[cId].length > 0) {
+                        const counts = {};
+                        distribLog[cId].forEach(name => counts[name] = (counts[name] || 0) + 1);
+                        const dropsString = Object.entries(counts).map(([name, qty]) => `${name} (x${qty})`).join(', ');
+                        successMsg += `> ${charName}: ${dropsString}\n`;
+                    } else {
+                        successMsg += `> ${charName}: Não pegou nada.\n`;
+                    }
+                }
+                alert(successMsg);
+
+            } else {
+                // MODO PERSONAGEM ÚNICO
+                const updates = {};
+                const dropLog = [];
+                for (const [itemId, quantity] of Object.entries(itemsToGrantTotal)) {
+                    updates[`mochila.${itemId}`] = typeof increment !== 'undefined' ? increment(quantity) : quantity;
+                    const itemData = globalState.cache.itens.get(itemId);
+                    dropLog.push(`- ${itemData?.nome || 'Item Desconhecido'} (x${quantity})`);
+                }
+
+                await updateDoc(doc(db, "rpg_fichas", charId), updates);
+                const charName = globalState.cache.all_personagens.get(charId)?.nome || 'o Personagem';
+                alert(`SUCESSO! Os itens foram enviados para a mochila de ${charName}:\n\n${dropLog.join('\n')}`);
             }
 
-            await updateDoc(doc(db, "rpg_fichas", charId), updates);
-
-            const charName = globalState.cache.all_personagens.get(charId)?.nome || 'o Personagem';
-            alert(`SUCESSO! Os itens foram enviados para a mochila de ${charName}:\n\n${dropLog.join('\n')}`);
             modal.remove();
 
         } catch (error) {
             console.error("Erro ao conceder drops:", error);
-            alert("Erro do Sistema ao enviar items para a mochila: " + error.message);
+            alert("Erro do Sistema ao enviar items: " + error.message);
             btnConf.disabled = false;
             btnConf.innerHTML = '<i class="fas fa-check mr-2"></i> Confirmar Rolar Drops';
         }
