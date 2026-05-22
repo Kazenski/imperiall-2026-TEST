@@ -229,6 +229,16 @@ function renderForm() {
         fieldsHtml = `
             <div class="space-y-4">
                 <div class="form-field"><label class="text-xs text-slate-400">Nome</label><input type="text" id="f-nome" value="${escapeHTML(item.nome || '')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white" required></div>
+                
+                ${isRaca ? `
+                <div class="grid grid-cols-2 gap-4 mt-2">
+                    <div class="form-field"><label class="text-xs text-slate-400">Tipo de Raça</label><input type="text" id="f-racaTipo" value="${escapeHTML(item.racaTipo || '')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white" placeholder="Ex: Humanóide"></div>
+                    <div class="form-field"><label class="text-xs text-slate-400">Movimentação (m)</label><input type="number" id="f-mov" value="${item.movimentacao || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                </div>
+                <div class="form-field"><label class="text-xs text-slate-400">Habilidade Base da Raça</label><input type="text" id="f-habRaca" value="${escapeHTML(item.habilidadeRacaBase || '')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                <div class="form-field"><label class="text-xs text-slate-400">História / Descrição da Raça</label><textarea id="f-historia" rows="3" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white">${escapeHTML(item.historiaRaca || '')}</textarea></div>
+                ` : ''}
+
                 <h4 class="text-amber-500 font-bold text-sm mt-4 border-b border-slate-700 pb-1">Bônus Base</h4>
                 <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
                     <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">HP</label><input type="number" id="f-hp" value="${item[`bonusHp${prefix}Base`] || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
@@ -237,7 +247,9 @@ function renderForm() {
                     <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">DEF</label><input type="number" id="f-def" value="${item[`bonusDef${prefix === 'Classe' ? 'esaClasse' : (prefix === 'Subclasse' ? 'esaSubclasse' : 'Raca')}Base`] || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
                     <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">EVA</label><input type="number" id="f-eva" value="${item[`bonusEva${prefix === 'Classe' ? 'saoClasse' : (prefix === 'Subclasse' ? 'saoSubclasse' : 'Raca')}Base`] || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
                 </div>
+                
                 ${!isRaca ? renderCheckboxList('Habilidades Iniciais', 'cb_habs', boState.cache.habilidades, item.habilidadesDisponiveis || []) : ''}
+                ${isRaca ? renderCheckboxList('Vantagens Naturais', 'cb_vantagens', boState.cache.vantagens, item.vantagensHabilidadesNaturais || []) : ''}
             </div>
         `;
     }
@@ -568,7 +580,6 @@ window.boTools = {
         btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Salvando...';
         btn.disabled = true;
 
-        // Busca a aba ativa no estado do sistema e não no HTML
         const tab = boState.activeTab;
         const collectionName = COLL_MAP[tab].c;
         const id = document.getElementById('f-id').value;
@@ -590,11 +601,23 @@ window.boTools = {
             payload.restricaoSubclasses = Array.from(document.querySelectorAll('input[name="cb_subs"]:checked')).map(c => c.value);
         } else if (['racas', 'classes', 'subclasses'].includes(tab)) {
             const pre = tab === 'racas' ? 'Raca' : (tab === 'classes' ? 'Classe' : 'Subclasse');
+
+            // Atributos base compartilhados entre Raças, Classes e Subclasses
             payload[`bonusHp${pre}Base`] = getNum('f-hp'); payload[`bonusMp${pre}Base`] = getNum('f-mp');
             payload[`bonusAtk${pre === 'Classe' ? 'AtaqueClasse' : (pre === 'Subclasse' ? 'AtaqueSubclasse' : 'AtkRaca')}Base`] = getNum('f-atk');
             payload[`bonusDef${pre === 'Classe' ? 'esaClasse' : (pre === 'Subclasse' ? 'esaSubclasse' : 'Raca')}Base`] = getNum('f-def');
             payload[`bonusEva${pre === 'Classe' ? 'saoClasse' : (pre === 'Subclasse' ? 'saoSubclasse' : 'Raca')}Base`] = getNum('f-eva');
-            if (tab !== 'racas') payload.habilidadesDisponiveis = Array.from(document.querySelectorAll('input[name="cb_habs"]:checked')).map(c => c.value);
+
+            // Tratamento específico de propriedades exclusivas
+            if (tab !== 'racas') {
+                payload.habilidadesDisponiveis = Array.from(document.querySelectorAll('input[name="cb_habs"]:checked')).map(c => c.value);
+            } else {
+                payload.racaTipo = getVal('f-racaTipo');
+                payload.movimentacao = getNum('f-mov');
+                payload.habilidadeRacaBase = getVal('f-habRaca');
+                payload.historiaRaca = getVal('f-historia');
+                payload.vantagensHabilidadesNaturais = Array.from(document.querySelectorAll('input[name="cb_vantagens"]:checked')).map(c => c.value);
+            }
         } else if (tab === 'profissoes') {
             payload.descricao = getVal('f-desc'); payload.levelRequerido = getNum('f-lvl');
         } else if (tab === 'efeitos') {
