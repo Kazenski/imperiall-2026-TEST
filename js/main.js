@@ -54,6 +54,8 @@ import { renderMapaMundialTab } from './admin/mapaMundial.js';
 import { renderCadastroUsersTab } from './admin/CadastroUsers.js';
 import { renderDropsMonstrosTab } from './aoMestre/dropsMonstros.js';
 import { renderManualGeralTab } from './manualRegras/manualGeral.js';
+import { renderTeiaConexoesTab } from './tabs/teiaConexoes.js';
+
 
 import { rtdb, rtdbRef, push, set, onValue, off, rtdbQuery, limitToLast, rtdbServerTimestamp } from './core/firebase.js';
 
@@ -201,6 +203,15 @@ window.showTab = function (tabId) {
     if (tabId === 'npcs-geral-content' || tabId === 'npcs-geral') {
         target.innerHTML = '';
         if (typeof renderNpcsGeralTab === 'function') renderNpcsGeralTab();
+        return;
+    }
+
+    // Aba "Teia de Conexões" (O Mundo)
+    if (tabId === 'teia-conexoes-content' || tabId === 'teia-conexoes') {
+        target.innerHTML = '';
+        if (typeof renderTeiaConexoesTab === 'function') {
+            renderTeiaConexoesTab(target);
+        }
         return;
     }
 
@@ -453,7 +464,8 @@ const MASTER_ARCHITECTURE = {
         { id: 'conheca-mundo', icon: 'fa-globe', label: 'Conheça o mundo', render: () => window.showTab('conheca-mundo-content') },
         { id: 'os-deuses', icon: 'fa-bolt', label: 'Os Deuses', render: () => window.showTab('os-deuses-content') },
         { id: 'lendas-mundo', icon: 'fa-book-dead', label: 'Lendas do Mundo', render: () => window.showTab('lendas-mundo-content') },
-        { id: 'npcs-geral', icon: 'fa-users', label: 'NPCs Importantes', render: () => window.showTab('npcs-geral-content') }
+        { id: 'npcs-geral', icon: 'fa-users', label: 'NPCs Importantes', render: () => window.showTab('npcs-geral-content') },
+        { id: 'teia-conexoes-content', label: 'Teia de Conexões', icon: 'share-2' } // 'share-2' ou 'network' se assemelham a um grafo
     ],
     'Manual e Regras': [
         { id: 'manual-geral', icon: 'fa-book-open', label: 'Bases e Manual', render: () => window.showTab('manual-geral-content') },
