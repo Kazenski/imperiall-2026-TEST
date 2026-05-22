@@ -1,5 +1,7 @@
 /* ARQUIVO: js/tabs/teiaConexoes.js */
 import { db, collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, serverTimestamp } from '../core/firebase.js';
+// Correção cirúrgica: Importação direta do módulo de estado do seu projeto
+import { globalState } from '../core/state.js';
 
 let networkInstance = null;
 let scriptCarregado = false;
@@ -8,17 +10,25 @@ let scriptCarregado = false;
 let listaNpcsGlobal = [];
 let listaConexoesGlobal = [];
 
+// Função auxiliar unificada para checar permissão de mestre/admin importada do seu state.js
+function checkIsMaster() {
+    return globalState?.isAdmin ||
+        globalState?.userRole === 'mestre' ||
+        globalState?.userRole === 'admin' ||
+        false;
+}
+
 export function renderTeiaConexoesTab(target) {
     if (!target) return;
 
     // 1. Injeta a estrutura de HTML contendo o Inspector e os Formulários de Gestão
     target.innerHTML = `
-        <div class="flex flex-col md:flex-row h-full w-full gap-4 p-4">
+        <div class="flex flex-col md:flex-row h-full w-full gap-4 p-4 animate-fade-in">
             
             <!-- Painel Lateral: Inspecionar e Gerenciar -->
             <div id="teia-sidebar" class="w-full md:w-80 bg-slate-900 border border-slate-800 rounded-lg p-4 flex flex-col gap-4 shrink-0 overflow-y-auto custom-scroll">
                 
-                <!-- Navegação de Abas do Mestre (Fica visível apenas para o Mestre) -->
+                <!-- Navegação de Abas do Mestre (Fica visível apenas para o Mestre/Admin) -->
                 <div id="teia-sidebar-tabs" class="flex border-b border-slate-800 shrink-0 gap-1 hidden">
                     <button onclick="window.teia.switchTab('inspect')" id="btn-teia-tab-inspect" class="flex-1 py-2 text-[10px] uppercase font-bold text-amber-500 border-b-2 border-amber-500 bg-slate-850">Inspecionar</button>
                     <button onclick="window.teia.switchTab('link')" id="btn-teia-tab-link" class="flex-1 py-2 text-[10px] uppercase font-bold text-slate-400 hover:text-slate-200">Vínculo</button>
@@ -199,7 +209,7 @@ window.teia = {
         const descArea = document.getElementById('teia-inspect-desc');
         descArea.value = npc.description || '';
 
-        const isMaster = window.globalState?.isAdmin || false;
+        const isMaster = checkIsMaster();
         descArea.disabled = !isMaster;
 
         const adminActions = document.getElementById('teia-inspect-admin-actions');
@@ -228,7 +238,7 @@ window.teia = {
         const descArea = document.getElementById('teia-inspect-desc');
         descArea.value = conn.comentario || '';
 
-        const isMaster = window.globalState?.isAdmin || false;
+        const isMaster = checkIsMaster();
         descArea.disabled = !isMaster;
 
         const adminActions = document.getElementById('teia-inspect-admin-actions');
@@ -289,7 +299,7 @@ window.teia = {
 };
 
 function configurarGrafoEFormularios() {
-    const isMaster = window.globalState?.isAdmin || false;
+    const isMaster = checkIsMaster();
     const sidebarTabs = document.getElementById('teia-sidebar-tabs');
 
     // Se for Mestre, exibe o controle de abas administrativas na lateral
