@@ -111,7 +111,7 @@ Aqui está a visão geral da nossa futura arquitetura:
     ┃  ┣ 📜 mapas12.webp 
     ┃  ┗ 📜 mapas13.webp 
     ┃ 
-    ┗ 📂 usoGeralSite     (pasta de imagens gerais)  bardo-conheca-o-mundo.png
+    ┗ 📂 usoGeralSite     (pasta de imagens gerais)
        ┃
        ┗ 📜 bardo-conheca-o-mundo.png
 

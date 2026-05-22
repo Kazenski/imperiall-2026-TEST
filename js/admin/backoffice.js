@@ -11,14 +11,15 @@ let boState = {
     selectedItem: null,
     pendingImage: null,
     filter: '',
-    
+    filterClass: '',
+
     // Estados do Balanceamento
     balTab: 'habilidades', // 'habilidades' ou 'atributos'
     balHabEdits: {},
     balHabFilterClass: '',
     balHabFilterSub: '',
     balHabSearch: '',
-    
+
     balAttrMode: 'definicao', // 'definicao' ou 'matriz'
     balAttrEixo: 'classes',
     balAttrEdits: {}
@@ -52,7 +53,7 @@ export async function renderBackofficeTab() {
             </header>
 
             <nav class="flex flex-wrap gap-2 mb-6 border-b border-slate-800 pb-4" id="bo-tabs-nav">
-                ${Object.keys(COLL_MAP).filter(k => !['atributos','tiposEfeito','personagens'].includes(k)).map(k => `
+                ${Object.keys(COLL_MAP).filter(k => !['atributos', 'tiposEfeito', 'personagens'].includes(k)).map(k => `
                     <button class="bo-tab-btn ${boState.activeTab === k ? 'bg-amber-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'} px-3 py-2 rounded font-bold text-xs uppercase tracking-wider transition-colors" data-tab="${k}">${COLL_MAP[k].name}</button>
                 `).join('')}
                 <button class="bo-tab-btn ${boState.activeTab === 'balanceamento' ? 'bg-purple-600 text-white' : 'bg-purple-900/50 text-purple-300 hover:bg-purple-700 hover:text-white'} px-4 py-2 rounded font-bold text-xs uppercase tracking-wider transition-colors ml-auto" data-tab="balanceamento"><i class="fas fa-balance-scale mr-1"></i> Balanceamento</button>
@@ -82,7 +83,8 @@ function setupTabs() {
             boState.selectedItem = null;
             boState.pendingImage = null;
             boState.filter = '';
-            renderBackofficeTab(); 
+            boState.filterClass = '';
+            renderBackofficeTab();
         }
     });
 }
@@ -95,10 +97,10 @@ async function loadAllData() {
             const snap = await getDocs(q);
             newCache[key] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         });
-        
+
         await Promise.all(promises);
         boState.cache = newCache;
-        
+
         document.getElementById('bo-loading').classList.add('hidden');
         document.getElementById('bo-view').classList.remove('hidden');
         renderActiveView();
@@ -118,7 +120,7 @@ function renderActiveView() {
         return;
     }
 
-    if (boState.selectedItem !== null || boState.activeTab === 'new') {
+    if (boState.selectedItem !== null) {
         view.innerHTML = renderForm();
     } else {
         view.innerHTML = renderList();
@@ -132,7 +134,13 @@ function renderList() {
     const tab = boState.activeTab;
     const data = boState.cache[tab] || [];
     const term = boState.filter.toLowerCase();
-    const filtered = data.filter(i => (i.nome||i.id||'').toLowerCase().includes(term));
+
+    // NOVO: Filtrar por nome E por classe (se for a aba de habilidades)
+    let filtered = data.filter(i => (i.nome || i.id || '').toLowerCase().includes(term));
+    if (tab === 'habilidades' && boState.filterClass) {
+        filtered = filtered.filter(i => i.restricaoClasses?.includes(boState.filterClass));
+    }
+
     const showImages = ['habilidades', 'racas', 'classes', 'subclasses', 'profissoes'].includes(tab);
 
     let listHtml = '';
@@ -167,7 +175,15 @@ function renderList() {
     return `
         <div class="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 animate-fade-in">
             <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-                <input type="text" placeholder="Filtrar nesta categoria..." value="${boState.filter}" onkeyup="window.boTools.setFilter(this.value)" class="w-full sm:w-1/2 bg-slate-900 border border-slate-600 px-4 py-2 rounded-lg text-white outline-none focus:border-amber-500">
+                <input type="text" id="bo-filter-text" placeholder="Filtrar nesta categoria..." value="${boState.filter}" oninput="window.boTools.setFilter(this.value, this.selectionStart)" class="w-full sm:w-1/2 bg-slate-900 border border-slate-600 px-4 py-2 rounded-lg text-white outline-none focus:border-amber-500">
+                
+                ${tab === 'habilidades' ? `
+                    <select id="bo-filter-class" onchange="window.boTools.setFilterClass(this.value)" class="w-full sm:w-1/3 bg-slate-900 border border-slate-600 px-4 py-2 rounded-lg text-slate-300 outline-none focus:border-amber-500">
+                        <option value="">Todas as Classes</option>
+                        ${boState.cache.classes.map(c => `<option value="${c.id}" ${boState.filterClass === c.id ? 'selected' : ''}>${escapeHTML(c.nome)}</option>`).join('')}
+                    </select>
+                ` : ''}
+
                 <button onclick="window.boTools.newItem()" class="btn bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-lg font-bold shadow-lg whitespace-nowrap"><i class="fas fa-plus mr-2"></i> Criar Novo</button>
             </div>
             ${filtered.length === 0 ? '<p class="text-slate-500 text-center py-10 italic">Nenhum registro encontrado.</p>' : listHtml}
@@ -190,57 +206,57 @@ function renderForm() {
     if (tab === 'habilidades') {
         fieldsHtml = `
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="form-field"><label class="text-xs text-slate-400">Nome</label><input type="text" id="f-nome" value="${escapeHTML(item.nome||'')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white" required></div>
-                <div class="form-field"><label class="text-xs text-slate-400">Tipo Efeito</label><select id="f-tipoEf" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"><option ${item.tipoEfeitoHabildiade==='Ofensivo'?'selected':''}>Ofensivo</option><option ${item.tipoEfeitoHabildiade==='Defensivo'?'selected':''}>Defensivo</option><option ${item.tipoEfeitoHabildiade==='BUFF'?'selected':''}>BUFF</option><option ${item.tipoEfeitoHabildiade==='DEBUFF'?'selected':''}>DEBUFF</option><option ${item.tipoEfeitoHabildiade==='Utilidade'?'selected':''}>Utilidade</option><option ${item.tipoEfeitoHabildiade==='Neutro'?'selected':''}>Neutro</option></select></div>
-                <div class="form-field"><label class="text-xs text-slate-400">Tipo Ação</label><select id="f-tipoAc" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"><option ${item.tipoAcaoHabildiade==='Ação'?'selected':''}>Ação</option><option ${item.tipoAcaoHabildiade==='Reação'?'selected':''}>Reação</option><option ${item.tipoAcaoHabildiade==='Livre'?'selected':''}>Livre</option></select></div>
-                <div class="form-field"><label class="text-xs text-slate-400">Duração</label><input type="text" id="f-dur" value="${escapeHTML(item.duracaoHabilidade||'Instantâneo')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                <div class="form-field"><label class="text-xs text-slate-400">Nome</label><input type="text" id="f-nome" value="${escapeHTML(item.nome || '')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white" required></div>
+                <div class="form-field"><label class="text-xs text-slate-400">Tipo Efeito</label><select id="f-tipoEf" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"><option ${item.tipoEfeitoHabildiade === 'Ofensivo' ? 'selected' : ''}>Ofensivo</option><option ${item.tipoEfeitoHabildiade === 'Defensivo' ? 'selected' : ''}>Defensivo</option><option ${item.tipoEfeitoHabildiade === 'BUFF' ? 'selected' : ''}>BUFF</option><option ${item.tipoEfeitoHabildiade === 'DEBUFF' ? 'selected' : ''}>DEBUFF</option><option ${item.tipoEfeitoHabildiade === 'Utilidade' ? 'selected' : ''}>Utilidade</option><option ${item.tipoEfeitoHabildiade === 'Neutro' ? 'selected' : ''}>Neutro</option></select></div>
+                <div class="form-field"><label class="text-xs text-slate-400">Tipo Ação</label><select id="f-tipoAc" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"><option ${item.tipoAcaoHabildiade === 'Ação' ? 'selected' : ''}>Ação</option><option ${item.tipoAcaoHabildiade === 'Reação' ? 'selected' : ''}>Reação</option><option ${item.tipoAcaoHabildiade === 'Livre' ? 'selected' : ''}>Livre</option></select></div>
+                <div class="form-field"><label class="text-xs text-slate-400">Duração</label><input type="text" id="f-dur" value="${escapeHTML(item.duracaoHabilidade || 'Instantâneo')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
                 
-                <div class="form-field md:col-span-2"><label class="text-xs text-slate-400">Descrição</label><textarea id="f-desc" rows="3" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white">${escapeHTML(item.descricaoEfeito||'')}</textarea></div>
+                <div class="form-field md:col-span-2"><label class="text-xs text-slate-400">Descrição</label><textarea id="f-desc" rows="3" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white">${escapeHTML(item.descricaoEfeito || '')}</textarea></div>
                 
-                <div class="form-field"><label class="text-xs text-slate-400">Custo MP</label><input type="number" id="f-mp" value="${item.gastoMpUso||0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
-                <div class="form-field"><label class="text-xs text-slate-400">Dano Base</label><input type="number" id="f-dano" value="${item.efeitoDanoBaseUsoHabilidade||0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
-                <div class="form-field"><label class="text-xs text-slate-400">Qtd Alvos</label><input type="number" id="f-alvos" value="${item.quantidadeAlvos||1}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
-                <div class="form-field"><label class="text-xs text-slate-400">Custo Aprender (AP)</label><input type="number" id="f-ap" value="${item.custoAprendizado||0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                <div class="form-field"><label class="text-xs text-slate-400">Custo MP</label><input type="number" id="f-mp" value="${item.gastoMpUso || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                <div class="form-field"><label class="text-xs text-slate-400">Dano Base</label><input type="number" id="f-dano" value="${item.efeitoDanoBaseUsoHabilidade || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                <div class="form-field"><label class="text-xs text-slate-400">Qtd Alvos</label><input type="number" id="f-alvos" value="${item.quantidadeAlvos || 1}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                <div class="form-field"><label class="text-xs text-slate-400">Custo Aprender (AP)</label><input type="number" id="f-ap" value="${item.custoAprendizado || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
                 
-                <div class="md:col-span-2 mt-4">${renderCheckboxList('Restrição de Classes', 'cb_classes', boState.cache.classes, item.restricaoClasses||[])}</div>
-                <div class="md:col-span-2">${renderCheckboxList('Restrição de Subclasses', 'cb_subs', boState.cache.subclasses, item.restricaoSubclasses||[])}</div>
+                <div class="md:col-span-2 mt-4">${renderCheckboxList('Restrição de Classes', 'cb_classes', boState.cache.classes, item.restricaoClasses || [])}</div>
+                <div class="md:col-span-2">${renderCheckboxList('Restrição de Subclasses', 'cb_subs', boState.cache.subclasses, item.restricaoSubclasses || [])}</div>
             </div>
         `;
-    } 
+    }
     else if (['racas', 'classes', 'subclasses'].includes(tab)) {
         const isRaca = tab === 'racas';
         const prefix = isRaca ? 'Raca' : (tab === 'classes' ? 'Classe' : 'Subclasse');
         fieldsHtml = `
             <div class="space-y-4">
-                <div class="form-field"><label class="text-xs text-slate-400">Nome</label><input type="text" id="f-nome" value="${escapeHTML(item.nome||'')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white" required></div>
+                <div class="form-field"><label class="text-xs text-slate-400">Nome</label><input type="text" id="f-nome" value="${escapeHTML(item.nome || '')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white" required></div>
                 <h4 class="text-amber-500 font-bold text-sm mt-4 border-b border-slate-700 pb-1">Bônus Base</h4>
                 <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">HP</label><input type="number" id="f-hp" value="${item[`bonusHp${prefix}Base`]||0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
-                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">MP</label><input type="number" id="f-mp" value="${item[`bonusMp${prefix}Base`]||0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
-                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">ATK</label><input type="number" id="f-atk" value="${item[`bonusAtk${prefix==='Classe'?'AtaqueClasse':(prefix==='Subclasse'?'AtaqueSubclasse':'AtkRaca')}Base`]||0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
-                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">DEF</label><input type="number" id="f-def" value="${item[`bonusDef${prefix==='Classe'?'esaClasse':(prefix==='Subclasse'?'esaSubclasse':'Raca')}Base`]||0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
-                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">EVA</label><input type="number" id="f-eva" value="${item[`bonusEva${prefix==='Classe'?'saoClasse':(prefix==='Subclasse'?'saoSubclasse':'Raca')}Base`]||0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">HP</label><input type="number" id="f-hp" value="${item[`bonusHp${prefix}Base`] || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">MP</label><input type="number" id="f-mp" value="${item[`bonusMp${prefix}Base`] || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">ATK</label><input type="number" id="f-atk" value="${item[`bonusAtk${prefix === 'Classe' ? 'AtaqueClasse' : (prefix === 'Subclasse' ? 'AtaqueSubclasse' : 'AtkRaca')}Base`] || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">DEF</label><input type="number" id="f-def" value="${item[`bonusDef${prefix === 'Classe' ? 'esaClasse' : (prefix === 'Subclasse' ? 'esaSubclasse' : 'Raca')}Base`] || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">EVA</label><input type="number" id="f-eva" value="${item[`bonusEva${prefix === 'Classe' ? 'saoClasse' : (prefix === 'Subclasse' ? 'saoSubclasse' : 'Raca')}Base`] || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
                 </div>
-                ${!isRaca ? renderCheckboxList('Habilidades Iniciais', 'cb_habs', boState.cache.habilidades, item.habilidadesDisponiveis||[]) : ''}
+                ${!isRaca ? renderCheckboxList('Habilidades Iniciais', 'cb_habs', boState.cache.habilidades, item.habilidadesDisponiveis || []) : ''}
             </div>
         `;
     }
     else if (tab === 'profissoes') {
         fieldsHtml = `
             <div class="space-y-4">
-                <div class="form-field"><label class="text-xs text-slate-400">Nome</label><input type="text" id="f-nome" value="${escapeHTML(item.nome||'')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white" required></div>
-                <div class="form-field"><label class="text-xs text-slate-400">Descrição</label><textarea id="f-desc" rows="3" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white">${escapeHTML(item.descricao||'')}</textarea></div>
-                <div class="form-field"><label class="text-xs text-slate-400">Level Requerido</label><input type="number" id="f-lvl" value="${item.levelRequerido||1}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                <div class="form-field"><label class="text-xs text-slate-400">Nome</label><input type="text" id="f-nome" value="${escapeHTML(item.nome || '')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white" required></div>
+                <div class="form-field"><label class="text-xs text-slate-400">Descrição</label><textarea id="f-desc" rows="3" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white">${escapeHTML(item.descricao || '')}</textarea></div>
+                <div class="form-field"><label class="text-xs text-slate-400">Level Requerido</label><input type="number" id="f-lvl" value="${item.levelRequerido || 1}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
             </div>
         `;
     }
     else if (tab === 'efeitos') {
         fieldsHtml = `
             <div class="grid grid-cols-2 gap-4">
-                <div class="form-field col-span-2"><label class="text-xs text-slate-400">Nome</label><input type="text" id="f-nome" value="${escapeHTML(item.nome||'')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white" required></div>
-                <div class="form-field col-span-2"><label class="text-xs text-slate-400">Descrição</label><textarea id="f-desc" rows="2" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white">${escapeHTML(item.descricao||'')}</textarea></div>
-                <div class="form-field"><label class="text-xs text-slate-400">Aplicação</label><select id="f-apl" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"><option ${item.aplicacao==='Positivo'?'selected':''}>Positivo</option><option ${item.aplicacao==='Negativo'?'selected':''}>Negativo</option><option ${item.aplicacao==='Neutro'?'selected':''}>Neutro</option></select></div>
-                <div class="form-field"><label class="text-xs text-slate-400">Valor Numérico</label><input type="number" id="f-val" value="${Math.abs(item.valor||0)}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                <div class="form-field col-span-2"><label class="text-xs text-slate-400">Nome</label><input type="text" id="f-nome" value="${escapeHTML(item.nome || '')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white" required></div>
+                <div class="form-field col-span-2"><label class="text-xs text-slate-400">Descrição</label><textarea id="f-desc" rows="2" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white">${escapeHTML(item.descricao || '')}</textarea></div>
+                <div class="form-field"><label class="text-xs text-slate-400">Aplicação</label><select id="f-apl" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"><option ${item.aplicacao === 'Positivo' ? 'selected' : ''}>Positivo</option><option ${item.aplicacao === 'Negativo' ? 'selected' : ''}>Negativo</option><option ${item.aplicacao === 'Neutro' ? 'selected' : ''}>Neutro</option></select></div>
+                <div class="form-field"><label class="text-xs text-slate-400">Valor Numérico</label><input type="number" id="f-val" value="${Math.abs(item.valor || 0)}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
             </div>
         `;
     }
@@ -248,10 +264,10 @@ function renderForm() {
         fieldsHtml = `
             <div class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
-                    <div class="form-field"><label class="text-xs text-slate-400">Nome da Sessão</label><input type="text" id="f-nome" value="${escapeHTML(item.nome||item.name||'')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white" required></div>
-                    <div class="form-field"><label class="text-xs text-slate-400">Data/Ano</label><input type="text" id="f-ano" value="${escapeHTML(item.ano||new Date().getFullYear())}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                    <div class="form-field"><label class="text-xs text-slate-400">Nome da Sessão</label><input type="text" id="f-nome" value="${escapeHTML(item.nome || item.name || '')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white" required></div>
+                    <div class="form-field"><label class="text-xs text-slate-400">Data/Ano</label><input type="text" id="f-ano" value="${escapeHTML(item.ano || new Date().getFullYear())}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
                 </div>
-                ${renderCheckboxList('Personagens Presentes', 'cb_chars', boState.cache.personagens, item.playerIds||item.personagensPresentes||[])}
+                ${renderCheckboxList('Personagens Presentes', 'cb_chars', boState.cache.personagens, item.playerIds || item.personagensPresentes || [])}
             </div>
         `;
     }
@@ -259,8 +275,8 @@ function renderForm() {
         // Genérico (Terrenos, Vantagens)
         fieldsHtml = `
             <div class="space-y-4">
-                <div class="form-field"><label class="text-xs text-slate-400">Nome</label><input type="text" id="f-nome" value="${escapeHTML(item.nome||'')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white" required></div>
-                <div class="form-field"><label class="text-xs text-slate-400">Descrição / Notas</label><textarea id="f-desc" rows="4" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white">${escapeHTML(item.descricao||item.efeito||item.anotacoesMestre||'')}</textarea></div>
+                <div class="form-field"><label class="text-xs text-slate-400">Nome</label><input type="text" id="f-nome" value="${escapeHTML(item.nome || '')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white" required></div>
+                <div class="form-field"><label class="text-xs text-slate-400">Descrição / Notas</label><textarea id="f-desc" rows="4" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white">${escapeHTML(item.descricao || item.efeito || item.anotacoesMestre || '')}</textarea></div>
             </div>
         `;
     }
@@ -315,7 +331,7 @@ function renderCheckboxList(title, name, cacheList, selectedIds) {
 // ------------------------------------------------------------------------------------
 function renderBalanceamento() {
     const isHab = boState.balTab === 'habilidades';
-    
+
     return `
         <div class="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 animate-fade-in flex flex-col h-[75vh]">
             <header class="flex justify-between items-end mb-6 border-b border-slate-700 pb-4">
@@ -336,7 +352,7 @@ function renderBalanceamento() {
 
 function renderBalHabilidades() {
     let items = boState.cache.habilidades;
-    
+
     // Filtros
     if (boState.balHabFilterClass) items = items.filter(i => i.restricaoClasses?.includes(boState.balHabFilterClass));
     if (boState.balHabFilterSub) items = items.filter(i => i.restricaoSubclasses?.includes(boState.balHabFilterSub));
@@ -351,15 +367,15 @@ function renderBalHabilidades() {
                 
                 <select onchange="window.boTools.filterBalHab('class', this.value)" class="bg-slate-800 border border-slate-600 px-3 py-2 rounded text-sm text-slate-300 outline-none focus:border-purple-500">
                     <option value="">Todas Classes</option>
-                    ${boState.cache.classes.map(c => `<option value="${c.id}" ${boState.balHabFilterClass===c.id?'selected':''}>${escapeHTML(c.nome)}</option>`).join('')}
+                    ${boState.cache.classes.map(c => `<option value="${c.id}" ${boState.balHabFilterClass === c.id ? 'selected' : ''}>${escapeHTML(c.nome)}</option>`).join('')}
                 </select>
 
                 <select onchange="window.boTools.filterBalHab('sub', this.value)" class="bg-slate-800 border border-slate-600 px-3 py-2 rounded text-sm text-slate-300 outline-none focus:border-purple-500">
                     <option value="">Todas Subclasses</option>
-                    ${boState.cache.subclasses.map(c => `<option value="${c.id}" ${boState.balHabFilterSub===c.id?'selected':''}>${escapeHTML(c.nome)}</option>`).join('')}
+                    ${boState.cache.subclasses.map(c => `<option value="${c.id}" ${boState.balHabFilterSub === c.id ? 'selected' : ''}>${escapeHTML(c.nome)}</option>`).join('')}
                 </select>
 
-                <button onclick="window.boTools.saveBalHab()" class="btn bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-6 rounded shadow-lg transition-colors ${pendingCount===0?'opacity-50 cursor-not-allowed':''}" ${pendingCount===0?'disabled':''}>
+                <button onclick="window.boTools.saveBalHab()" class="btn bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-6 rounded shadow-lg transition-colors ${pendingCount === 0 ? 'opacity-50 cursor-not-allowed' : ''}" ${pendingCount === 0 ? 'disabled' : ''}>
                     💾 Salvar Lote (${pendingCount})
                 </button>
             </div>
@@ -379,20 +395,20 @@ function renderBalHabilidades() {
                     <tbody class="divide-y divide-slate-800">
                         ${items.length === 0 ? '<tr><td colSpan="6" class="text-center p-8 text-slate-500">Nenhuma habilidade encontrada.</td></tr>' : ''}
                         ${items.map(h => {
-                            const e = boState.balHabEdits[h.id] || {};
-                            const isEdited = Object.keys(e).length > 0;
-                            const getVal = (field) => e[field] !== undefined ? e[field] : (h[field]||0);
-                            return `
+        const e = boState.balHabEdits[h.id] || {};
+        const isEdited = Object.keys(e).length > 0;
+        const getVal = (field) => e[field] !== undefined ? e[field] : (h[field] || 0);
+        return `
                                 <tr class="hover:bg-slate-800/50 transition-colors ${isEdited ? 'bg-purple-900/20' : ''}">
                                     <td class="p-2 border-r border-slate-700 font-bold text-slate-300">${escapeHTML(h.nome)}</td>
-                                    <td class="p-0 border-r border-slate-700"><input type="number" onchange="window.boTools.editBalHab('${h.id}','gastoMpUso',this.value)" value="${getVal('gastoMpUso')}" class="w-full bg-transparent border-0 text-center py-2 focus:bg-slate-800 outline-none ${e.gastoMpUso!==undefined?'text-purple-400 font-bold':'text-white'}"></td>
-                                    <td class="p-0 border-r border-slate-700"><input type="number" onchange="window.boTools.editBalHab('${h.id}','custoAprendizado',this.value)" value="${getVal('custoAprendizado')}" class="w-full bg-transparent border-0 text-center py-2 focus:bg-slate-800 outline-none ${e.custoAprendizado!==undefined?'text-purple-400 font-bold':'text-white'}"></td>
-                                    <td class="p-0 border-r border-slate-700"><input type="number" onchange="window.boTools.editBalHab('${h.id}','efeitoDanoBaseUsoHabilidade',this.value)" value="${getVal('efeitoDanoBaseUsoHabilidade')}" class="w-full bg-transparent border-0 text-center py-2 focus:bg-slate-800 outline-none ${e.efeitoDanoBaseUsoHabilidade!==undefined?'text-purple-400 font-bold':'text-white'}"></td>
-                                    <td class="p-0 border-r border-slate-700"><input type="number" onchange="window.boTools.editBalHab('${h.id}','quantidadeAlvos',this.value)" value="${getVal('quantidadeAlvos')}" class="w-full bg-transparent border-0 text-center py-2 focus:bg-slate-800 outline-none ${e.quantidadeAlvos!==undefined?'text-purple-400 font-bold':'text-white'}"></td>
-                                    <td class="p-0"><input type="number" onchange="window.boTools.editBalHab('${h.id}','movimentacaoHabilidade',this.value)" value="${getVal('movimentacaoHabilidade')}" class="w-full bg-transparent border-0 text-center py-2 focus:bg-slate-800 outline-none ${e.movimentacaoHabilidade!==undefined?'text-purple-400 font-bold':'text-white'}"></td>
+                                    <td class="p-0 border-r border-slate-700"><input type="number" onchange="window.boTools.editBalHab('${h.id}','gastoMpUso',this.value)" value="${getVal('gastoMpUso')}" class="w-full bg-transparent border-0 text-center py-2 focus:bg-slate-800 outline-none ${e.gastoMpUso !== undefined ? 'text-purple-400 font-bold' : 'text-white'}"></td>
+                                    <td class="p-0 border-r border-slate-700"><input type="number" onchange="window.boTools.editBalHab('${h.id}','custoAprendizado',this.value)" value="${getVal('custoAprendizado')}" class="w-full bg-transparent border-0 text-center py-2 focus:bg-slate-800 outline-none ${e.custoAprendizado !== undefined ? 'text-purple-400 font-bold' : 'text-white'}"></td>
+                                    <td class="p-0 border-r border-slate-700"><input type="number" onchange="window.boTools.editBalHab('${h.id}','efeitoDanoBaseUsoHabilidade',this.value)" value="${getVal('efeitoDanoBaseUsoHabilidade')}" class="w-full bg-transparent border-0 text-center py-2 focus:bg-slate-800 outline-none ${e.efeitoDanoBaseUsoHabilidade !== undefined ? 'text-purple-400 font-bold' : 'text-white'}"></td>
+                                    <td class="p-0 border-r border-slate-700"><input type="number" onchange="window.boTools.editBalHab('${h.id}','quantidadeAlvos',this.value)" value="${getVal('quantidadeAlvos')}" class="w-full bg-transparent border-0 text-center py-2 focus:bg-slate-800 outline-none ${e.quantidadeAlvos !== undefined ? 'text-purple-400 font-bold' : 'text-white'}"></td>
+                                    <td class="p-0"><input type="number" onchange="window.boTools.editBalHab('${h.id}','movimentacaoHabilidade',this.value)" value="${getVal('movimentacaoHabilidade')}" class="w-full bg-transparent border-0 text-center py-2 focus:bg-slate-800 outline-none ${e.movimentacaoHabilidade !== undefined ? 'text-purple-400 font-bold' : 'text-white'}"></td>
                                 </tr>
                             `;
-                        }).join('')}
+    }).join('')}
                     </tbody>
                 </table>
             </div>
@@ -403,9 +419,9 @@ function renderBalHabilidades() {
 function renderBalAtributos() {
     const isDef = boState.balAttrMode === 'definicao';
     const attrs = boState.cache.atributos || [];
-    
+
     let contentHtml = '';
-    
+
     if (isDef) {
         contentHtml = `
             <div class="flex flex-col gap-6">
@@ -424,7 +440,7 @@ function renderBalAtributos() {
                                 <tr class="hover:bg-slate-800/50">
                                     <td class="p-3 font-mono text-slate-400 text-xs">${a.id}</td>
                                     <td class="p-3 font-bold text-white">${escapeHTML(a.nome)}</td>
-                                    <td class="p-3 text-slate-300 text-xs">${escapeHTML(a.efeito||'')}</td>
+                                    <td class="p-3 text-slate-300 text-xs">${escapeHTML(a.efeito || '')}</td>
                                     <td class="p-3"><button onclick="window.boTools.deleteAttr('${a.id}')" class="text-red-500 hover:text-red-400"><i class="fas fa-trash"></i></button></td>
                                 </tr>
                             `).join('')}
@@ -437,19 +453,19 @@ function renderBalAtributos() {
         // MATRIZ DE INTERSECÇÃO
         const eixoList = boState.cache[boState.balAttrEixo] || [];
         const pendingCount = Object.keys(boState.balAttrEdits).length;
-        
+
         contentHtml = `
             <div class="flex flex-col h-full overflow-hidden">
                 <div class="flex justify-between items-center mb-4 bg-slate-900 p-4 rounded-xl border border-slate-700">
                     <div class="flex items-center gap-4">
                         <label class="text-sm font-bold text-slate-300 uppercase">Eixo Alvo:</label>
                         <select onchange="window.boTools.switchBalAttrEixo(this.value)" class="bg-slate-800 border border-slate-600 px-4 py-2 rounded text-amber-400 font-bold outline-none focus:border-purple-500">
-                            <option value="classes" ${boState.balAttrEixo==='classes'?'selected':''}>Classes</option>
-                            <option value="subclasses" ${boState.balAttrEixo==='subclasses'?'selected':''}>Subclasses</option>
-                            <option value="racas" ${boState.balAttrEixo==='racas'?'selected':''}>Raças</option>
+                            <option value="classes" ${boState.balAttrEixo === 'classes' ? 'selected' : ''}>Classes</option>
+                            <option value="subclasses" ${boState.balAttrEixo === 'subclasses' ? 'selected' : ''}>Subclasses</option>
+                            <option value="racas" ${boState.balAttrEixo === 'racas' ? 'selected' : ''}>Raças</option>
                         </select>
                     </div>
-                    <button onclick="window.boTools.saveBalAttr()" class="btn bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-6 rounded shadow-lg transition-colors ${pendingCount===0?'opacity-50 cursor-not-allowed':''}" ${pendingCount===0?'disabled':''}>
+                    <button onclick="window.boTools.saveBalAttr()" class="btn bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-6 rounded shadow-lg transition-colors ${pendingCount === 0 ? 'opacity-50 cursor-not-allowed' : ''}" ${pendingCount === 0 ? 'disabled' : ''}>
                         💾 Salvar Lote Matriz (${pendingCount})
                     </button>
                 </div>
@@ -468,15 +484,15 @@ function renderBalAtributos() {
                                 <tr class="hover:bg-slate-800/50 transition-colors">
                                     <td class="p-3 border-r border-slate-700 font-bold text-slate-300 sticky left-0 bg-slate-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.3)]">${escapeHTML(attr.nome)}<br><span class="text-[9px] font-normal text-slate-500 font-mono">${attr.id}</span></td>
                                     ${eixoList.map(item => {
-                                        const e = boState.balAttrEdits[item.id] || {};
-                                        const isEdited = e[attr.id] !== undefined;
-                                        const val = isEdited ? e[attr.id] : (item.modificadoresAtributos?.[attr.id] || 0);
-                                        return `
+            const e = boState.balAttrEdits[item.id] || {};
+            const isEdited = e[attr.id] !== undefined;
+            const val = isEdited ? e[attr.id] : (item.modificadoresAtributos?.[attr.id] || 0);
+            return `
                                             <td class="p-0 border-r border-slate-700 ${isEdited ? 'bg-amber-900/20' : ''}">
-                                                <input type="number" onchange="window.boTools.editBalAttr('${item.id}','${attr.id}',this.value)" value="${val}" class="w-full bg-transparent border-0 text-center py-3 focus:bg-slate-800 outline-none ${isEdited?'text-amber-400 font-bold':'text-white'}">
+                                                <input type="number" onchange="window.boTools.editBalAttr('${item.id}','${attr.id}',this.value)" value="${val}" class="w-full bg-transparent border-0 text-center py-3 focus:bg-slate-800 outline-none ${isEdited ? 'text-amber-400 font-bold' : 'text-white'}">
                                             </td>
                                         `;
-                                    }).join('')}
+        }).join('')}
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -502,11 +518,33 @@ function renderBalAtributos() {
 // ------------------------------------------------------------------------------------
 window.boTools = {
     // Ações Gerais
-    setFilter: (val) => { boState.filter = val; renderActiveView(); },
-    newItem: () => { boState.selectedItem = null; boState.activeTab = 'new'; renderActiveView(); },
+    setFilter: (val, cursorStart) => {
+        boState.filter = val;
+        renderActiveView();
+        // Recupera o foco e a posição do cursor após a tela renderizar para não interromper a digitação
+        setTimeout(() => {
+            const input = document.getElementById('bo-filter-text');
+            if (input && cursorStart !== undefined) {
+                input.focus();
+                input.setSelectionRange(cursorStart, cursorStart);
+            }
+        }, 0);
+    },
+
+    // Função para salvar o estado do select de filtro de classes
+    setFilterClass: (val) => {
+        boState.filterClass = val;
+        renderActiveView();
+    },
+
+    // Agora 'newItem' gera um item em branco {}, em vez de mudar a aba para 'new' que quebrava o script
+    newItem: () => { boState.selectedItem = {}; renderActiveView(); },
+
     editItem: (id) => { boState.selectedItem = boState.cache[boState.activeTab].find(i => i.id === id); renderActiveView(); },
-    cancelEdit: () => { boState.selectedItem = null; boState.pendingImage = null; boState.activeTab = document.querySelector('.bo-tab-btn.active').dataset.tab; renderActiveView(); },
-    
+
+    // CORREÇÃO: Limpamos apenas o item, sem tentar varrer o DOM buscando qual aba setar
+    cancelEdit: () => { boState.selectedItem = null; boState.pendingImage = null; renderActiveView(); },
+
     previewImage: (input) => {
         if (input.files && input.files[0]) {
             boState.pendingImage = input.files[0];
@@ -520,7 +558,7 @@ window.boTools = {
             await deleteDoc(doc(db, COLL_MAP[tab].c, id));
             alert("Registro apagado.");
             await loadAllData();
-        } catch(e) { alert("Erro ao apagar: " + e.message); }
+        } catch (e) { alert("Erro ao apagar: " + e.message); }
     },
 
     saveItem: async (e) => {
@@ -552,10 +590,10 @@ window.boTools = {
         } else if (['racas', 'classes', 'subclasses'].includes(tab)) {
             const pre = tab === 'racas' ? 'Raca' : (tab === 'classes' ? 'Classe' : 'Subclasse');
             payload[`bonusHp${pre}Base`] = getNum('f-hp'); payload[`bonusMp${pre}Base`] = getNum('f-mp');
-            payload[`bonusAtk${pre==='Classe'?'AtaqueClasse':(pre==='Subclasse'?'AtaqueSubclasse':'AtkRaca')}Base`] = getNum('f-atk');
-            payload[`bonusDef${pre==='Classe'?'esaClasse':(pre==='Subclasse'?'esaSubclasse':'Raca')}Base`] = getNum('f-def');
-            payload[`bonusEva${pre==='Classe'?'saoClasse':(pre==='Subclasse'?'saoSubclasse':'Raca')}Base`] = getNum('f-eva');
-            if(tab !== 'racas') payload.habilidadesDisponiveis = Array.from(document.querySelectorAll('input[name="cb_habs"]:checked')).map(c => c.value);
+            payload[`bonusAtk${pre === 'Classe' ? 'AtaqueClasse' : (pre === 'Subclasse' ? 'AtaqueSubclasse' : 'AtkRaca')}Base`] = getNum('f-atk');
+            payload[`bonusDef${pre === 'Classe' ? 'esaClasse' : (pre === 'Subclasse' ? 'esaSubclasse' : 'Raca')}Base`] = getNum('f-def');
+            payload[`bonusEva${pre === 'Classe' ? 'saoClasse' : (pre === 'Subclasse' ? 'saoSubclasse' : 'Raca')}Base`] = getNum('f-eva');
+            if (tab !== 'racas') payload.habilidadesDisponiveis = Array.from(document.querySelectorAll('input[name="cb_habs"]:checked')).map(c => c.value);
         } else if (tab === 'profissoes') {
             payload.descricao = getVal('f-desc'); payload.levelRequerido = getNum('f-lvl');
         } else if (tab === 'efeitos') {
@@ -572,21 +610,21 @@ window.boTools = {
         let finalUrl = oldImg;
         if (boState.pendingImage) {
             try {
-                if (oldImg && oldImg.includes('firebasestorage')) { try { await deleteObject(ref(storage, oldImg)); } catch(e){} }
+                if (oldImg && oldImg.includes('firebasestorage')) { try { await deleteObject(ref(storage, oldImg)); } catch (e) { } }
                 const blob = await compressImage(boState.pendingImage, 200, 200, 0.7);
                 const refName = `imagens_rpg/${tab}/${Date.now()}_icone.jpg`;
                 const storageRef = ref(storage, refName);
                 await uploadBytes(storageRef, blob);
                 finalUrl = await getDownloadURL(storageRef);
-            } catch(e) { console.error(e); }
+            } catch (e) { console.error(e); }
         }
         if (finalUrl) payload.imagemUrl = finalUrl;
 
         // Salvar
         try {
-            if (id) { await updateDoc(doc(db, collectionName, id), payload); } 
+            if (id) { await updateDoc(doc(db, collectionName, id), payload); }
             else { payload.criadoEm = serverTimestamp(); await setDoc(doc(collection(db, collectionName)), payload); }
-            
+
             btn.innerHTML = '<i class="fas fa-check mr-2"></i> Salvo!';
             btn.classList.replace('bg-emerald-600', 'bg-green-500');
             setTimeout(() => { boState.selectedItem = null; boState.pendingImage = null; boState.activeTab = tab; loadAllData(); }, 1000);
@@ -597,21 +635,21 @@ window.boTools = {
 
     // --- Ações do Balanceamento ---
     switchBalTab: (tab) => { boState.balTab = tab; renderActiveView(); },
-    
+
     // Hab
     filterBalHab: (type, val) => {
-        if(type==='search') boState.balHabSearch = val;
-        if(type==='class') boState.balHabFilterClass = val;
-        if(type==='sub') boState.balHabFilterSub = val;
+        if (type === 'search') boState.balHabSearch = val;
+        if (type === 'class') boState.balHabFilterClass = val;
+        if (type === 'sub') boState.balHabFilterSub = val;
         renderActiveView();
     },
     editBalHab: (id, field, val) => {
-        if(!boState.balHabEdits[id]) boState.balHabEdits[id] = {};
+        if (!boState.balHabEdits[id]) boState.balHabEdits[id] = {};
         boState.balHabEdits[id][field] = Number(val) || 0;
         renderActiveView();
     },
     saveBalHab: async () => {
-        if(!confirm("Salvar todas as alterações da matriz de habilidades?")) return;
+        if (!confirm("Salvar todas as alterações da matriz de habilidades?")) return;
         try {
             const batch = writeBatch(db);
             Object.entries(boState.balHabEdits).forEach(([id, fields]) => {
@@ -621,36 +659,36 @@ window.boTools = {
             alert("Balanceamento de Habilidades concluído!");
             boState.balHabEdits = {};
             loadAllData();
-        } catch(e) { alert("Erro no lote: "+e.message); }
+        } catch (e) { alert("Erro no lote: " + e.message); }
     },
 
     // Attr
     switchBalAttrMode: (mode) => { boState.balAttrMode = mode; renderActiveView(); },
     switchBalAttrEixo: (eixo) => { boState.balAttrEixo = eixo; boState.balAttrEdits = {}; renderActiveView(); },
-    
+
     saveAttrBase: async (e) => {
         e.preventDefault();
         const id = document.getElementById('attr-id').value.trim();
         const nome = document.getElementById('attr-nome').value.trim();
         const efeito = document.getElementById('attr-efeito').value.trim();
-        if(!id || !nome) return;
+        if (!id || !nome) return;
         try {
             await setDoc(doc(db, 'rpg_atributos', id), { nome, efeito, criadoEm: serverTimestamp() });
             loadAllData();
-        } catch(err) { alert("Erro: "+err.message); }
+        } catch (err) { alert("Erro: " + err.message); }
     },
     deleteAttr: async (id) => {
-        if(!confirm("Cuidado! Apagar atributo base?")) return;
+        if (!confirm("Cuidado! Apagar atributo base?")) return;
         await deleteDoc(doc(db, 'rpg_atributos', id));
         loadAllData();
     },
     editBalAttr: (itemId, attrId, val) => {
-        if(!boState.balAttrEdits[itemId]) boState.balAttrEdits[itemId] = {};
+        if (!boState.balAttrEdits[itemId]) boState.balAttrEdits[itemId] = {};
         boState.balAttrEdits[itemId][attrId] = Number(val) || 0;
         renderActiveView();
     },
     saveBalAttr: async () => {
-        if(!confirm("Salvar modificadores de atributos cruzados?")) return;
+        if (!confirm("Salvar modificadores de atributos cruzados?")) return;
         try {
             const batch = writeBatch(db);
             const collName = COLL_MAP[boState.balAttrEixo].c;
@@ -663,6 +701,6 @@ window.boTools = {
             alert("Matriz de atributos atualizada com sucesso!");
             boState.balAttrEdits = {};
             loadAllData();
-        } catch(e) { alert("Erro no lote: "+e.message); }
+        } catch (e) { alert("Erro no lote: " + e.message); }
     }
 };
