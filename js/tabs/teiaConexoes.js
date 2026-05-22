@@ -1,10 +1,14 @@
 /* ARQUIVO: js/tabs/teiaConexoes.js */
-import { db } from '../core/firebase.js';
+import { db, collection, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from '../core/firebase.js';
 
 let networkInstance = null;
 let scriptCarregado = false;
 
-// Função de renderização principal que o seu main.js vai chamar
+// Caches locais para evitar vazamento de memória com listeners aninhados
+let listaNpcsGlobal = [];
+let listaConexoesGlobal = [];
+
+// Função de renderização principal chamada pelo main.js
 export function renderTeiaConexoesTab(target) {
     if (!target) return;
 
@@ -83,11 +87,11 @@ export function renderTeiaConexoesTab(target) {
     }
 }
 
-// Expõe a função globalmente no objeto window caso seu projeto não use imports nativos no main.js
+// Expõe a função globalmente no objeto window caso seu projeto necessite dela no escopo global
 window.renderTeiaConexoesTab = renderTeiaConexoesTab;
 
 function configurarGrafoEFormularios() {
-    const isMaster = window.globalState?.isAdmin || false; // Validação se o jogador é o Mestre/Admin
+    const isMaster = window.globalState?.isAdmin || false;
     const adminPanel = document.getElementById('teia-admin-panel');
 
     if (isMaster && adminPanel) {
@@ -97,23 +101,23 @@ function configurarGrafoEFormularios() {
     const select1 = document.getElementById('teia-select-npc1');
     const select2 = document.getElementById('teia-select-npc2');
 
-    // Escuta NPCs em tempo real do Firebase
-    db.collection('rpg_Npcs').onSnapshot(snapNPCs => {
-        const listaNpcs = [];
+    // Escuta NPCs em tempo real do Firebase (Modular v9)
+    onSnapshot(collection(db, 'rpg_Npcs'), (snapNPCs) => {
+        listaNpcsGlobal = [];
 
         if (select1 && select2) {
             select1.innerHTML = '<option value="">Selecione...</option>';
             select2.innerHTML = '<option value="">Selecione...</option>';
         }
 
-        snapNPCs.forEach(doc => {
-            const data = doc.data();
+        snapNPCs.forEach(docSnap => {
+            const data = docSnap.data();
             const npc = {
-                id: doc.id,
+                id: docSnap.id,
                 nome: data.nome || data.name,
                 imagem: data.imagemUrl || data.imageUrls?.imagem1 || 'https://placehold.co/100x100/0f172a/d4af37?text=NPC'
             };
-            listaNpcs.push(npc);
+            listaNpcsGlobal.push(npc);
 
             if (select1 && select2) {
                 const opt1 = document.createElement('option');
@@ -126,24 +130,19 @@ function configurarGrafoEFormularios() {
             }
         });
 
-        // Escuta conexões em tempo real do Firebase
-        db.collection('rpg_NpcConexoes').onSnapshot(snapConexoes => {
-            const listaConexoes = [];
-            const conexoesParaListaAdmin = [];
+        atualizarEdesenhar();
+    });
 
-            snapConexoes.forEach(doc => {
-                const data = doc.data();
-                const conexao = { id: doc.id, ...data };
-                listaConexoes.push(conexao);
+    // Escuta conexões em tempo real do Firebase (Modular v9) de forma isolada (evita duplicações)
+    onSnapshot(collection(db, 'rpg_NpcConexoes'), (snapConexoes) => {
+        listaConexoesGlobal = [];
 
-                const npcOrigem = listaNpcs.find(n => n.id === data.npcId1)?.nome || 'Desconhecido';
-                const npcDestino = listaNpcs.find(n => n.id === data.npcId2)?.nome || 'Desconhecido';
-                conexoesParaListaAdmin.push({ id: doc.id, texto: `${npcOrigem} ➔ ${npcDestino} (${data.tipo})` });
-            });
-
-            atualizarListaAdmin(conexoesParaListaAdmin);
-            desenharGrafo(listaNpcs, listaConexoes);
+        snapConexoes.forEach(docSnap => {
+            const data = docSnap.data();
+            listaConexoesGlobal.push({ id: docSnap.id, ...data });
         });
+
+        atualizarEdesenhar();
     });
 
     const form = document.getElementById('form-nova-conexao');
@@ -161,12 +160,12 @@ function configurarGrafoEFormularios() {
             }
 
             try {
-                await db.collection('rpg_NpcConexoes').add({
+                await addDoc(collection(db, 'rpg_NpcConexoes'), {
                     npcId1,
                     npcId2,
                     tipo,
                     comentario,
-                    criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+                    criadoEm: serverTimestamp()
                 });
                 form.reset();
             } catch (err) {
@@ -174,6 +173,17 @@ function configurarGrafoEFormularios() {
             }
         };
     }
+}
+
+function atualizarEdesenhar() {
+    const conexoesParaListaAdmin = listaConexoesGlobal.map(c => {
+        const npcOrigem = listaNpcsGlobal.find(n => n.id === c.npcId1)?.nome || 'Desconhecido';
+        const npcDestino = listaNpcsGlobal.find(n => n.id === c.npcId2)?.nome || 'Desconhecido';
+        return { id: c.id, texto: `${npcOrigem} ➔ ${npcDestino} (${c.tipo})` };
+    });
+
+    atualizarListaAdmin(conexoesParaListaAdmin);
+    desenharGrafo(listaNpcsGlobal, listaConexoesGlobal);
 }
 
 function atualizarListaAdmin(conexoes) {
@@ -195,9 +205,13 @@ function atualizarListaAdmin(conexoes) {
                 <i class="fas fa-trash-alt"></i>
             </button>
         `;
-        div.querySelector('button').onclick = () => {
+        div.querySelector('button').onclick = async () => {
             if (confirm("Remover esta conexão?")) {
-                db.collection('rpg_NpcConexoes').doc(c.id).delete();
+                try {
+                    await deleteDoc(doc(db, 'rpg_NpcConexoes', c.id));
+                } catch (err) {
+                    console.error("Erro ao remover conexão:", err);
+                }
             }
         };
         container.appendChild(div);
