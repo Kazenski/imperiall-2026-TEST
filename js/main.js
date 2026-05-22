@@ -465,7 +465,8 @@ const MASTER_ARCHITECTURE = {
         { id: 'os-deuses', icon: 'fa-bolt', label: 'Os Deuses', render: () => window.showTab('os-deuses-content') },
         { id: 'lendas-mundo', icon: 'fa-book-dead', label: 'Lendas do Mundo', render: () => window.showTab('lendas-mundo-content') },
         { id: 'npcs-geral', icon: 'fa-users', label: 'NPCs Importantes', render: () => window.showTab('npcs-geral-content') },
-        { id: 'teia-conexoes-content', label: 'Teia de Conexões', icon: 'share-2' } // 'share-2' ou 'network' se assemelham a um grafo
+        { id: 'teia-conexoes', icon: 'fa-network-wired', label: 'Teia de Conexões', render: () => window.showTab('teia-conexoes-content') }
+
     ],
     'Manual e Regras': [
         { id: 'manual-geral', icon: 'fa-book-open', label: 'Bases e Manual', render: () => window.showTab('manual-geral-content') },
