@@ -8,7 +8,7 @@ Aqui está a visão geral da nossa futura arquitetura:
  ┣ 📜 style.css               (Todas as classes, variáveis :root e animações)
  ┗ 📂 js
  ┃  ┃ 
- ┃  ┗ 📜 main.js               (O Cérebro Central: Escuta o Login, Inicia os Caches, controla o Menu Superior, Relógio do Mundo e Troca as Abas)
+ ┃  ┣ 📜 main.js               (O Cérebro Central: Escuta o Login, Inicia os Caches, controla o Menu Superior, Relógio do Mundo e Troca as Abas)
  ┃  ┃
  ┃  ┣ 📂 core
  ┃  ┃  ┃
@@ -35,44 +35,47 @@ Aqui está a visão geral da nossa futura arquitetura:
  ┃  ┃  ┣ 📜 reputacao.js        (Aba 14: Prédios, Aliados, Timer de Coleta 10min, Armazém)
  ┃  ┃  ┣ 📜 comercio.js         (Aba 15: Loja, Câmbio de Moedas, Venda por Rank)
  ┃  ┃  ┣ 📜 mapa.js             (Aba 16: Leaflet, Fog of War, Marcador do Grupo)
- ┃  ┃  ┗ 📜 arena.js            (Aba 17: Motor do Grid Hexagonal, Turnos, Magias em Área)
+ ┃  ┃  ┣ 📜 teiaConexoes.js     (Aba 17: Visão gráfica das conexões entre NPCs, Famílias, Clãs, etc)
+ ┃  ┃  ┗ 📜 arena.js            (Aba 18: Motor do Grid Hexagonal, Turnos, Magias em Área)
  ┃  ┃
  ┃  ┣ 📂 backoffice
  ┃  ┃  ┃
  ┃  ┃  ┣ 📜 cadastrosAdmin.js     (Aba 1: Usado para o Admin registrar todo sistema)
- ┃  ┃  ┣ 📜 balanceamento.js     (Aba 2: O admin configura o balanceamento do sistema olhando o todo)
- ┃  ┃  ┗ 📜 backupGeral.js     (Aba 3: O Admin consegue fazer backup manual e selecionar quais elementos estão ativos ou não no sistema)
+ ┃  ┃  ┣ 📜 balanceamento.js      (Aba 2: O admin configura o balanceamento do sistema olhando o todo)
+ ┃  ┃  ┗ 📜 backupGeral.js        (Aba 3: O Admin consegue fazer backup manual e selecionar quais elementos estão ativos ou não no sistema)
  ┃  ┃  
  ┃  ┣ 📂 manualRegras
  ┃  ┃  ┃
- ┃  ┃  ┣ 📜 manual.js     (Aba 1: Manual de regras do sistema)
- ┃  ┃  ┣ 📜 racas.js     (Aba 2: Raças cadastradas)
- ┃  ┃  ┣ 📜 classes.js     (Aba 3: Classes cadastradas)
- ┃  ┃  ┣ 📜 subclasses.js     (Aba 4: Subclasses cadastradas)
- ┃  ┃  ┣ 📜 habilidades.js     (Aba 5: Habilidades cadastradas)
- ┃  ┃  ┗ 📜 profissoes.js     (Aba 6: Sistema de Profissões cadastradas)
+ ┃  ┃  ┣ 📜 manual.js          (Aba 1: a ser implementado)
+ ┃  ┃  ┣ 📜 manualGeral.js     (Aba 2: Manual de regras detalhadas do sistema)
+ ┃  ┃  ┣ 📜 racas.js           (Aba 3: Raças cadastradas)
+ ┃  ┃  ┣ 📜 classes.js         (Aba 4: Classes cadastradas)
+ ┃  ┃  ┣ 📜 subclasses.js      (Aba 5: Subclasses cadastradas)
+ ┃  ┃  ┣ 📜 habilidades.js     (Aba 6: Habilidades cadastradas)
+ ┃  ┃  ┗ 📜 profissoes.js      (Aba 7: Sistema de Profissões cadastradas)
  ┃  ┃   
  ┃  ┣ 📂 aoMestre
  ┃  ┃  ┃
- ┃  ┃  ┣ 📜 comandos.js     (Aba 1: Editor da Ficha, Uploads de Imagem, Objetivos, História)
- ┃  ┃  ┣ 📜 cadastroNpcs.js     (Aba 2: Editor da Ficha, Uploads de Imagem, Objetivos, História)
- ┃  ┃  ┣ 📜 cadastroCrafts.js     (Aba 3: Editor da Ficha, Uploads de Imagem, Objetivos, História)
- ┃  ┃  ┣ 📜 cadastroMonstrosSeres.js     (Aba 4: Editor da Ficha, Uploads de Imagem, Objetivos, História)
- ┃  ┃  ┣ 📜 cadastroItens.js     (Aba 5: Editor da Ficha, Uploads de Imagem, Objetivos, História)
- ┃  ┃  ┗ 📜 lorePersonagens.js     (Aba 6: Editor da Ficha, Uploads de Imagem, Objetivos, História)
+ ┃  ┃  ┣ 📜 comandos.js                  (Aba 1: Editor da Ficha, Uploads de Imagem, Objetivos, História)
+ ┃  ┃  ┣ 📜 cadastroNpcs.js              (Aba 2: Cadastro de NPCS no jogo)
+ ┃  ┃  ┣ 📜 cadastroCrafts.js            (Aba 3: Cadastro de Crafts, ou itens possíveis de ser construídos por profissões no jogo)
+ ┃  ┃  ┣ 📜 cadastroMonstrosSeres.js     (Aba 4: Cadastro de monstros/inimigos no jogo)
+ ┃  ┃  ┣ 📜 cadastroItens.js             (Aba 5: Cadastro de itens gerais e equipamentos prontos no jogo)
+ ┃  ┃  ┣ 📜 dropsMonstros.js             (Aba 6: Listagem e cadastro de monstros para o Mestre usar em campanhas, incluindo drop automatizado)
+ ┃  ┃  ┗ 📜 lorePersonagens.js           (Aba 7: Visão geral dos personagens da campanha, com imagem, descrição, história, etc)
  ┃  ┃   
  ┃  ┣ 📂 aoJogador  
  ┃  ┃  ┃
- ┃  ┃  ┣ 📜 simularFicha.js     (Aba 1: Aqui o jogador pode simular seu personagem antes de criá-lo)
+ ┃  ┃  ┣ 📜 simularFicha.js        (Aba 1: Aqui o jogador pode simular seu personagem antes de criá-lo)
  ┃  ┃  ┣ 📜 fichaPersonagem.js     (Aba 2: Aqui abre toda lógica das tabs "📂 tabs" citada acima)
- ┃  ┃  ┗ 📜 galeriaImagens.js     (Aba 3: Compendium de imagens do sistema/mestres)
+ ┃  ┃  ┗ 📜 galeriaImagens.js      (Aba 3: Compendium de imagens do sistema/mestres)
  ┃  ┃ 
  ┃  ┣ 📂 oMundo 
  ┃  ┃  ┃
- ┃  ┃  ┣ 📜 conhecaMundo.js  (Aba 1: Aqui terá a história hardcoded do mundo e mapas da pasta mapas)
- ┃  ┃  ┣ 📜 osDeuses.js    (Aba 2: Aqui teremos o compendium das entidades do mundo)
- ┃  ┃  ┣ 📜 lendasMundo.js    (Aba 3: Ctema/mestres)
- ┃  ┃  ┣ 📜 npcsGeral.js    (Aba 4: Ctema/mestres)
+ ┃  ┃  ┣ 📜 conhecaMundo.js    (Aba 1: Aqui terá a história hardcoded do mundo e mapas da pasta mapas)
+ ┃  ┃  ┣ 📜 osDeuses.js        (Aba 2: Aqui teremos o compendium das entidades do mundo)
+ ┃  ┃  ┣ 📜 lendasMundo.js     (Aba 3: Ctema/mestres)
+ ┃  ┃  ┣ 📜 npcsGeral.js       (Aba 4: Ctema/mestres)
  ┃  ┃  
  ┃  ┣ 📂 atualizacoes
  ┃  ┃  ┃
@@ -88,6 +91,27 @@ Aqui está a visão geral da nossa futura arquitetura:
     ┃  ┃
     ┃  ┗ 📜 background-inicio.png    (Imagem padrão esperada para o background da página inicial)
     ┃ 
-    ┣ 📂 trash     (a ser implementado)
-    ┃
-    ┣ 📂 mapas    (imagens do mapa geral)
+    ┣ 📂 favicon     (pasta para o favicon do site)
+    ┃  ┃
+    ┃  ┗ 📜 faviconKazenski.png    (Imagem padrão favicon)
+    ┃ 
+    ┣ 📂 mapas     (pasta de imagens dos mapas usados na página do Mundo)
+    ┃  ┃
+    ┃  ┣ 📜 mapas1.webp   
+    ┃  ┣ 📜 mapas2.webp 
+    ┃  ┣ 📜 mapas3.webp 
+    ┃  ┣ 📜 mapas4.webp 
+    ┃  ┣ 📜 mapas5.webp 
+    ┃  ┣ 📜 mapas6.webp 
+    ┃  ┣ 📜 mapas7.webp 
+    ┃  ┣ 📜 mapas8.webp 
+    ┃  ┣ 📜 mapas9.webp 
+    ┃  ┣ 📜 mapas10.webp 
+    ┃  ┣ 📜 mapas11.webp 
+    ┃  ┣ 📜 mapas12.webp 
+    ┃  ┗ 📜 mapas13.webp 
+    ┃ 
+    ┗ 📂 usoGeralSite     (pasta de imagens gerais)  bardo-conheca-o-mundo.png
+       ┃
+       ┗ 📜 bardo-conheca-o-mundo.png
+
