@@ -223,42 +223,90 @@ function renderForm() {
             </div>
         `;
     }
-    else if (['racas', 'classes', 'subclasses'].includes(tab)) {
-        const isRaca = tab === 'racas';
-        const prefix = isRaca ? 'Raca' : (tab === 'classes' ? 'Classe' : 'Subclasse');
+    else if (tab === 'racas') {
         fieldsHtml = `
             <div class="space-y-4">
-                <div class="form-field"><label class="text-xs text-slate-400">Nome</label><input type="text" id="f-nome" value="${escapeHTML(item.nome || '')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white" required></div>
+                <div class="form-field"><label class="text-xs text-slate-400">Nome da Raça</label><input type="text" id="f-nome" value="${escapeHTML(item.nome || '')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white" required></div>
                 
-                ${isRaca ? `
                 <div class="grid grid-cols-2 gap-4 mt-2">
-                    <div class="form-field"><label class="text-xs text-slate-400">Tipo de Raça</label><input type="text" id="f-racaTipo" value="${escapeHTML(item.racaTipo || '')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white" placeholder="Ex: Humanóide"></div>
+                    <div class="form-field"><label class="text-xs text-slate-400">Tipos (IDs separados por vírgula)</label><input type="text" id="f-tipos" value="${(item.tipos || []).join(', ')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white" placeholder="Ex: humanoide, fera"></div>
                     <div class="form-field"><label class="text-xs text-slate-400">Movimentação (m)</label><input type="number" id="f-mov" value="${item.movimentacao || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
                 </div>
-                <div class="form-field"><label class="text-xs text-slate-400">Habilidade Base da Raça</label><input type="text" id="f-habRaca" value="${escapeHTML(item.habilidadeRacaBase || '')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
-                <div class="form-field"><label class="text-xs text-slate-400">História / Descrição da Raça</label><textarea id="f-historia" rows="3" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white">${escapeHTML(item.historiaRaca || '')}</textarea></div>
-                ` : ''}
-
-                <h4 class="text-amber-500 font-bold text-sm mt-4 border-b border-slate-700 pb-1">Bônus Base</h4>
-                <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">HP</label><input type="number" id="f-hp" value="${item[`bonusHp${prefix}Base`] || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
-                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">MP</label><input type="number" id="f-mp" value="${item[`bonusMp${prefix}Base`] || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
-                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">ATK</label><input type="number" id="f-atk" value="${item[`bonusAtk${prefix === 'Classe' ? 'AtaqueClasse' : (prefix === 'Subclasse' ? 'AtaqueSubclasse' : 'AtkRaca')}Base`] || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
-                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">DEF</label><input type="number" id="f-def" value="${item[`bonusDef${prefix === 'Classe' ? 'esaClasse' : (prefix === 'Subclasse' ? 'esaSubclasse' : 'Raca')}Base`] || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
-                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">EVA</label><input type="number" id="f-eva" value="${item[`bonusEva${prefix === 'Classe' ? 'saoClasse' : (prefix === 'Subclasse' ? 'saoSubclasse' : 'Raca')}Base`] || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
-                </div>
                 
-                ${!isRaca ? renderCheckboxList('Habilidades Iniciais', 'cb_habs', boState.cache.habilidades, item.habilidadesDisponiveis || []) : ''}
-                ${isRaca ? renderCheckboxList('Vantagens Naturais', 'cb_vantagens', boState.cache.vantagens, item.vantagensHabilidadesNaturais || []) : ''}
+                <div class="form-field"><label class="text-xs text-slate-400">Habilidade Racial (Dádiva)</label><textarea id="f-habRacial" rows="2" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white">${escapeHTML(item.habilidadeRacial || '')}</textarea></div>
+                <div class="form-field"><label class="text-xs text-slate-400">Cultura e Sociedade</label><textarea id="f-cultura" rows="3" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white">${escapeHTML(item.culturaSociedade || '')}</textarea></div>
+                <div class="form-field"><label class="text-xs text-slate-400">Lendas e Mitos</label><textarea id="f-lendas" rows="3" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white">${escapeHTML(item.lendasConhecidas || '')}</textarea></div>
+
+                <h4 class="text-amber-500 font-bold text-sm mt-4 border-b border-slate-700 pb-1">Bônus Base da Raça</h4>
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">HP Base</label><input type="number" id="f-hp" value="${item.hpRacialBase || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">MP Base</label><input type="number" id="f-mp" value="${item.mpRacialBase || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">ATK Bônus</label><input type="number" id="f-atk" value="${item.bonusAtkRacaBase || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">DEF Bônus</label><input type="number" id="f-def" value="${item.bonusDefRacaBase || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">EVA Bônus</label><input type="number" id="f-eva" value="${item.bonusEvaRacaBase || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                </div>
+            </div>
+        `;
+    }
+    else if (tab === 'classes') {
+        fieldsHtml = `
+            <div class="space-y-4">
+                <div class="form-field"><label class="text-xs text-slate-400">Nome da Classe</label><input type="text" id="f-nome" value="${escapeHTML(item.nome || '')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white" required></div>
+                <div class="form-field"><label class="text-xs text-slate-400">Dádiva (Habilidade Especial da Classe)</label><textarea id="f-habClasse" rows="3" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white">${escapeHTML(item.habilidadeEspecialClasse || '')}</textarea></div>
+                
+                <h4 class="text-amber-500 font-bold text-sm mt-4 border-b border-slate-700 pb-1">Atributos Iniciais</h4>
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">HP Base</label><input type="number" id="f-hp" value="${item.bonusHpClasseBase || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">MP Base</label><input type="number" id="f-mp" value="${item.bonusMpClasseBase || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">ATK Base</label><input type="number" id="f-atk" value="${item.bonusAtaqueClasseBase || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">DEF Base</label><input type="number" id="f-def" value="${item.bonusDefesaClasseBase || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">EVA Base</label><input type="number" id="f-eva" value="${item.bonusEvasaoClasseBase || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                </div>
+
+                <h4 class="text-amber-500 font-bold text-sm mt-4 border-b border-slate-700 pb-1">Classificação (Gráfico Radar de 1 a 5)</h4>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">Escalabilidade</label><input type="number" id="f-class-esc" value="${item.classificacao?.escalabilidade || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">Facilidade</label><input type="number" id="f-class-fac" value="${item.classificacao?.facilidade || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">Utilidade em Grupo</label><input type="number" id="f-class-uti" value="${item.classificacao?.utilidadeGrupo || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">Controle de Grupo</label><input type="number" id="f-class-con" value="${item.classificacao?.controleGrupo || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">Defesa</label><input type="number" id="f-class-def" value="${item.classificacao?.capacidadeDefesa || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">Poder de Ataque</label><input type="number" id="f-class-atk" value="${item.classificacao?.poderAtaque || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                </div>
+
+                ${renderCheckboxList('Subclasses Vinculadas (Caminhos)', 'cb_subclasses', boState.cache.subclasses, item.subclasses || [])}
+            </div>
+        `;
+    }
+    else if (tab === 'subclasses') {
+        fieldsHtml = `
+            <div class="space-y-4">
+                <div class="form-field"><label class="text-xs text-slate-400">Nome da Subclasse</label><input type="text" id="f-nome" value="${escapeHTML(item.nome || '')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white" required></div>
+                <div class="form-field"><label class="text-xs text-slate-400">Dádiva (Habilidade Especial da Subclasse)</label><textarea id="f-habSubclasse" rows="3" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white">${escapeHTML(item.habilidadeEspecialSubclasse || '')}</textarea></div>
+                
+                <h4 class="text-amber-500 font-bold text-sm mt-4 border-b border-slate-700 pb-1">Bônus de Especialização</h4>
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">HP Bônus</label><input type="number" id="f-hp" value="${item.bonusHpSubclasseBase || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">MP Bônus</label><input type="number" id="f-mp" value="${item.bonusMpSubclasseBase || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">ATK Bônus</label><input type="number" id="f-atk" value="${item.bonusAtaqueSubclasseBase || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">DEF Bônus</label><input type="number" id="f-def" value="${item.bonusDefesaSubclasseBase || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                    <div class="form-field"><label class="text-[10px] text-slate-400 uppercase">EVA Bônus</label><input type="number" id="f-eva" value="${item.bonusEvasaoSubclasseBase || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                </div>
             </div>
         `;
     }
     else if (tab === 'profissoes') {
+        const jsonMissoes = JSON.stringify(item.missoesEvolucao || {}, null, 2);
         fieldsHtml = `
             <div class="space-y-4">
-                <div class="form-field"><label class="text-xs text-slate-400">Nome</label><input type="text" id="f-nome" value="${escapeHTML(item.nome || '')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white" required></div>
-                <div class="form-field"><label class="text-xs text-slate-400">Descrição</label><textarea id="f-desc" rows="3" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white">${escapeHTML(item.descricao || '')}</textarea></div>
+                <div class="form-field"><label class="text-xs text-slate-400">Nome da Profissão</label><input type="text" id="f-nome" value="${escapeHTML(item.nome || '')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white" required></div>
+                <div class="form-field"><label class="text-xs text-slate-400">Descrição do Ofício</label><textarea id="f-desc" rows="3" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white">${escapeHTML(item.descricao || '')}</textarea></div>
                 <div class="form-field"><label class="text-xs text-slate-400">Level Requerido</label><input type="number" id="f-lvl" value="${item.levelRequerido || 1}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
+                
+                <div class="form-field mt-4 border border-slate-600 rounded-lg p-4 bg-slate-900/50">
+                    <label class="text-xs text-amber-500 font-bold uppercase tracking-widest block mb-2">Missões de Evolução (Objeto JSON)</label>
+                    <p class="text-[10px] text-slate-400 mb-2 font-mono">Use estritamente o formato JSON. Ex: {"1": {"nomeQuest": "...", "descricaoQuest": "...", "dicasMestre": "..."}}</p>
+                    <textarea id="f-missoes" rows="8" class="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sky-300 font-mono text-sm leading-relaxed" placeholder='{"1": {"nomeQuest": "", "descricaoQuest": "", "dicasMestre": ""}}'>${escapeHTML(jsonMissoes)}</textarea>
+                </div>
             </div>
         `;
     }
@@ -590,7 +638,7 @@ window.boTools = {
 
         let payload = { nome: getVal('f-nome'), atualizadoEm: serverTimestamp() };
 
-        // Preenchimento Específico
+        // Preenchimento Específico isolado para garantir os Nomes Exatos do Firebase
         if (tab === 'habilidades') {
             payload.tipoEfeitoHabildiade = getVal('f-tipoEf'); payload.tipoAcaoHabildiade = getVal('f-tipoAc');
             payload.descricaoEfeito = getVal('f-desc'); payload.duracaoHabilidade = getVal('f-dur');
@@ -599,27 +647,61 @@ window.boTools = {
             payload.custoAprendizado = getNum('f-ap');
             payload.restricaoClasses = Array.from(document.querySelectorAll('input[name="cb_classes"]:checked')).map(c => c.value);
             payload.restricaoSubclasses = Array.from(document.querySelectorAll('input[name="cb_subs"]:checked')).map(c => c.value);
-        } else if (['racas', 'classes', 'subclasses'].includes(tab)) {
-            const pre = tab === 'racas' ? 'Raca' : (tab === 'classes' ? 'Classe' : 'Subclasse');
+        } else if (tab === 'racas') {
+            payload.hpRacialBase = getNum('f-hp');
+            payload.mpRacialBase = getNum('f-mp');
+            payload.bonusAtkRacaBase = getNum('f-atk');
+            payload.bonusDefRacaBase = getNum('f-def');
+            payload.bonusEvaRacaBase = getNum('f-eva');
 
-            // Atributos base compartilhados entre Raças, Classes e Subclasses
-            payload[`bonusHp${pre}Base`] = getNum('f-hp'); payload[`bonusMp${pre}Base`] = getNum('f-mp');
-            payload[`bonusAtk${pre === 'Classe' ? 'AtaqueClasse' : (pre === 'Subclasse' ? 'AtaqueSubclasse' : 'AtkRaca')}Base`] = getNum('f-atk');
-            payload[`bonusDef${pre === 'Classe' ? 'esaClasse' : (pre === 'Subclasse' ? 'esaSubclasse' : 'Raca')}Base`] = getNum('f-def');
-            payload[`bonusEva${pre === 'Classe' ? 'saoClasse' : (pre === 'Subclasse' ? 'saoSubclasse' : 'Raca')}Base`] = getNum('f-eva');
+            payload.habilidadeRacial = getVal('f-habRacial');
+            payload.culturaSociedade = getVal('f-cultura');
+            payload.lendasConhecidas = getVal('f-lendas');
+            payload.movimentacao = getNum('f-mov');
 
-            // Tratamento específico de propriedades exclusivas
-            if (tab !== 'racas') {
-                payload.habilidadesDisponiveis = Array.from(document.querySelectorAll('input[name="cb_habs"]:checked')).map(c => c.value);
-            } else {
-                payload.racaTipo = getVal('f-racaTipo');
-                payload.movimentacao = getNum('f-mov');
-                payload.habilidadeRacaBase = getVal('f-habRaca');
-                payload.historiaRaca = getVal('f-historia');
-                payload.vantagensHabilidadesNaturais = Array.from(document.querySelectorAll('input[name="cb_vantagens"]:checked')).map(c => c.value);
-            }
+            // O campo Tipos no seu banco é um Array de IDs, capturado como string separada por vírgula no form
+            payload.tipos = getVal('f-tipos').split(',').map(s => s.trim()).filter(s => s !== '');
+        } else if (tab === 'classes') {
+            payload.bonusHpClasseBase = getNum('f-hp');
+            payload.bonusMpClasseBase = getNum('f-mp');
+            payload.bonusAtaqueClasseBase = getNum('f-atk');
+            payload.bonusDefesaClasseBase = getNum('f-def');
+            payload.bonusEvasaoClasseBase = getNum('f-eva');
+
+            payload.habilidadeEspecialClasse = getVal('f-habClasse');
+            payload.subclasses = Array.from(document.querySelectorAll('input[name="cb_subclasses"]:checked')).map(c => c.value);
+
+            // O campo de classificação gera o seu Radar de 1 a 5
+            payload.classificacao = {
+                escalabilidade: getNum('f-class-esc'),
+                facilidade: getNum('f-class-fac'),
+                utilidadeGrupo: getNum('f-class-uti'),
+                controleGrupo: getNum('f-class-con'),
+                capacidadeDefesa: getNum('f-class-def'),
+                poderAtaque: getNum('f-class-atk')
+            };
+        } else if (tab === 'subclasses') {
+            payload.bonusHpSubclasseBase = getNum('f-hp');
+            payload.bonusMpSubclasseBase = getNum('f-mp');
+            payload.bonusAtaqueSubclasseBase = getNum('f-atk');
+            payload.bonusDefesaSubclasseBase = getNum('f-def');
+            payload.bonusEvasaoSubclasseBase = getNum('f-eva');
+
+            payload.habilidadeEspecialSubclasse = getVal('f-habSubclasse');
         } else if (tab === 'profissoes') {
-            payload.descricao = getVal('f-desc'); payload.levelRequerido = getNum('f-lvl');
+            payload.descricao = getVal('f-desc');
+            payload.levelRequerido = getNum('f-lvl');
+
+            // Lendo as Missões de Evolução como JSON estruturado para renderizar os acordeões em profissoes.js
+            try {
+                const jsonText = getVal('f-missoes').trim();
+                payload.missoesEvolucao = jsonText ? JSON.parse(jsonText) : {};
+            } catch (err) {
+                alert("ERRO: O texto inserido em Missões de Evolução não é um JSON válido. Verifique a estrutura { } do objeto e tente novamente. O registro não foi salvo.");
+                btn.innerHTML = oldHtml;
+                btn.disabled = false;
+                return; // Interrompe o salvamento para evitar corromper o banco
+            }
         } else if (tab === 'efeitos') {
             payload.descricao = getVal('f-desc'); payload.aplicacao = getVal('f-apl');
             payload.valor = payload.aplicacao === 'Negativo' ? -Math.abs(getNum('f-val')) : Math.abs(getNum('f-val'));
