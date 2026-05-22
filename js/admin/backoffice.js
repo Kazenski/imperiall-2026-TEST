@@ -717,7 +717,7 @@ window.boTools = {
         if (boState.pendingImage) {
             try {
                 if (oldImg && oldImg.includes('firebasestorage')) { try { await deleteObject(ref(storage, oldImg)); } catch (e) { } }
-                const blob = await compressImage(boState.pendingImage, 200, 200, 0.7);
+                const blob = await compressImage(boState.pendingImage, 600, 600, 0.9);
                 const refName = `imagens_rpg/${tab}/${Date.now()}_icone.jpg`;
                 const storageRef = ref(storage, refName);
                 await uploadBytes(storageRef, blob);
