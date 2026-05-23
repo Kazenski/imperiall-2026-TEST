@@ -1,7 +1,7 @@
 // Arquivo: js/aoMestre/cadastroSetsEspeciais.js
 
 // Função para renderizar a tela de cadastro de Sets
-function renderCadastroSetsEspeciais() {
+export function renderCadastroSetsEspeciaisTab() {
     const content = document.getElementById('main-content');
     content.innerHTML = `
         <div class="cadastro-container">
@@ -96,7 +96,7 @@ async function listarSetsCadastrados() {
     }
 }
 
-async function deletarSet(id) {
+window.deletarSet = async function (id) {
     if (confirm("Tem certeza que deseja excluir este set?")) {
         await db.collection("setsEspeciais").doc(id).delete();
         listarSetsCadastrados();

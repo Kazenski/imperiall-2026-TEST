@@ -500,7 +500,11 @@ const MASTER_ARCHITECTURE = {
 
     ],
     'Painel Admin': [
+
+        { id: 'cadastro-npcs', icon: 'fa-user-plus', label: 'Cad. NPCs', render: () => window.showTab('cadastro-npcs-content') },
         { id: 'drops-monstros', icon: 'fa-gift', label: 'Drops Monstros', render: () => window.showTab('drops-monstros-content'), requiresAdmin: true },
+        { id: 'cadastro-itens', icon: 'fa-gem', label: 'Cad. Itens', render: () => window.showTab('cadastro-itens-content') },
+        { id: 'cadastro-sets-especiais', icon: 'fa-layer-group', label: 'Cad. Sets Especiais', render: () => window.showTab('cadastro-sets-especiais-content') },
         { id: 'backoffice', icon: 'fa-database', label: 'Backoffice', render: () => window.showTab('backoffice-content'), requiresAdmin: true },
         { id: 'backups', icon: 'fa-server', label: 'Backups', render: () => window.showTab('backups-content'), requiresAdmin: true },
         { id: 'cadastro-constelacoes', icon: 'fa-project-diagram', label: 'Matriz de Estrelas', render: () => window.showTab('cadastro-constelacoes-content'), requiresAdmin: true },
