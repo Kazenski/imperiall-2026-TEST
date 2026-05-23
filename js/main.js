@@ -998,6 +998,7 @@ async function gatherAllCharacterData(charId) {
                 }
             }
         }
+
     });
     // === INSERÇÃO DOS BÔNUS DOS SETS DE EQUIPAMENTO ===
     if (globalState.cache.setsEspeciais && globalState.cache.setsEspeciais.size > 0) {
