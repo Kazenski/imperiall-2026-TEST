@@ -1,8 +1,11 @@
-// Arquivo: js/aoMestre/cadastroSetsEspeciais.js
-
 // Função para renderizar a tela de cadastro de Sets
 export function renderCadastroSetsEspeciaisTab() {
-    const content = document.getElementById('main-content');
+    // Aponta para a div correta que criamos no index.html
+    const content = document.getElementById('cadastro-sets-especiais-content');
+
+    // se ele não achar a div por algum motivo, ele não quebra a tela inteira
+    if (!content) return console.error("Div do cadastro de sets não encontrada!");
+
     content.innerHTML = `
         <div class="cadastro-container">
             <h2>Cadastrar Novo Set de Equipamento</h2>
