@@ -433,40 +433,48 @@ export function renderSlotsEquipamento() {
 function calcularERenderizarBonusDeSet(equipados) {
     let htmlBonusArea = '';
     let temBonusAtivo = false;
-    let statusExtrasTotais = { hp: 0, atk: 0, def: 0 };
+    let statusExtrasTotais = { hp: 0, mp: 0, atk: 0, def: 0, eva: 0, apMax: 0, movimento: 0, iniciativa: 0 };
 
-    // 1. Pegamos os objetos completos dos itens que o jogador está vestindo no momento
+    // Pega itens inteiros equipados
     const itensAtualmenteEquipados = Object.values(equipados)
         .map(itemId => globalState.cache.itens.get(itemId))
         .filter(item => item !== undefined);
 
-    // 2. Loopamos todos os sets que você cadastrou no banco de dados
+    // Avalia Sets Cadastrados
     listaDeSetsGlobais.forEach(set => {
         let contadorPecas = 0;
 
-        // Verifica quantos itens equipados possuem o sufixo cadastrado no nome
         itensAtualmenteEquipados.forEach(item => {
             if (item && item.nome && item.nome.toLowerCase().includes(set.sufixo.toLowerCase())) {
                 contadorPecas++;
             }
         });
 
-        // 3. Se o jogador tiver itens suficientes do set, ativa o bônus na interface
         if (contadorPecas >= set.pecasNecessarias) {
             temBonusAtivo = true;
             statusExtrasTotais.hp += set.bonus.hp || 0;
+            statusExtrasTotais.mp += set.bonus.mp || 0;
             statusExtrasTotais.atk += set.bonus.atk || 0;
             statusExtrasTotais.def += set.bonus.def || 0;
+            statusExtrasTotais.eva += set.bonus.eva || 0;
+            statusExtrasTotais.apMax += set.bonus.apMax || 0;
+            statusExtrasTotais.movimento += set.bonus.movimento || 0;
+            statusExtrasTotais.iniciativa += set.bonus.iniciativa || 0;
 
             htmlBonusArea += `
-                <div class="bg-red-950/40 border border-red-800/50 rounded p-2 text-left shadow-inner">
+                <div class="bg-red-950/40 border border-red-800/50 rounded p-2 text-left shadow-inner mb-2">
                     <span class="text-[10px] text-amber-500 font-bold block uppercase tracking-widest">[Set: ${set.sufixo}]</span>
                     <span class="text-[8px] text-slate-400 font-bold block mb-1">Peças equipadas: <span class="text-white">${contadorPecas}/${set.pecasNecessarias}</span></span>
-                    <span class="text-[9px] text-red-300 font-mono block space-x-1">
-                        ${set.bonus.hp > 0 ? `<span class="bg-red-900/50 px-1 rounded">+${set.bonus.hp} HP</span>` : ''}
-                        ${set.bonus.atk > 0 ? `<span class="bg-red-900/50 px-1 rounded">+${set.bonus.atk} ATK</span>` : ''}
-                        ${set.bonus.def > 0 ? `<span class="bg-red-900/50 px-1 rounded">+${set.bonus.def} DEF</span>` : ''}
-                    </span>
+                    <div class="flex flex-wrap gap-1 mt-1.5">
+                        ${set.bonus.hp > 0 ? `<span class="bg-red-900/50 text-red-300 font-mono text-[9px] px-1 rounded border border-red-900/50">+${set.bonus.hp} HP</span>` : ''}
+                        ${set.bonus.mp > 0 ? `<span class="bg-blue-900/50 text-blue-300 font-mono text-[9px] px-1 rounded border border-blue-900/50">+${set.bonus.mp} MP</span>` : ''}
+                        ${set.bonus.atk > 0 ? `<span class="bg-amber-900/50 text-amber-300 font-mono text-[9px] px-1 rounded border border-amber-900/50">+${set.bonus.atk} ATK</span>` : ''}
+                        ${set.bonus.def > 0 ? `<span class="bg-sky-900/50 text-sky-300 font-mono text-[9px] px-1 rounded border border-sky-900/50">+${set.bonus.def} DEF</span>` : ''}
+                        ${set.bonus.eva > 0 ? `<span class="bg-emerald-900/50 text-emerald-300 font-mono text-[9px] px-1 rounded border border-emerald-900/50">+${set.bonus.eva} EVA</span>` : ''}
+                        ${set.bonus.apMax > 0 ? `<span class="bg-purple-900/50 text-purple-300 font-mono text-[9px] px-1 rounded border border-purple-900/50">+${set.bonus.apMax} AP</span>` : ''}
+                        ${set.bonus.movimento > 0 ? `<span class="bg-slate-800 text-slate-300 font-mono text-[9px] px-1 rounded border border-slate-600">+${set.bonus.movimento} MOV</span>` : ''}
+                        ${set.bonus.iniciativa > 0 ? `<span class="bg-slate-800 text-slate-300 font-mono text-[9px] px-1 rounded border border-slate-600">+${set.bonus.iniciativa} INI</span>` : ''}
+                    </div>
                 </div>
             `;
         }
