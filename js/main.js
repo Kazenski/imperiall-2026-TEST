@@ -55,7 +55,7 @@ import { renderCadastroUsersTab } from './admin/CadastroUsers.js';
 import { renderDropsMonstrosTab } from './aoMestre/dropsMonstros.js';
 import { renderManualGeralTab } from './manualRegras/manualGeral.js';
 import { renderTeiaConexoesTab } from './tabs/teiaConexoes.js';
-
+import { renderCadastroSetsEspeciaisTab } from './aoMestre/cadastroSetsEspeciais.js';
 
 import { rtdb, rtdbRef, push, set, onValue, off, rtdbQuery, limitToLast, rtdbServerTimestamp } from './core/firebase.js';
 
@@ -279,6 +279,13 @@ window.showTab = function (tabId) {
         return;
     }
 
+    // Aba "Cad. Sets Especiais"
+    if (tabId === 'cadastro-sets-especiais-content' || tabId === 'cadastro-sets-especiais') {
+        target.innerHTML = '';
+        if (typeof renderCadastroSetsEspeciaisTab === 'function') renderCadastroSetsEspeciaisTab();
+        return;
+    }
+
     // Aba "Lore Personagens"
     if (tabId === 'lore-personagens-content' || tabId === 'lore-personagens') {
         target.innerHTML = '';
@@ -482,6 +489,7 @@ const MASTER_ARCHITECTURE = {
         //{ id: 'blank', icon: 'fa-tools', label: 'Cad. Crafts', render: () => window.renderBlankPage('Cad. Crafts') },
         { id: 'cadastro-monstros', icon: 'fa-dragon', label: 'Cad. Monstros', render: () => window.showTab('cadastro-monstros-content') },
         { id: 'cadastro-itens', icon: 'fa-gem', label: 'Cad. Itens', render: () => window.showTab('cadastro-itens-content') },
+        { id: 'cadastro-sets-especiais', icon: 'fa-layer-group', label: 'Cad. Sets Especiais', render: () => window.showTab('cadastro-sets-especiais-content') },
         { id: 'cadastro-craft', icon: 'fa-tools', label: 'Engenharia Craft', render: () => window.showTab('cadastro-craft-content'), requiresAdmin: true },
         { id: 'cadastro-pets', icon: 'fa-paw', label: 'Gestor Bestiário', render: () => window.showTab('cadastro-pets-content'), requiresAdmin: true },
         { id: 'cadastro-reputacao', icon: 'fa-chess-rook', label: 'Gestor Império', render: () => window.showTab('cadastro-reputacao-content'), requiresAdmin: true },

@@ -1,5 +1,8 @@
-import { db, doc, updateDoc, runTransaction } from '../core/firebase.js';
+import { db, doc, updateDoc, runTransaction, collection, getDocs } from '../core/firebase.js';
 import { globalState, PLACEHOLDER_IMAGE_URL } from '../core/state.js';
+
+let listaDeSetsGlobais = [];
+let setsCarregados = false;
 
 const PAPER_DOLL_CONFIG = {
     left: [
@@ -10,7 +13,7 @@ const PAPER_DOLL_CONFIG = {
         { id: 'pernas', label: 'Pernas', icon: 'fa-socks' },
         { id: 'botas', label: 'Botas', icon: 'fa-boot' },
         { id: 'colar', label: 'Colar', icon: 'fa-gem' },
-        { id: 'brinco', label: 'Brinco', icon: 'fa-lightbulb' } 
+        { id: 'brinco', label: 'Brinco', icon: 'fa-lightbulb' }
     ],
     right: [
         { id: 'arma_primaria', label: 'Arma Prim.', icon: 'fa-gavel' },
@@ -37,7 +40,16 @@ export async function renderItensEquipados() {
 
         const charData = globalState.selectedCharacterData;
         const ficha = charData.ficha;
-        const equipados = ficha.equipamentos || ficha.equipamento || {}; 
+        const equipados = ficha.equipamentos || ficha.equipamento || {};
+
+        if (!setsCarregados) {
+            try {
+                const snap = await getDocs(collection(db, "setsEspeciais"));
+                listaDeSetsGlobais = [];
+                snap.forEach(d => listaDeSetsGlobais.push(d.data()));
+                setsCarregados = true;
+            } catch (err) { console.error("Erro ao carregar sets:", err); }
+        }
 
         if (!document.getElementById('equip-layout-wrapper')) {
             container.innerHTML = `
@@ -78,6 +90,13 @@ export async function renderItensEquipados() {
                                     <div class="text-[8px] text-slate-500 uppercase mb-0.5">EVA</div>
                                     <div id="doll-total-eva" class="text-emerald-400 font-bold text-sm">0</div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-red-900/10 border border-red-900/30 rounded-xl p-4 shadow-2xl flex flex-col shrink-0">
+                            <h4 class="text-[10px] text-red-400 uppercase tracking-widest font-bold mb-3"><i class="fas fa-fire mr-1 text-red-500"></i> Efeitos de Set Ativos</h4>
+                            <div id="area-bonus-set-vermelha" class="flex flex-col gap-2 custom-scroll max-h-32 overflow-y-auto">
+                                <span class="text-[9px] text-slate-500 italic text-center">Analisando equipamento...</span>
                             </div>
                         </div>
 
@@ -125,6 +144,7 @@ export async function renderItensEquipados() {
         _renderGrid('doll-grid-left', PAPER_DOLL_CONFIG.left, equipados);
         _renderGrid('doll-grid-right', PAPER_DOLL_CONFIG.right, equipados);
         _updateTotalStats(equipados);
+        calcularERenderizarBonusDeSet(equipados);
 
         const activeSlotId = document.getElementById('equip-selector-panel')?.dataset.activeSlot;
         if (activeSlotId && !document.getElementById('equip-selector-panel').classList.contains('hidden')) {
@@ -161,7 +181,7 @@ function _renderGrid(containerId, slots, equipados) {
         if (itemId) {
             const item = globalState.cache.itens.get(itemId);
             if (item) {
-                borderClass = `bg-slate-950 ${getRarityBorderClass(item.raridade || item.tierId || 'E')}`; 
+                borderClass = `bg-slate-950 ${getRarityBorderClass(item.raridade || item.tierId || 'E')}`;
                 imgOpacity = 'opacity-100 group-hover:scale-110';
                 const itemImg = item.imagemUrl || item.imageUrl || "";
 
@@ -182,14 +202,14 @@ function _renderGrid(containerId, slots, equipados) {
         div.className = `flex items-center gap-3 equip-slot group cursor-pointer w-full justify-start`;
         div.dataset.slotId = slot.id;
         div.onclick = () => window.openEquipPanel(slot.id, slot.label);
-        
+
         // Quadradinho com o item na Esquerda
         const boxHTML = `
             <div class="w-14 h-14 md:w-16 md:h-16 rounded-lg border-2 ${borderClass} relative flex items-center justify-center overflow-hidden shadow-md group-hover:border-amber-400 transition-all shrink-0 z-10">
                 ${contentHtml}
             </div>
         `;
-        
+
         // Texto na Direita (alinhado a esquerda dele mesmo)
         const textHTML = `
             <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400 group-hover:text-amber-400 transition-colors hidden sm:block whitespace-nowrap text-left">
@@ -199,14 +219,14 @@ function _renderGrid(containerId, slots, equipados) {
 
         // Agora a ordem é SEMPRE Caixa -> Texto, não importa se é a grade direita ou esquerda
         div.innerHTML = `${boxHTML}${textHTML}`;
-        
+
         container.appendChild(div);
     });
 }
 
 function _updateTotalStats(equipados) {
     let atk = 0, def = 0, eva = 0;
-    
+
     Object.values(equipados).forEach(itemId => {
         const item = globalState.cache.itens.get(itemId);
         if (item) {
@@ -216,35 +236,35 @@ function _updateTotalStats(equipados) {
         }
     });
 
-    const set = (id, val) => { 
-        const el = document.getElementById(id); 
-        if(el) {
-            el.textContent = val > 0 ? `+${val}` : val; 
-            if(val > 0) el.classList.replace('text-slate-500', id.includes('atk') ? 'text-amber-400' : id.includes('def') ? 'text-blue-400' : 'text-emerald-400');
+    const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.textContent = val > 0 ? `+${val}` : val;
+            if (val > 0) el.classList.replace('text-slate-500', id.includes('atk') ? 'text-amber-400' : id.includes('def') ? 'text-blue-400' : 'text-emerald-400');
             else el.classList.add('text-slate-500');
         }
     };
-    
-    set('doll-total-atk', atk); 
-    set('doll-total-def', def); 
+
+    set('doll-total-atk', atk);
+    set('doll-total-def', def);
     set('doll-total-eva', eva);
 }
 
-window.closeEquipPanel = function() {
+window.closeEquipPanel = function () {
     const panel = document.getElementById('equip-selector-panel');
     const empty = document.getElementById('equip-empty-state');
-    if(panel) panel.classList.add('hidden');
-    if(empty) empty.classList.remove('hidden');
-    
+    if (panel) panel.classList.add('hidden');
+    if (empty) empty.classList.remove('hidden');
+
     document.querySelectorAll('.equip-slot > div.w-14, .equip-slot > div.w-16').forEach(el => {
         el.classList.remove('ring-4', 'ring-amber-500/50', 'border-amber-400');
     });
 };
 
-window.openEquipPanel = function(slotTargetId, slotLabel) {
+window.openEquipPanel = function (slotTargetId, slotLabel) {
     const emptyState = document.getElementById('equip-empty-state');
     const panel = document.getElementById('equip-selector-panel');
-    const listContainer = document.getElementById('panel-item-list'); 
+    const listContainer = document.getElementById('panel-item-list');
     const title = document.getElementById('panel-slot-name');
     const btnUnequip = document.getElementById('btn-unequip-current');
 
@@ -252,21 +272,21 @@ window.openEquipPanel = function(slotTargetId, slotLabel) {
 
     document.querySelectorAll('.equip-slot > div.w-14, .equip-slot > div.w-16').forEach(el => el.classList.remove('ring-4', 'ring-amber-500/50', 'border-amber-400'));
     const clickedSlot = document.querySelector(`.equip-slot[data-slot-id="${slotTargetId}"] > div.rounded-lg`);
-    if(clickedSlot) clickedSlot.classList.add('ring-4', 'ring-amber-500/50', 'border-amber-400');
+    if (clickedSlot) clickedSlot.classList.add('ring-4', 'ring-amber-500/50', 'border-amber-400');
 
     emptyState.classList.add('hidden');
     panel.classList.remove('hidden');
     panel.classList.add('flex');
-    panel.dataset.activeSlot = slotTargetId; 
-    
-    listContainer.innerHTML = ''; 
+    panel.dataset.activeSlot = slotTargetId;
+
+    listContainer.innerHTML = '';
     title.innerHTML = `<i class="fas fa-crosshairs text-slate-500 mr-2"></i> ${slotLabel}`;
 
     const charData = globalState.selectedCharacterData;
     const ficha = charData.ficha;
     const mochila = ficha.mochila || {};
-    const equipados = ficha.equipamentos || ficha.equipamento || {}; 
-    
+    const equipados = ficha.equipamentos || ficha.equipamento || {};
+
     const itemAtualId = equipados[slotTargetId];
     if (itemAtualId && btnUnequip) {
         btnUnequip.classList.remove('hidden');
@@ -290,19 +310,19 @@ window.openEquipPanel = function(slotTargetId, slotLabel) {
         else if (targetClass.includes('pulseira') && slotTargetId.includes('pulseira')) isMatch = true;
         else if (targetClass.includes('brinco') && slotTargetId.includes('brinco')) isMatch = true;
         else if ((targetClass.includes('arma') || targetClass.includes('espada') || targetClass.includes('machado')) && (slotTargetId === 'arma_primaria' || slotTargetId === 'arma_secundaria' || slotTargetId === 'arma_2_maos')) {
-            isMatch = true; 
+            isMatch = true;
         }
 
         if (isMatch) {
             foundCount++;
-            
+
             const itemImg = item.imagemUrl || item.imageUrl || "";
             const borderRarity = getRarityBorderClass(item.raridade || item.tierId || 'E');
 
             let statsHtml = [];
-            if(item.atk_base) statsHtml.push(`<span class="text-amber-400">ATK +${item.atk_base}</span>`);
-            if(item.def_base) statsHtml.push(`<span class="text-blue-400">DEF +${item.def_base}</span>`);
-            if(item.eva_base) statsHtml.push(`<span class="text-emerald-400">EVA +${item.eva_base}</span>`);
+            if (item.atk_base) statsHtml.push(`<span class="text-amber-400">ATK +${item.atk_base}</span>`);
+            if (item.def_base) statsHtml.push(`<span class="text-blue-400">DEF +${item.def_base}</span>`);
+            if (item.eva_base) statsHtml.push(`<span class="text-emerald-400">EVA +${item.eva_base}</span>`);
 
             const card = document.createElement('div');
             card.className = "bg-slate-900 border border-slate-700 rounded-lg p-2 flex gap-3 cursor-pointer group hover:bg-slate-800 hover:border-amber-500 transition-all";
@@ -336,17 +356,17 @@ window.openEquipPanel = function(slotTargetId, slotLabel) {
     }
 };
 
-window.handleEquip = async function(slotId, itemId) {
+window.handleEquip = async function (slotId, itemId) {
     const charId = globalState.selectedCharacterId;
     window.closeEquipPanel();
-    
+
     try {
         await runTransaction(db, async (t) => {
             const ref = doc(db, "rpg_fichas", charId);
             const d = (await t.get(ref)).data();
-            
+
             const moch = d.mochila || {};
-            const equip = d.equipamentos || d.equipamento || {}; 
+            const equip = d.equipamentos || d.equipamento || {};
 
             if (equip[slotId]) {
                 const oldItem = equip[slotId];
@@ -375,23 +395,23 @@ window.handleEquip = async function(slotId, itemId) {
 
             t.update(ref, { "mochila": moch, "equipamentos": equip });
         });
-        
+
         await renderItensEquipados();
 
     } catch (e) { alert("Erro ao equipar: " + e.message); }
 };
 
-window.handleUnequip = async function(slotId, itemId) {
+window.handleUnequip = async function (slotId, itemId) {
     const charId = globalState.selectedCharacterId;
     window.closeEquipPanel();
-    
+
     try {
         await runTransaction(db, async (t) => {
             const ref = doc(db, "rpg_fichas", charId);
             const d = (await t.get(ref)).data();
-            
+
             const moch = d.mochila || {};
-            const equip = d.equipamentos || d.equipamento || {}; 
+            const equip = d.equipamentos || d.equipamento || {};
 
             moch[itemId] = (moch[itemId] || 0) + 1;
             delete equip[slotId];
@@ -406,6 +426,58 @@ window.handleUnequip = async function(slotId, itemId) {
 
 export function renderSlotsEquipamento() {
     const grid = document.querySelector('.equipamento-grid');
-    if(!grid) return;
+    if (!grid) return;
     grid.innerHTML = '';
+}
+
+function calcularERenderizarBonusDeSet(equipados) {
+    let htmlBonusArea = '';
+    let temBonusAtivo = false;
+    let statusExtrasTotais = { hp: 0, atk: 0, def: 0 };
+
+    // 1. Pegamos os objetos completos dos itens que o jogador está vestindo no momento
+    const itensAtualmenteEquipados = Object.values(equipados)
+        .map(itemId => globalState.cache.itens.get(itemId))
+        .filter(item => item !== undefined);
+
+    // 2. Loopamos todos os sets que você cadastrou no banco de dados
+    listaDeSetsGlobais.forEach(set => {
+        let contadorPecas = 0;
+
+        // Verifica quantos itens equipados possuem o sufixo cadastrado no nome
+        itensAtualmenteEquipados.forEach(item => {
+            if (item && item.nome && item.nome.toLowerCase().includes(set.sufixo.toLowerCase())) {
+                contadorPecas++;
+            }
+        });
+
+        // 3. Se o jogador tiver itens suficientes do set, ativa o bônus na interface
+        if (contadorPecas >= set.pecasNecessarias) {
+            temBonusAtivo = true;
+            statusExtrasTotais.hp += set.bonus.hp || 0;
+            statusExtrasTotais.atk += set.bonus.atk || 0;
+            statusExtrasTotais.def += set.bonus.def || 0;
+
+            htmlBonusArea += `
+                <div class="bg-red-950/40 border border-red-800/50 rounded p-2 text-left shadow-inner">
+                    <span class="text-[10px] text-amber-500 font-bold block uppercase tracking-widest">[Set: ${set.sufixo}]</span>
+                    <span class="text-[8px] text-slate-400 font-bold block mb-1">Peças equipadas: <span class="text-white">${contadorPecas}/${set.pecasNecessarias}</span></span>
+                    <span class="text-[9px] text-red-300 font-mono block space-x-1">
+                        ${set.bonus.hp > 0 ? `<span class="bg-red-900/50 px-1 rounded">+${set.bonus.hp} HP</span>` : ''}
+                        ${set.bonus.atk > 0 ? `<span class="bg-red-900/50 px-1 rounded">+${set.bonus.atk} ATK</span>` : ''}
+                        ${set.bonus.def > 0 ? `<span class="bg-red-900/50 px-1 rounded">+${set.bonus.def} DEF</span>` : ''}
+                    </span>
+                </div>
+            `;
+        }
+    });
+
+    if (!temBonusAtivo) {
+        htmlBonusArea = `<div class="flex flex-col items-center justify-center p-4 opacity-50"><i class="fas fa-link text-xl mb-2"></i><p class="text-[9px] text-center uppercase tracking-widest font-bold">Nenhum Set Ativo</p></div>`;
+    }
+
+    const divAreaVermelha = document.getElementById('area-bonus-set-vermelha');
+    if (divAreaVermelha) {
+        divAreaVermelha.innerHTML = htmlBonusArea;
+    }
 }
