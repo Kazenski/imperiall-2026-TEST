@@ -884,7 +884,7 @@ async function preencherCachesEstaticos() {
         'profissoes', 'receitas', 'armasEspirituais', 'habilidadesEspirito',
         'pets', 'habilidadesPet', 'mobs', 'lojas', 'buildings', 'allies', 'allItems',
         'itemConfig', 'shopTiers', 'itemTiers', 'racas', 'classes', 'subclasses',
-        'habilidades', 'efeitos', 'tiposItens'
+        'habilidades', 'efeitos', 'tiposItens', 'setsEspeciais'
     ];
 
     mapasNecessarios.forEach(key => {
@@ -911,7 +911,8 @@ async function preencherCachesEstaticos() {
         { nome: 'rpg_itensCadastrados', mapa: globalState.cache.allItems },
         { nome: 'rpg_lojas', mapa: globalState.cache.lojas },
         { nome: 'rpg_balanceamento_itens_precos_geral', mapa: globalState.cache.itemConfig },
-        { nome: 'rpg_shop_tiers', mapa: globalState.cache.shopTiers }
+        { nome: 'rpg_shop_tiers', mapa: globalState.cache.shopTiers },
+        { nome: 'setsEspeciais', mapa: globalState.cache.setsEspeciais }
     ];
 
     await Promise.all(cargas.map(async (item) => {
@@ -998,6 +999,32 @@ async function gatherAllCharacterData(charId) {
             }
         }
     });
+    // === INSERÇÃO DOS BÔNUS DOS SETS DE EQUIPAMENTO ===
+    if (globalState.cache.setsEspeciais && globalState.cache.setsEspeciais.size > 0) {
+        globalState.cache.setsEspeciais.forEach(set => {
+            let contadorPecas = 0;
+
+            // Percorre todos os itens atualmente vestidos pelo aventureiro
+            data.itensEquipados.forEach(item => {
+                if (item && item.nome && item.nome.toLowerCase().includes(set.sufixo.toLowerCase())) {
+                    contadorPecas++;
+                }
+            });
+
+            // Se alcançar a quantidade necessária do conjunto, incrementa os bónus estruturais
+            if (contadorPecas >= set.pecasNecessarias) {
+                data.bonusItens.hpMax += Number(set.bonus?.hp || 0);
+                data.bonusItens.mpMax += Number(set.bonus?.mp || 0);
+                data.bonusItens.atk += Number(set.bonus?.atk || 0);
+                data.bonusItens.def += Number(set.bonus?.def || 0);
+                data.bonusItens.eva += Number(set.bonus?.eva || 0);
+                data.bonusItens.apMax += Number(set.bonus?.apMax || 0);
+                data.bonusItens.movimento += Number(set.bonus?.movimento || 0);
+                data.bonusItens.iniciativa += Number(set.bonus?.iniciativa || 0);
+            }
+        });
+    }
+
     return data;
 }
 
