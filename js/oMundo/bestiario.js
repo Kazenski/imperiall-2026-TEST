@@ -184,7 +184,7 @@ function renderMonsterCard(mob, displayContainer) {
                             <span class="text-xl font-black text-white">${mob.mpMaxPersonagemBase || 0}</span>
                         </div>
                         <div class="bg-slate-900/80 p-4 rounded-xl flex flex-col items-center justify-center border border-slate-700 shadow-inner">
-                            <i class="fas fa-swords text-orange-400 text-2xl mb-2 drop-shadow"></i>
+                            <i class="fas fa-khanda text-orange-400 text-2xl mb-2 drop-shadow"></i>
                             <span class="text-[10px] text-slate-400 font-bold uppercase">Ataque</span>
                             <span class="text-xl font-black text-white">${mob.atk_base || 0}</span>
                         </div>
