@@ -56,6 +56,7 @@ import { renderDropsMonstrosTab } from './aoMestre/dropsMonstros.js';
 import { renderManualGeralTab } from './manualRegras/manualGeral.js';
 import { renderTeiaConexoesTab } from './tabs/teiaConexoes.js';
 import { renderCadastroSetsEspeciaisTab } from './aoMestre/cadastroSetsEspeciais.js';
+import { renderBestiarioTab } from './oMundo/bestiario.js';
 
 import { rtdb, rtdbRef, push, set, onValue, off, rtdbQuery, limitToLast, rtdbServerTimestamp } from './core/firebase.js';
 
@@ -212,6 +213,13 @@ window.showTab = function (tabId) {
         if (typeof renderTeiaConexoesTab === 'function') {
             renderTeiaConexoesTab(target);
         }
+        return;
+    }
+
+    // Aba "Bestiário"
+    if (tabId === 'bestiario-content' || tabId === 'bestiario') {
+        target.innerHTML = '';
+        if (typeof renderBestiarioTab === 'function') renderBestiarioTab();
         return;
     }
 
@@ -472,8 +480,8 @@ const MASTER_ARCHITECTURE = {
         { id: 'os-deuses', icon: 'fa-bolt', label: 'Os Deuses', render: () => window.showTab('os-deuses-content') },
         { id: 'lendas-mundo', icon: 'fa-book-dead', label: 'Lendas do Mundo', render: () => window.showTab('lendas-mundo-content') },
         { id: 'npcs-geral', icon: 'fa-users', label: 'NPCs Importantes', render: () => window.showTab('npcs-geral-content') },
-        { id: 'teia-conexoes', icon: 'fa-network-wired', label: 'Teia de Conexões', render: () => window.showTab('teia-conexoes-content') }
-
+        { id: 'teia-conexoes', icon: 'fa-network-wired', label: 'Teia de Conexões', render: () => window.showTab('teia-conexoes-content') },
+        { id: 'bestiario', icon: 'fa-dragon', label: 'Bestiário', render: () => window.showTab('bestiario-content') }
     ],
     'Manual e Regras': [
         { id: 'manual-geral', icon: 'fa-book-open', label: 'Bases e Manual', render: () => window.showTab('manual-geral-content') },
