@@ -190,23 +190,19 @@ function generateClassCard(classData, index) {
 
                     <h4 class="text-lg font-cinzel text-slate-400 mb-3 tracking-widest uppercase">Caminhos (Subclasses)</h4>
                     ${subclassesHTML}
-                    
-                    ${classData.restricoesJogadores && classData.restricoesJogadores.trim() !== '' ? `
-                    <div class="w-full bg-red-900/15 p-6 rounded-2xl border border-red-900/40 shadow-lg mt-6 animate-fade-in">
-                        <h5 class="text-base font-bold font-cinzel text-red-400 mb-3 flex items-center gap-2 tracking-wider">
-                            <i class="fas fa-exclamation-triangle"></i> Restrições para Jogadores
-                        </h5>
-                        <p class="text-red-200/80 text-sm leading-relaxed whitespace-pre-wrap">${escapeHTML(classData.restricoesJogadores)}</p>
-                    </div>
-                    ` : ''}
                 </div>
             </div>
 
-            <div class="w-full grid grid-cols-1 xl:grid-cols-2 gap-6 mt-4 items-stretch">
-                
-                <div class="w-full grid grid-cols-1 xl:grid-cols-2 gap-6 mt-4 items-stretch">
-                
-                <div class="w-full grid grid-cols-1 xl:grid-cols-2 gap-6 mt-4 items-stretch">
+            ${classData.restricoesJogadores && classData.restricoesJogadores.trim() !== '' ? `
+            <div class="w-full bg-red-900/15 p-6 rounded-2xl border border-red-900/40 shadow-lg mt-6 animate-fade-in">
+                <h5 class="text-base font-bold font-cinzel text-red-400 mb-3 flex items-center gap-2 tracking-wider">
+                    <i class="fas fa-exclamation-triangle"></i> Restrições para Jogadores
+                </h5>
+                <p class="text-red-200/80 text-sm leading-relaxed whitespace-pre-wrap">${escapeHTML(classData.restricoesJogadores)}</p>
+            </div>
+            ` : ''}
+
+            <div class="w-full grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6 items-stretch">
                 
                 <div class="w-full bg-slate-900/60 p-6 md:p-8 rounded-2xl border border-slate-700 shadow-inner flex flex-col">
                     <h4 class="text-2xl font-bold font-cinzel text-amber-500 mb-4 flex items-center gap-3 border-b border-slate-700/50 pb-3">
