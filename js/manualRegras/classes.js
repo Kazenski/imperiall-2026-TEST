@@ -158,18 +158,6 @@ function generateClassCard(classData, index) {
             `</div>`;
     };
 
-    let restricoesHTML = '';
-    if (classData.restricoesJogadores && classData.restricoesJogadores.trim() !== '') {
-        restricoesHTML = `
-            <div class="w-full bg-red-900/20 p-4 rounded-xl border border-red-700/50 mb-4">
-                <h5 class="text-sm font-bold font-cinzel text-red-400 mb-2 flex items-center gap-2">
-                    <i class="fas fa-exclamation-triangle"></i> Restrições para Jogadores
-                </h5>
-                <p class="text-red-200/80 text-xs md:text-sm leading-relaxed whitespace-pre-wrap">${escapeHTML(classData.restricoesJogadores)}</p>
-            </div>
-        `;
-    }
-
     return `
         <article class="w-full bg-slate-800/40 border border-slate-700 rounded-[2rem] p-6 md:p-10 shadow-2xl flex flex-col gap-8 group hover:border-amber-900/50 transition-colors">
             
@@ -202,6 +190,15 @@ function generateClassCard(classData, index) {
 
                     <h4 class="text-lg font-cinzel text-slate-400 mb-3 tracking-widest uppercase">Caminhos (Subclasses)</h4>
                     ${subclassesHTML}
+                    
+                    ${classData.restricoesJogadores && classData.restricoesJogadores.trim() !== '' ? `
+                    <div class="w-full bg-red-900/15 p-6 rounded-2xl border border-red-900/40 shadow-lg mt-6 animate-fade-in">
+                        <h5 class="text-base font-bold font-cinzel text-red-400 mb-3 flex items-center gap-2 tracking-wider">
+                            <i class="fas fa-exclamation-triangle"></i> Restrições para Jogadores
+                        </h5>
+                        <p class="text-red-200/80 text-sm leading-relaxed whitespace-pre-wrap">${escapeHTML(classData.restricoesJogadores)}</p>
+                    </div>
+                    ` : ''}
                 </div>
             </div>
 
@@ -209,8 +206,9 @@ function generateClassCard(classData, index) {
                 
                 <div class="w-full grid grid-cols-1 xl:grid-cols-2 gap-6 mt-4 items-stretch">
                 
+                <div class="w-full grid grid-cols-1 xl:grid-cols-2 gap-6 mt-4 items-stretch">
+                
                 <div class="w-full bg-slate-900/60 p-6 md:p-8 rounded-2xl border border-slate-700 shadow-inner flex flex-col">
-                    ${restricoesHTML}
                     <h4 class="text-2xl font-bold font-cinzel text-amber-500 mb-4 flex items-center gap-3 border-b border-slate-700/50 pb-3">
                         <i class="fas fa-star text-slate-500 text-lg"></i> Dádiva da Classe
                     </h4>
