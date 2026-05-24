@@ -233,8 +233,12 @@ function renderForm() {
                     <div class="form-field"><label class="text-xs text-slate-400">Movimentação (m)</label><input type="number" id="f-mov" value="${item.movimentacao || 0}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white"></div>
                 </div>
                 
+                <div class="form-field mt-2"><label class="text-xs text-red-400 font-bold"><i class="fas fa-exclamation-triangle"></i> Restrições para Jogadores</label><textarea id="f-restricoes" rows="2" class="w-full p-2 rounded bg-red-950/20 border border-red-900/50 text-red-200 placeholder-red-900/50 focus:border-red-500 outline-none" placeholder="Ex: Apenas personagens malignos...">${escapeHTML(item.restricoesJogadores || '')}</textarea></div>
+
                 <div class="form-field"><label class="text-xs text-slate-400">Habilidade Racial (Dádiva)</label><textarea id="f-habRacial" rows="2" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white">${escapeHTML(item.habilidadeRacial || '')}</textarea></div>
+
                 <div class="form-field"><label class="text-xs text-slate-400">Cultura e Sociedade</label><textarea id="f-cultura" rows="3" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white">${escapeHTML(item.culturaSociedade || '')}</textarea></div>
+
                 <div class="form-field"><label class="text-xs text-slate-400">Lendas e Mitos</label><textarea id="f-lendas" rows="3" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white">${escapeHTML(item.lendasConhecidas || '')}</textarea></div>
 
                 <h4 class="text-amber-500 font-bold text-sm mt-4 border-b border-slate-700 pb-1">Bônus Base da Raça</h4>
@@ -252,6 +256,9 @@ function renderForm() {
         fieldsHtml = `
             <div class="space-y-4">
                 <div class="form-field"><label class="text-xs text-slate-400">Nome da Classe</label><input type="text" id="f-nome" value="${escapeHTML(item.nome || '')}" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white" required></div>
+
+                <div class="form-field"><label class="text-xs text-red-400 font-bold"><i class="fas fa-exclamation-triangle"></i> Restrições para Jogadores</label><textarea id="f-restricoes" rows="2" class="w-full p-2 rounded bg-red-950/20 border border-red-900/50 text-red-200 placeholder-red-900/50 focus:border-red-500 outline-none" placeholder="Ex: Proibido para personagens que...">${escapeHTML(item.restricoesJogadores || '')}</textarea></div>
+
                 <div class="form-field"><label class="text-xs text-slate-400">Dádiva (Habilidade Especial da Classe)</label><textarea id="f-habClasse" rows="3" class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-white">${escapeHTML(item.habilidadeEspecialClasse || '')}</textarea></div>
                 
                 <h4 class="text-amber-500 font-bold text-sm mt-4 border-b border-slate-700 pb-1">Atributos Iniciais</h4>
@@ -654,6 +661,7 @@ window.boTools = {
             payload.bonusDefRacaBase = getNum('f-def');
             payload.bonusEvaRacaBase = getNum('f-eva');
 
+            payload.restricoesJogadores = getVal('f-restricoes');
             payload.habilidadeRacial = getVal('f-habRacial');
             payload.culturaSociedade = getVal('f-cultura');
             payload.lendasConhecidas = getVal('f-lendas');
@@ -668,6 +676,7 @@ window.boTools = {
             payload.bonusDefesaClasseBase = getNum('f-def');
             payload.bonusEvasaoClasseBase = getNum('f-eva');
 
+            payload.restricoesJogadores = getVal('f-restricoes');
             payload.habilidadeEspecialClasse = getVal('f-habClasse');
             payload.subclasses = Array.from(document.querySelectorAll('input[name="cb_subclasses"]:checked')).map(c => c.value);
 

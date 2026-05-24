@@ -38,7 +38,7 @@ export async function renderRacasTab() {
 
 async function fetchRacesData() {
     const container = document.getElementById('racas-list-container');
-    
+
     try {
         // Busca Tipos para traduzir IDs em Nomes (Cache)
         const typeSnap = await getDocs(collection(db, 'rpg_tipos'));
@@ -49,13 +49,13 @@ async function fetchRacesData() {
         // Busca Raças
         const q = query(collection(db, 'rpg_racas'), orderBy("nome"));
         const snapshot = await getDocs(q);
-        
+
         allRaces = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        
+
         if (allRaces.length > 0) {
             renderRacesList();
         } else {
-            if(container) container.innerHTML = `<div class="text-center p-10 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-400">Nenhuma raça encontrada no compêndio.</div>`;
+            if (container) container.innerHTML = `<div class="text-center p-10 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-400">Nenhuma raça encontrada no compêndio.</div>`;
         }
 
     } catch (error) {
@@ -103,6 +103,19 @@ function generateRaceCard(race, index) {
             </div>
         </div>
     `;
+
+    // Renderizador de Restrições
+    let restricoesHTML = '';
+    if (race.restricoesJogadores && race.restricoesJogadores.trim() !== '') {
+        restricoesHTML = `
+            <div class="w-full bg-red-900/20 p-4 rounded-xl border border-red-700/50 mb-4">
+                <h5 class="text-sm font-bold font-cinzel text-red-400 mb-2 flex items-center gap-2">
+                    <i class="fas fa-exclamation-triangle"></i> Restrições para Jogadores
+                </h5>
+                <p class="text-red-200/80 text-xs md:text-sm leading-relaxed whitespace-pre-wrap">${escapeHTML(race.restricoesJogadores)}</p>
+            </div>
+        `;
+    }
 
     // Renderizador de Caixas Expansíveis para Textos Longos
     const renderExpandable = (title, text, iconClass, idPrefix) => {
@@ -157,6 +170,7 @@ function generateRaceCard(race, index) {
                 </div>
             </div>
 
+            ${restricoesHTML}
             <div class="w-full bg-amber-900/10 p-6 md:p-8 rounded-2xl border border-amber-700/30 shadow-inner mt-2 relative overflow-hidden">
                 <i class="fas fa-dna absolute -right-6 -top-6 text-9xl text-amber-500/5 pointer-events-none"></i>
                 <h4 class="text-2xl font-bold font-cinzel text-amber-500 mb-4 flex items-center gap-3 relative z-10">
@@ -176,15 +190,15 @@ function generateRaceCard(race, index) {
 
 // Funções globais de interação
 window.racasCompendio = {
-    toggleExpand: function(id, btnElement) {
+    toggleExpand: function (id, btnElement) {
         const contentDiv = document.getElementById(`content-${id}`);
         const fadeDiv = document.getElementById(`fade-${id}`);
-        
+
         if (!contentDiv) return;
 
         if (contentDiv.classList.contains('max-h-[120px]')) {
             contentDiv.classList.remove('max-h-[120px]');
-            contentDiv.classList.add('max-h-[3000px]'); 
+            contentDiv.classList.add('max-h-[3000px]');
             if (fadeDiv) fadeDiv.classList.add('hidden');
             btnElement.innerHTML = 'Ocultar <i class="fas fa-chevron-up"></i>';
         } else {
@@ -194,20 +208,20 @@ window.racasCompendio = {
             btnElement.innerHTML = 'Ler Mais <i class="fas fa-chevron-down"></i>';
         }
     },
-    openImage: function(url) {
+    openImage: function (url) {
         let modal = document.getElementById('global-image-modal');
         if (!modal) {
             modal = document.createElement('div');
             modal.id = 'global-image-modal';
             modal.className = 'fixed inset-0 z-[9999] bg-black/95 hidden items-center justify-center p-4 cursor-pointer animate-fade-in';
-            modal.onclick = function() { this.classList.add('hidden'); this.classList.remove('flex'); };
+            modal.onclick = function () { this.classList.add('hidden'); this.classList.remove('flex'); };
             modal.innerHTML = `
                 <button class="absolute top-6 right-8 text-slate-300 hover:text-amber-400 text-5xl transition-colors outline-none">&times;</button>
                 <img id="global-modal-img" src="" class="max-w-[95vw] max-h-[95vh] object-contain rounded-2xl border-4 border-slate-700 shadow-2xl">
             `;
             document.body.appendChild(modal);
         }
-        
+
         const img = document.getElementById('global-modal-img');
         if (img) {
             img.src = url;

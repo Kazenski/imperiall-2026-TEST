@@ -3,7 +3,7 @@ import { collection, getDocs, orderBy, query } from "https://www.gstatic.com/fir
 import { escapeHTML } from '../core/utils.js';
 
 let allClasses = [];
-let subclassCache = {}; 
+let subclassCache = {};
 let allSkills = [];
 
 export async function renderClassesTab() {
@@ -39,7 +39,7 @@ export async function renderClassesTab() {
 
 async function fetchClassesData() {
     const container = document.getElementById('classes-list-container');
-    
+
     try {
         // Busca Paralela de tudo o que precisamos
         const [classSnap, subClassSnap, skillSnap] = await Promise.all([
@@ -58,11 +58,11 @@ async function fetchClassesData() {
 
         // Salva as classes
         allClasses = classSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        
+
         if (allClasses.length > 0) {
             renderClassesList();
         } else {
-            if(container) container.innerHTML = `<div class="text-center p-10 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-400">Nenhuma classe encontrada no compêndio.</div>`;
+            if (container) container.innerHTML = `<div class="text-center p-10 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-400">Nenhuma classe encontrada no compêndio.</div>`;
         }
 
     } catch (error) {
@@ -93,12 +93,12 @@ function generateClassCard(classData, index) {
     // Lógica de Habilidades (Classes e Subclasses)
     const classSkills = allSkills
         .filter(skill => skill.restricaoClasses && skill.restricaoClasses.includes(classData.id))
-        .sort((a, b) => (a.nome||'').localeCompare(b.nome||''));
-        
+        .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+
     const classSubclassIds = new Set(classData.subclasses || []);
     const subclassSkills = allSkills
         .filter(skill => skill.restricaoSubclasses && skill.restricaoSubclasses.some(subId => classSubclassIds.has(subId)))
-        .sort((a, b) => (a.nome||'').localeCompare(b.nome||''));
+        .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
 
     // Renderizador de Atributos Base
     const renderStat = (iconClass, colorClass, label, value) => `
@@ -123,7 +123,7 @@ function generateClassCard(classData, index) {
             "capacidadeDefesa": "fa-shield-alt text-slate-400",
             "poderAtaque": "fa-bolt-lightning text-slate-400"
         };
-        
+
         Object.entries(map).forEach(([key, value]) => {
             const formattedKey = key.replace(/([A-Z])/g, ' $1').toLowerCase();
             const icon = iconMap[key] || "fa-star text-slate-400";
@@ -142,7 +142,7 @@ function generateClassCard(classData, index) {
     // Renderizador de Subclasses
     let subclassesHTML = '<span class="text-slate-500 text-sm">Nenhuma ramificação conhecida.</span>';
     if (classData.subclasses && classData.subclasses.length > 0) {
-        subclassesHTML = `<div class="flex flex-wrap gap-2">` + 
+        subclassesHTML = `<div class="flex flex-wrap gap-2">` +
             classData.subclasses.map(id => `
                 <span class="px-3 py-1.5 bg-emerald-900/30 border border-emerald-700/50 text-emerald-400 text-sm font-bold tracking-widest uppercase rounded-lg shadow-sm">
                     ${escapeHTML(subclassCache[id] || id)}
@@ -155,8 +155,20 @@ function generateClassCard(classData, index) {
         if (skills.length === 0) return '<span class="text-slate-500 italic text-sm">Nenhuma técnica registrada.</span>';
         return `<div class="flex flex-wrap gap-2">` +
             skills.map(s => `<span class="px-3 py-1.5 ${bgClass} ${textClass} rounded-lg text-sm shadow-sm font-medium border border-current/20 cursor-default hover:brightness-125 transition-all">${escapeHTML(s.nome)}</span>`).join('') +
-        `</div>`;
+            `</div>`;
     };
+
+    let restricoesHTML = '';
+    if (classData.restricoesJogadores && classData.restricoesJogadores.trim() !== '') {
+        restricoesHTML = `
+            <div class="w-full bg-red-900/20 p-4 rounded-xl border border-red-700/50 mb-4">
+                <h5 class="text-sm font-bold font-cinzel text-red-400 mb-2 flex items-center gap-2">
+                    <i class="fas fa-exclamation-triangle"></i> Restrições para Jogadores
+                </h5>
+                <p class="text-red-200/80 text-xs md:text-sm leading-relaxed whitespace-pre-wrap">${escapeHTML(classData.restricoesJogadores)}</p>
+            </div>
+        `;
+    }
 
     return `
         <article class="w-full bg-slate-800/40 border border-slate-700 rounded-[2rem] p-6 md:p-10 shadow-2xl flex flex-col gap-8 group hover:border-amber-900/50 transition-colors">
@@ -195,7 +207,10 @@ function generateClassCard(classData, index) {
 
             <div class="w-full grid grid-cols-1 xl:grid-cols-2 gap-6 mt-4 items-stretch">
                 
+                <div class="w-full grid grid-cols-1 xl:grid-cols-2 gap-6 mt-4 items-stretch">
+                
                 <div class="w-full bg-slate-900/60 p-6 md:p-8 rounded-2xl border border-slate-700 shadow-inner flex flex-col">
+                    ${restricoesHTML}
                     <h4 class="text-2xl font-bold font-cinzel text-amber-500 mb-4 flex items-center gap-3 border-b border-slate-700/50 pb-3">
                         <i class="fas fa-star text-slate-500 text-lg"></i> Dádiva da Classe
                     </h4>
@@ -221,20 +236,20 @@ function generateClassCard(classData, index) {
 
 // Funções globais de interação
 window.classesCompendio = {
-    openImage: function(url) {
+    openImage: function (url) {
         let modal = document.getElementById('global-image-modal');
         if (!modal) {
             modal = document.createElement('div');
             modal.id = 'global-image-modal';
             modal.className = 'fixed inset-0 z-[9999] bg-black/95 hidden items-center justify-center p-4 cursor-pointer animate-fade-in';
-            modal.onclick = function() { this.classList.add('hidden'); this.classList.remove('flex'); };
+            modal.onclick = function () { this.classList.add('hidden'); this.classList.remove('flex'); };
             modal.innerHTML = `
                 <button class="absolute top-6 right-8 text-slate-300 hover:text-amber-400 text-5xl transition-colors outline-none">&times;</button>
                 <img id="global-modal-img" src="" class="max-w-[95vw] max-h-[95vh] object-contain rounded-2xl border-4 border-slate-700 shadow-2xl">
             `;
             document.body.appendChild(modal);
         }
-        
+
         const img = document.getElementById('global-modal-img');
         if (img) {
             img.src = url;
