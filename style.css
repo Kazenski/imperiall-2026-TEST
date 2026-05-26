@@ -988,7 +988,7 @@ select.std-height, input.std-height {
 /* Barra lateral rebatível (Área Vermelha) */
 #sub-menu-bar {
     width: 64px;
-    height: 100vh;
+    height: 100%;
     background-color: #020617; /* Um tom mais escuro que o fundo */
     border-right: 1px solid #334155;
     transition: width 0.3s ease;
