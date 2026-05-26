@@ -112,6 +112,7 @@ export async function renderCriarHistoriasTab() {
 // AÇÕES GLOBAIS (O ESCRITORIO DO MESTRE)
 // ----------------------------------------------------------------------------------
 window.criarHistorias = {
+
     sincronizar: async function () {
         const uidMestre = globalState.userId || (globalState.currentUser && globalState.currentUser.uid);
         if (!uidMestre) return alert("Usuário não identificado.");
@@ -121,8 +122,15 @@ window.criarHistorias = {
         btn.disabled = true;
 
         try {
-            // Caso seja Admin, poderia haver um seletor no futuro, mas aqui puxa pelo logado
-            const snap = await getDocs(query(collection(db, COLLECTION_HISTORIAS), where("idMestre", "==", uidMestre)));
+            let q;
+            // Admin vê todas as campanhas cadastradas, Mestre vê apenas as suas
+            if (globalState.isAdmin || globalState.userRole === 'admin') {
+                q = query(collection(db, COLLECTION_HISTORIAS));
+            } else {
+                q = query(collection(db, COLLECTION_HISTORIAS), where("idMestre", "==", uidMestre));
+            }
+
+            const snap = await getDocs(q);
 
             historiasState.campanhas = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             historiasState.sincronizado = true;
@@ -287,23 +295,27 @@ window.criarHistorias = {
             `;
             grid.appendChild(card);
 
-            // Popula os Selects com os caches globais do sistema
+            // Popula os Selects com os caches globais do sistema de forma segura contra undefined
             const selNpc = card.querySelector('.sel-npc');
             const selMob = card.querySelector('.sel-mob');
 
             if (globalState.cache.npcs) {
-                Array.from(globalState.cache.npcs.values()).sort((a, b) => a.nome.localeCompare(b.nome)).forEach(n => {
-                    const opt = new Option(n.nome, n.id);
-                    if (nota.vinculos?.npc === n.id) opt.selected = true;
-                    selNpc.add(opt);
-                });
+                Array.from(globalState.cache.npcs.values())
+                    .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
+                    .forEach(n => {
+                        const opt = new Option(n.nome || 'NPC Sem Nome', n.id);
+                        if (nota.vinculos?.npc === n.id) opt.selected = true;
+                        selNpc.add(opt);
+                    });
             }
             if (globalState.cache.mobs) {
-                Array.from(globalState.cache.mobs.values()).sort((a, b) => a.nome.localeCompare(b.nome)).forEach(m => {
-                    const opt = new Option(m.nome, m.id);
-                    if (nota.vinculos?.monstro === m.id) opt.selected = true;
-                    selMob.add(opt);
-                });
+                Array.from(globalState.cache.mobs.values())
+                    .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
+                    .forEach(m => {
+                        const opt = new Option(m.nome || 'Monstro Sem Nome', m.id);
+                        if (nota.vinculos?.monstro === m.id) opt.selected = true;
+                        selMob.add(opt);
+                    });
             }
         });
 
