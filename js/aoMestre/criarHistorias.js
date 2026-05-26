@@ -276,23 +276,25 @@ window.criarHistorias = {
 
             card.innerHTML = `
                 <div class="drag-handle bg-slate-950/50 border-b border-slate-700 p-2 flex items-center justify-between shrink-0" onmousedown="window.criarHistorias.startDrag(event, '${nota.idNota}')">
-                    <div class="flex items-center gap-2 flex-grow">
+                    <div class="flex items-center gap-2 flex-grow overflow-hidden">
                         <i class="fas ${icon} text-[10px]"></i>
-                        <input type="text" value="${escapeHTML(nota.titulo || '')}" onchange="window.criarHistorias.atualizarNota('${nota.idNota}', 'titulo', this.value)" class="bg-transparent font-bold text-[10px] uppercase tracking-widest text-slate-200 outline-none w-full focus:border-b focus:border-slate-500" placeholder="Título..."/>
+                        <input type="text" value="${escapeHTML(nota.titulo || '')}" onchange="window.criarHistorias.atualizarNota('${nota.idNota}', 'titulo', this.value)" class="bg-transparent font-bold text-[10px] uppercase tracking-widest text-slate-200 outline-none w-full focus:border-b focus:border-slate-500 truncate" placeholder="Título..."/>
                     </div>
-                    <div class="flex items-center gap-1.5 ml-2">
+                    <div class="flex items-center gap-1.5 ml-2 shrink-0">
+                        <button onclick="window.criarHistorias.abrirFocoNota('${nota.idNota}')" class="text-slate-400 hover:text-sky-400 transition-colors" title="Modo Foco (Expandir)"><i class="fas fa-expand text-[10px]"></i></button>
                         <button onclick="window.criarHistorias.conectarNota('${nota.idNota}')" class="text-slate-500 hover:text-emerald-400 transition-colors" title="Criar Conexão"><i class="fas fa-link text-[10px]"></i></button>
                         <button onclick="window.criarHistorias.apagarNota('${nota.idNota}')" class="text-slate-600 hover:text-red-500 transition-colors" title="Apagar"><i class="fas fa-trash text-[10px]"></i></button>
                     </div>
                 </div>
                 <div class="flex-grow p-2 pb-0 flex flex-col">
-                    <textarea onchange="window.criarHistorias.atualizarNota('${nota.idNota}', 'conteudo', this.value)" class="bg-transparent text-[11px] text-slate-300 resize-none outline-none flex-grow custom-scroll h-20 placeholder-slate-600" placeholder="Anotações...">${escapeHTML(nota.conteudo || '')}</textarea>
+                    <textarea onchange="window.criarHistorias.atualizarNota('${nota.idNota}', 'conteudo', this.value)" class="bg-transparent text-[11px] text-slate-300 resize-y outline-none flex-grow custom-scroll min-h-[60px] max-h-[300px] placeholder-slate-600" placeholder="Anotações...">${escapeHTML(nota.conteudo || '')}</textarea>
                 </div>
-                <div class="p-1.5 border-t border-slate-800 bg-slate-950/80 rounded-b-lg flex justify-between gap-1">
+                <div class="p-1.5 border-t border-slate-800 bg-slate-950/80 rounded-b-lg flex justify-between gap-1 shrink-0">
                     <select onchange="window.criarHistorias.atualizarNota('${nota.idNota}', 'npc', this.value)" class="sel-npc bg-transparent text-[9px] text-slate-400 font-bold uppercase outline-none w-1/2 overflow-hidden text-ellipsis border-r border-slate-800"><option value="">+ NPC</option></select>
                     <select onchange="window.criarHistorias.atualizarNota('${nota.idNota}', 'monstro', this.value)" class="sel-mob bg-transparent text-[9px] text-slate-400 font-bold uppercase outline-none w-1/2 overflow-hidden text-ellipsis pl-1"><option value="">+ BESTIÁRIO</option></select>
                 </div>
             `;
+
             grid.appendChild(card);
 
             // Popula os Selects com os caches globais do sistema de forma segura contra undefined
@@ -513,5 +515,66 @@ window.criarHistorias = {
         } catch (e) {
             console.error("Erro DB Historias:", e);
         }
+    },
+
+    // --- MODO FOCO (LEITURA E ESCRITA EXPANDIDA) ---
+    abrirFocoNota: function (idNota) {
+        const camp = historiasState.campanhas.find(c => c.id === historiasState.idCampanhaAtiva);
+        const cap = camp.capitulos.find(c => c.idCapitulo === historiasState.idCapituloAtivo);
+        const nota = cap.notas.find(n => n.idNota === idNota);
+
+        if (!nota) return;
+
+        // Se já houver um modal aberto, remove para não duplicar
+        const existing = document.getElementById('modal-foco-nota');
+        if (existing) existing.remove();
+
+        const isDialogo = nota.tipo === 'dialogo';
+        const corTema = isDialogo ? 'text-sky-400' : 'text-amber-400';
+        const borderTema = isDialogo ? 'border-sky-500/50' : 'border-amber-500/50';
+
+        const modalHTML = `
+            <div id="modal-foco-nota" class="fixed inset-0 bg-black/90 flex items-center justify-center z-[100] animate-fade-in p-4 md:p-10">
+                <div class="bg-slate-900 border ${borderTema} rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.8)] w-full max-w-5xl flex flex-col h-[85vh]">
+                    
+                    <div class="flex justify-between items-center p-5 border-b border-slate-700 bg-slate-950/80 rounded-t-2xl shrink-0">
+                        <div class="flex-grow flex items-center gap-4">
+                            <i class="fas ${isDialogo ? 'fa-comment-alt' : 'fa-sticky-note'} ${corTema} text-2xl drop-shadow-md"></i>
+                            <input type="text" value="${escapeHTML(nota.titulo || '')}" 
+                                onchange="
+                                    window.criarHistorias.atualizarNota('${idNota}', 'titulo', this.value); 
+                                    document.getElementById('mural-card-${idNota}').querySelector('input').value = this.value;
+                                " 
+                                class="bg-transparent font-cinzel font-bold text-xl md:text-3xl tracking-widest text-slate-100 outline-none w-full focus:border-b focus:border-slate-500 transition-colors" 
+                                placeholder="Título da Anotação..."/>
+                        </div>
+                        <button onclick="document.getElementById('modal-foco-nota').remove()" class="text-slate-500 hover:text-red-500 transition-colors text-3xl ml-6">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="flex-grow p-6 md:p-10 flex flex-col min-h-0 bg-[#0a0f18]">
+                        <textarea 
+                            onchange="
+                                window.criarHistorias.atualizarNota('${idNota}', 'conteudo', this.value); 
+                                document.getElementById('mural-card-${idNota}').querySelector('textarea').value = this.value;
+                            " 
+                            class="w-full h-full bg-transparent text-base md:text-lg text-slate-300 resize-none outline-none custom-scroll placeholder-slate-600 leading-relaxed font-medium" 
+                            placeholder="Escreva a lore, acontecimentos ou o discurso do NPC aqui...">${escapeHTML(nota.conteudo || '')}</textarea>
+                    </div>
+
+                    <div class="p-4 border-t border-slate-800 bg-slate-950/80 rounded-b-2xl flex items-center justify-between shrink-0">
+                        <span class="text-[11px] text-slate-500 uppercase tracking-widest font-bold">
+                            <i class="fas fa-save mr-2 ${corTema}"></i> Salvo automaticamente ao digitar
+                        </span>
+                        <button onclick="document.getElementById('modal-foco-nota').remove()" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 px-6 py-2 rounded-lg font-bold text-xs uppercase tracking-widest transition-colors shadow-lg">
+                            Concluir Leitura
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
     }
 };
