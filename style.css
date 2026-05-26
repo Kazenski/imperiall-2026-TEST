@@ -1700,3 +1700,48 @@ h1, h2, h3, h4, h5, h6, .rpg-title { font-family: 'Cinzel', serif; }
 .icon-option:hover, .icon-option.selected {
     border-color: #f59e0b; background-color: #1e293b; color: #f59e0b;
 }
+
+
+
+/* ==========================================================================
+   MURAL DE HISTÓRIAS (CRIAR HISTÓRIAS)
+   ========================================================================== */
+#mural-canvas-container {
+    background-color: #070b11;
+    background-image: 
+        radial-gradient(rgba(212, 175, 55, 0.03) 1px, transparent 0),
+        radial-gradient(rgba(212, 175, 55, 0.02) 2px, transparent 0);
+    background-size: 24px 24px, 48px 48px;
+    background-position: 0 0, 12px 12px;
+}
+
+.mural-note-card {
+    position: absolute;
+    width: 260px;
+    min-height: 120px;
+    pointer-events: auto;
+    transition: box-shadow 0.2s ease, transform 0.1s ease;
+    user-select: none;
+}
+
+.mural-note-card .drag-handle {
+    cursor: grab;
+}
+
+.mural-note-card .drag-handle:active {
+    cursor: grabbing;
+}
+
+.mural-note-card.modo-vinculo-origem {
+    outline: 2px dashed #f59e0b;
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+}
+
+#mural-svg-connections path {
+    stroke-dasharray: 4;
+    animation: flowLineDash 30s linear infinite;
+}
+
+@keyframes flowLineDash {
+    to { stroke-dashoffset: -1000; }
+}

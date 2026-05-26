@@ -57,6 +57,7 @@ import { renderManualGeralTab } from './manualRegras/manualGeral.js';
 import { renderTeiaConexoesTab } from './tabs/teiaConexoes.js';
 import { renderCadastroSetsEspeciaisTab } from './aoMestre/cadastroSetsEspeciais.js';
 import { renderBestiarioTab } from './oMundo/bestiario.js';
+import { renderCriarHistoriasTab } from './aoMestre/criarHistorias.js';
 
 import { rtdb, rtdbRef, push, set, onValue, off, rtdbQuery, limitToLast, rtdbServerTimestamp } from './core/firebase.js';
 
@@ -262,6 +263,13 @@ window.showTab = function (tabId) {
     if (tabId === 'comandos-mestre-content' || tabId === 'comandos-mestre') {
         target.innerHTML = '';
         if (typeof renderComandosMestreTab === 'function') renderComandosMestreTab();
+        return;
+    }
+
+    // Aba "Criar Histórias"
+    if (tabId === 'criar-historias-content' || tabId === 'criar-historias') {
+        target.innerHTML = '';
+        if (typeof renderCriarHistoriasTab === 'function') renderCriarHistoriasTab();
         return;
     }
 
@@ -493,6 +501,7 @@ const MASTER_ARCHITECTURE = {
     ],
     'Ao Mestre': [
         { id: 'comandos-mestre', icon: 'fa-crown', label: 'Comandos Mestre', render: () => window.showTab('comandos-mestre-content') },
+        { id: 'criar-historias', icon: 'fa-project-diagram', label: 'Criar Histórias', render: () => window.showTab('criar-historias-content') },
         { id: 'cadastro-npcs', icon: 'fa-user-plus', label: 'Cad. NPCs', render: () => window.showTab('cadastro-npcs-content') },
         //{ id: 'blank', icon: 'fa-tools', label: 'Cad. Crafts', render: () => window.renderBlankPage('Cad. Crafts') },
         { id: 'cadastro-monstros', icon: 'fa-dragon', label: 'Cad. Monstros', render: () => window.showTab('cadastro-monstros-content') },

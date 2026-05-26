@@ -57,12 +57,13 @@ Aqui está a visão geral da nossa futura arquitetura:
  ┃  ┣ 📂 aoMestre
  ┃  ┃  ┃
  ┃  ┃  ┣ 📜 comandos.js                  (Aba 1: Editor da Ficha, Uploads de Imagem, Objetivos, História)
- ┃  ┃  ┣ 📜 cadastroNpcs.js              (Aba 2: Cadastro de NPCS no jogo)
- ┃  ┃  ┣ 📜 cadastroCrafts.js            (Aba 3: Cadastro de Crafts, ou itens possíveis de ser construídos por profissões no jogo)
- ┃  ┃  ┣ 📜 cadastroMonstrosSeres.js     (Aba 4: Cadastro de monstros/inimigos no jogo)
- ┃  ┃  ┣ 📜 cadastroItens.js             (Aba 5: Cadastro de itens gerais e equipamentos prontos no jogo)
- ┃  ┃  ┣ 📜 dropsMonstros.js             (Aba 6: Listagem e cadastro de monstros para o Mestre usar em campanhas, incluindo drop automatizado)
- ┃  ┃  ┗ 📜 lorePersonagens.js           (Aba 7: Visão geral dos personagens da campanha, com imagem, descrição, história, etc)
+ ┃  ┃  ┣ 📜 criarHistorias.js            (Aba 2: Página para os mestres criar suas histórias e campanhas detalhadas)
+ ┃  ┃  ┣ 📜 cadastroNpcs.js              (Aba 3: Cadastro de NPCS no jogo)
+ ┃  ┃  ┣ 📜 cadastroCrafts.js            (Aba 4: Cadastro de Crafts, ou itens possíveis de ser construídos por profissões no jogo)
+ ┃  ┃  ┣ 📜 cadastroMonstrosSeres.js     (Aba 5: Cadastro de monstros/inimigos no jogo)
+ ┃  ┃  ┣ 📜 cadastroItens.js             (Aba 6: Cadastro de itens gerais e equipamentos prontos no jogo)
+ ┃  ┃  ┣ 📜 dropsMonstros.js             (Aba 7: Listagem e cadastro de monstros para o Mestre usar em campanhas, incluindo drop automatizado)
+ ┃  ┃  ┗ 📜 lorePersonagens.js           (Aba 8: Visão geral dos personagens da campanha, com imagem, descrição, história, etc)
  ┃  ┃   
  ┃  ┣ 📂 aoJogador  
  ┃  ┃  ┃
