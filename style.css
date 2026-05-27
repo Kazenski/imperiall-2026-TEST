@@ -26,6 +26,13 @@ h1, h2, h3, h4, h5, h6, .font-cinzel {
     font-family: 'Cinzel', serif;    
 }
 
+/* ==========================================================================
+   AJUSTE DE ESCALA GLOBAL (ZOOM OUT TAILWIND)
+   ========================================================================== */
+html {
+    font-size: 14px; /* Reduz a escala base do rem. Diminui tudo proporcionalmente. */
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: var(--container-fundo); border-radius: 4px;}
@@ -1745,3 +1752,5 @@ h1, h2, h3, h4, h5, h6, .rpg-title { font-family: 'Cinzel', serif; }
 @keyframes flowLineDash {
     to { stroke-dashoffset: -1000; }
 }
+
+

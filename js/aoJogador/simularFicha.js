@@ -5,17 +5,17 @@ const simState = {
     tab: 'race', // 'race', 'class', 'ability', 'profession'
     indices: { race: 0, class: 0, profession: 0 },
     data: { races: [], classes: [], abilities: [], professions: [] },
-    previousStats: {} 
+    previousStats: {}
 };
 
 export function renderSimularFichaTab() {
     const container = document.getElementById('simular-ficha-content');
     if (!container) return;
 
-    simState.data.races = Array.from(globalState.cache.racas.values()).sort((a,b) => (a.nome||'').localeCompare(b.nome||''));
-    simState.data.classes = Array.from(globalState.cache.classes.values()).sort((a,b) => (a.nome||'').localeCompare(b.nome||''));
-    simState.data.professions = Array.from(globalState.cache.profissoes.values()).sort((a,b) => (a.nome||'').localeCompare(b.nome||''));
-    
+    simState.data.races = Array.from(globalState.cache.racas.values()).sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+    simState.data.classes = Array.from(globalState.cache.classes.values()).sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+    simState.data.professions = Array.from(globalState.cache.profissoes.values()).sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+
     updateAbilitiesForCurrentClass();
 
     container.innerHTML = `
@@ -57,7 +57,7 @@ function updateAbilitiesForCurrentClass() {
     if (currentClass && currentClass.id) {
         simState.data.abilities = Array.from(globalState.cache.habilidades.values())
             .filter(hab => hab.restricaoClasses && hab.restricaoClasses.includes(currentClass.id))
-            .sort((a,b) => (a.nome||'').localeCompare(b.nome||''));
+            .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
     } else {
         simState.data.abilities = [];
     }
@@ -93,7 +93,7 @@ function renderSummary() {
             const color = diff > 0 ? 'text-emerald-400' : 'text-red-500';
             const icon = diff > 0 ? 'fa-arrow-up' : 'fa-arrow-down';
             const signal = diff > 0 ? '+' : '';
-            
+
             diffHTML = `<div class="absolute -top-12 right-0 left-0 flex justify-center ${color} font-black text-2xl md:text-3xl animate-float-up pointer-events-none z-[9999]">
                             <span class="flex items-center gap-1"><i class="fas ${icon} text-lg"></i> ${signal}${diff}</span>
                         </div>`;
@@ -152,7 +152,7 @@ function renderCarouselOrGrid() {
     if (simState.tab === 'ability') {
         items = simState.data.abilities;
         const clsName = simState.data.classes[simState.indices.class]?.nome || 'Nenhuma';
-        
+
         extraHeader = `
             <div class="text-center mb-6 w-full">
                 <h4 class="font-cinzel text-lg text-slate-400 mb-1">Grimório de Habilidades</h4>
@@ -171,11 +171,10 @@ function renderCarouselOrGrid() {
         }
 
         let gridHTML = `<div class="w-full grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6 animate-fade-in mt-4 items-start">`;
-        
+
         items.forEach((hab, idx) => {
             const desc = hab.descricaoEfeito || hab.efeito || 'Não informado.';
-            
-            // AQUI ESTÁ A MUDANÇA: 'rounded-full' transforma a imagem num círculo perfeito
+
             const imgHTML = hab.imagemUrl
                 ? `<img src="${hab.imagemUrl}" alt="Icon" class="w-20 h-20 rounded-full object-cover border-2 border-slate-500 shadow-md shrink-0 cursor-pointer hover:scale-105 hover:border-amber-400 transition-all" onclick="window.simulador.openImage('${hab.imagemUrl}')">`
                 : `<div class="w-20 h-20 rounded-full border-2 border-slate-600 bg-slate-800 flex items-center justify-center shrink-0 shadow-md"><i class="fas fa-magic text-3xl text-slate-500"></i></div>`;
@@ -207,12 +206,12 @@ function renderCarouselOrGrid() {
         return;
     }
 
-    // --- CARROSSEL ---
-    
+    // --- CARROSSEL CONTIDO COM BOTÕES LATERAIS ---
+
     if (simState.tab === 'profession') {
         extraHeader = `
-            <div class="text-center mb-6 w-full">
-                <div class="bg-amber-900/20 border border-amber-500/30 p-4 rounded-xl max-w-3xl mx-auto inline-block">
+            <div class="text-center mb-6 w-full z-10 relative">
+                <div class="bg-amber-900/20 border border-amber-500/30 p-4 rounded-xl max-w-3xl mx-auto inline-block shadow-md">
                     <p class="text-sm md:text-base text-slate-300 italic leading-relaxed">
                         Requer Guilda ou Mestre. <strong class="text-amber-500">Permitido registrar apenas a partir do Nível 5.</strong>
                     </p>
@@ -230,27 +229,30 @@ function renderCarouselOrGrid() {
     const currentIndex = simState.indices[simState.tab];
     const currentItem = items[currentIndex];
 
-    const navHTML = `
-        <div class="flex items-center justify-center mb-8 gap-6 w-full">
-            <button onclick="window.simulador.prev()" class="p-3 px-4 bg-slate-800 text-slate-300 rounded-xl hover:bg-amber-500 hover:text-black border border-slate-600 transition-all shadow-md focus:outline-none">
-                <i class="fas fa-chevron-left text-xl"></i>
-            </button>
-            <div class="font-mono text-2xl text-slate-200 font-bold min-w-[100px] text-center bg-slate-900 px-5 py-2 rounded-xl border border-slate-700 shadow-inner">
-                ${currentIndex + 1} <span class="text-slate-500 text-lg mx-1">/</span> ${items.length}
-            </div>
-            <button onclick="window.simulador.next()" class="p-3 px-4 bg-slate-800 text-slate-300 rounded-xl hover:bg-amber-500 hover:text-black border border-slate-600 transition-all shadow-md focus:outline-none">
-                <i class="fas fa-chevron-right text-xl"></i>
-            </button>
-        </div>
-    `;
-
     const cardHTML = generateCardHTML(currentItem, simState.tab);
 
     area.innerHTML = `
         ${extraHeader}
-        ${navHTML}
-        <div class="w-full animate-fade-in flex justify-center">
-            ${cardHTML}
+        <div class="relative w-full flex items-center justify-center pt-2">
+            
+            <button onclick="window.simulador.prev()" class="absolute left-0 lg:-left-4 xl:-left-8 z-20 bg-slate-900 hover:bg-amber-600 text-amber-500 hover:text-black border border-amber-500/50 w-12 h-12 flex items-center justify-center rounded-full text-2xl transition-all shadow-[0_0_15px_rgba(0,0,0,0.8)] outline-none">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+
+            <div class="w-full flex justify-center px-12 lg:px-6">
+                ${cardHTML}
+            </div>
+
+            <button onclick="window.simulador.next()" class="absolute right-0 lg:-right-4 xl:-right-8 z-20 bg-slate-900 hover:bg-amber-600 text-amber-500 hover:text-black border border-amber-500/50 w-12 h-12 flex items-center justify-center rounded-full text-2xl transition-all shadow-[0_0_15px_rgba(0,0,0,0.8)] outline-none">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            
+        </div>
+        
+        <div class="mt-6 flex justify-center w-full z-10 relative">
+            <div class="font-mono text-xl text-slate-200 font-bold text-center bg-slate-900/80 px-6 py-2 rounded-xl border border-slate-700 shadow-lg backdrop-blur-sm tracking-widest">
+                ${currentIndex + 1} <span class="text-slate-500 mx-2">/</span> ${items.length}
+            </div>
         </div>
     `;
 }
@@ -259,14 +261,17 @@ function generateCardHTML(item, type) {
     const isClass = type === 'class';
     const isRace = type === 'race';
     const desc = item.descricao || item.habilidadeEspecialClasse || 'Não informado.';
-    
+
+    // Tratamento de Imagem Vertical
     let leftImgHTML = '';
     if (item.imagemUrl) {
         leftImgHTML = `
-            <div class="w-full sm:w-[18rem] xl:w-[24rem] shrink-0 mx-auto xl:mx-0 simulador-img-wrapper cursor-pointer group" onclick="window.simulador.openImage('${item.imagemUrl}')">
-                <div class="simulador-img-glow"></div>
-                <img src="${item.imagemUrl}" alt="${escapeHTML(item.nome)}" class="simulador-img aspect-[4/5]">
-                <div class="absolute bottom-4 right-4 bg-black/70 p-3 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity z-20 backdrop-blur-sm text-lg">
+            <div class="w-full lg:w-1/3 xl:w-2/5 h-64 lg:h-full shrink-0 relative bg-black border-b lg:border-b-0 lg:border-r border-slate-700/80 cursor-pointer group" onclick="window.simulador.openImage('${item.imagemUrl}')">
+                <img src="${item.imagemUrl}" alt="${escapeHTML(item.nome)}" class="w-full h-full object-cover object-top opacity-90 transition-opacity duration-500 group-hover:opacity-100">
+                <div class="absolute inset-0 bg-gradient-to-t from-[#0a0f18] via-transparent to-transparent pointer-events-none lg:hidden"></div>
+                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-[#0a0f18] pointer-events-none hidden lg:block"></div>
+                
+                <div class="absolute bottom-4 right-4 bg-black/60 p-3 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity z-20 backdrop-blur-sm text-lg">
                     <i class="fas fa-expand-arrows-alt"></i>
                 </div>
             </div>
@@ -278,17 +283,17 @@ function generateCardHTML(item, type) {
     if (isRace) {
         const hasLendas = !!item.lendasConhecidas;
         specificContentHTML += `
-            <div class="w-full grid grid-cols-1 ${hasLendas ? 'lg:grid-cols-2' : ''} gap-6 h-full items-stretch">
-                <div class="bg-slate-900/40 p-6 md:p-8 rounded-2xl border border-slate-700/50 flex flex-col shadow-inner h-full">
-                    <h4 class="font-cinzel text-xl mb-4 text-blue-400 flex items-center gap-3 border-b border-slate-700/50 pb-3"><i class="fas fa-landmark text-slate-500"></i> Cultura e Sociedade</h4>
-                    <p class="text-slate-300 text-base leading-loose flex-grow">${escapeHTML(item.culturaSociedade || '').replace(/\n/g, '<br>')}</p>
+            <div class="w-full grid grid-cols-1 ${hasLendas ? 'xl:grid-cols-2' : ''} gap-6">
+                <div class="bg-slate-900/60 p-5 rounded-2xl border border-slate-700/50 shadow-inner">
+                    <h4 class="font-cinzel text-lg mb-3 text-blue-400 flex items-center gap-3 border-b border-slate-700/50 pb-2"><i class="fas fa-landmark text-slate-500"></i> Cultura e Sociedade</h4>
+                    <p class="text-slate-300 text-sm leading-loose">${escapeHTML(item.culturaSociedade || '').replace(/\n/g, '<br>')}</p>
                 </div>
         `;
         if (hasLendas) {
             specificContentHTML += `
-                <div class="bg-amber-900/10 p-6 md:p-8 rounded-2xl border border-amber-900/30 flex flex-col shadow-inner h-full">
-                    <h4 class="font-cinzel text-xl mb-4 text-amber-500 flex items-center gap-3 border-b border-amber-900/40 pb-3"><i class="fas fa-book-dead text-slate-500"></i> Lendas Conhecidas</h4>
-                    <p class="text-amber-100/80 text-base leading-loose italic flex-grow">${escapeHTML(item.lendasConhecidas).replace(/\n/g, '<br>')}</p>
+                <div class="bg-amber-900/10 p-5 rounded-2xl border border-amber-900/30 shadow-inner">
+                    <h4 class="font-cinzel text-lg mb-3 text-amber-500 flex items-center gap-3 border-b border-amber-900/40 pb-2"><i class="fas fa-book-dead text-slate-500"></i> Lendas Conhecidas</h4>
+                    <p class="text-amber-100/80 text-sm leading-loose italic">${escapeHTML(item.lendasConhecidas).replace(/\n/g, '<br>')}</p>
                 </div>
             `;
         }
@@ -306,18 +311,18 @@ function generateCardHTML(item, type) {
         ].filter(a => a.v >= 2);
 
         specificContentHTML += `
-            <div class="w-full flex flex-col gap-6 h-full items-stretch">
-                <div class="w-full bg-slate-900/40 p-6 md:p-8 rounded-2xl border border-slate-700/50 shadow-inner flex-grow">
-                    <h4 class="font-cinzel text-xl mb-4 text-blue-400 border-b border-slate-700/50 pb-3 flex items-center gap-3"><i class="fas fa-scroll text-slate-500"></i> Descrição</h4>
-                    <p class="text-slate-300 text-base leading-loose">${escapeHTML(desc).replace(/\n/g, '<br>')}</p>
+            <div class="w-full flex flex-col gap-6">
+                <div class="w-full bg-slate-900/60 p-5 rounded-2xl border border-slate-700/50 shadow-inner">
+                    <h4 class="font-cinzel text-lg mb-3 text-blue-400 border-b border-slate-700/50 pb-2 flex items-center gap-3"><i class="fas fa-scroll text-slate-500"></i> Descrição</h4>
+                    <p class="text-slate-300 text-sm leading-loose">${escapeHTML(desc).replace(/\n/g, '<br>')}</p>
                 </div>
         `;
         if (attrs.length > 0) {
             specificContentHTML += `
-                <div class="w-full bg-slate-900/60 p-6 md:p-8 rounded-2xl border border-slate-700 shadow-inner">
-                    <h4 class="font-cinzel text-xl mb-5 text-emerald-400 flex items-center gap-3 border-b border-slate-700/50 pb-3"><i class="fas fa-chart-radar text-slate-500"></i> Atributos em Foco</h4>
-                    <div class="flex flex-wrap gap-3 mt-2">
-                        ${attrs.map(a => `<span class="bg-slate-950 border border-emerald-900/50 text-slate-200 px-4 py-2 rounded-xl text-sm shadow-md font-medium tracking-wide cursor-default">${a.k} <span class="text-amber-400 font-bold ml-2">${a.v}</span></span>`).join('')}
+                <div class="w-full bg-slate-900/80 p-5 rounded-2xl border border-slate-700 shadow-inner">
+                    <h4 class="font-cinzel text-lg mb-4 text-emerald-400 flex items-center gap-3 border-b border-slate-700/50 pb-2"><i class="fas fa-chart-radar text-slate-500"></i> Atributos em Foco</h4>
+                    <div class="flex flex-wrap gap-2">
+                        ${attrs.map(a => `<span class="bg-slate-950 border border-emerald-900/50 text-slate-200 px-3 py-1.5 rounded-lg text-xs shadow-md font-medium tracking-wide cursor-default">${a.k} <span class="text-amber-400 font-bold ml-1">${a.v}</span></span>`).join('')}
                     </div>
                 </div>
             `;
@@ -327,60 +332,65 @@ function generateCardHTML(item, type) {
 
     if (!isRace && !isClass) {
         specificContentHTML += `
-            <div class="w-full bg-slate-900/40 p-6 md:p-8 rounded-2xl border border-slate-700/50 shadow-inner h-full flex-grow">
-                <h4 class="font-cinzel text-xl mb-4 text-blue-400 border-b border-slate-700/50 pb-3 flex items-center gap-3"><i class="fas fa-scroll text-slate-500"></i> Descrição</h4>
-                <p class="text-slate-300 text-base leading-loose">${escapeHTML(desc).replace(/\n/g, '<br>')}</p>
+            <div class="w-full bg-slate-900/60 p-5 rounded-2xl border border-slate-700/50 shadow-inner">
+                <h4 class="font-cinzel text-lg mb-3 text-blue-400 border-b border-slate-700/50 pb-2 flex items-center gap-3"><i class="fas fa-scroll text-slate-500"></i> Descrição</h4>
+                <p class="text-slate-300 text-sm leading-loose">${escapeHTML(desc).replace(/\n/g, '<br>')}</p>
             </div>
         `;
     }
 
     return `
-        <div class="simulador-card w-full p-6 md:p-10 lg:p-12 rounded-[2.5rem] border border-slate-600/50 shadow-2xl flex flex-col gap-8 items-start mx-auto">
+        <div class="animate-fade-in flex flex-col lg:flex-row bg-[#0a0f18] border-2 border-slate-700/80 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] w-full max-w-6xl h-[65vh] min-h-[500px] overflow-hidden">
             
-            <h3 class="font-cinzel text-3xl sm:text-4xl md:text-5xl font-bold text-white border-b-2 border-slate-700/80 pb-4 tracking-wide w-full drop-shadow-md text-center xl:text-left">${escapeHTML(item.nome || 'Desconhecido')}</h3>
+            ${leftImgHTML}
             
-            <div class="w-full flex flex-col xl:flex-row gap-8 xl:gap-12 items-stretch">
-                ${leftImgHTML}
-                <div class="flex-1 w-full flex flex-col gap-6 items-start h-full">
+            <div class="w-full ${item.imagemUrl ? 'lg:w-2/3 xl:w-3/5' : 'w-full'} flex flex-col p-6 lg:p-10 h-full relative z-10">
+                <div class="shrink-0 mb-6">
+                    <h3 class="font-cinzel text-3xl lg:text-4xl xl:text-5xl font-bold text-white tracking-wide w-full drop-shadow-md pb-2 border-b-2 border-amber-500/50">
+                        ${escapeHTML(item.nome || 'Desconhecido')}
+                    </h3>
+                </div>
+                
+                <div class="flex-grow overflow-y-auto custom-scroll pr-4 pb-4">
                     ${specificContentHTML}
                 </div>
             </div>
-
+            
         </div>
     `;
 }
 
 window.simulador = {
-    setTab: function(tabName) {
+    setTab: function (tabName) {
         simState.tab = tabName;
         renderUI();
     },
-    next: function() {
+    next: function () {
         const max = simState.data[simState.tab === 'profession' ? 'professions' : simState.tab === 'race' ? 'races' : 'classes'].length;
-        if(max <= 1) return;
+        if (max <= 1) return;
         simState.indices[simState.tab] = (simState.indices[simState.tab] + 1) % max;
-        if(simState.tab === 'class') updateAbilitiesForCurrentClass();
+        if (simState.tab === 'class') updateAbilitiesForCurrentClass();
         renderUI();
     },
-    prev: function() {
+    prev: function () {
         const max = simState.data[simState.tab === 'profession' ? 'professions' : simState.tab === 'race' ? 'races' : 'classes'].length;
-        if(max <= 1) return;
+        if (max <= 1) return;
         simState.indices[simState.tab] = (simState.indices[simState.tab] - 1 + max) % max;
-        if(simState.tab === 'class') updateAbilitiesForCurrentClass();
+        if (simState.tab === 'class') updateAbilitiesForCurrentClass();
         renderUI();
     },
-    openImage: function(src) {
+    openImage: function (src) {
         const modal = document.getElementById('simulador-image-modal');
         const img = document.getElementById('simulador-modal-img');
-        if(modal && img) {
+        if (modal && img) {
             img.src = src;
             modal.classList.remove('hidden');
             modal.classList.add('flex');
         }
     },
-    toggleReadMore: function(descId, btn) {
+    toggleReadMore: function (descId, btn) {
         const descEl = document.getElementById(descId);
-        if(!descEl) return;
+        if (!descEl) return;
         if (descEl.classList.contains('line-clamp-5')) {
             descEl.classList.remove('line-clamp-5');
             btn.innerHTML = 'Mostrar Menos <i class="fas fa-chevron-up"></i>';
