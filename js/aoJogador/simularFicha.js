@@ -21,23 +21,20 @@ export function renderSimularFichaTab() {
     container.innerHTML = `
         <div class="w-full h-full fade-in flex flex-col p-4 overflow-y-auto custom-scroll relative pb-16">
             
-            <header class="mb-4 w-full bg-slate-900/50 p-4 rounded-xl border border-slate-700/50 flex flex-col xl:flex-row items-center justify-between gap-4">
-                <div class="flex-1 w-full text-center xl:text-left">
-                    <h1 class="text-2xl lg:text-3xl font-bold font-cinzel text-blue-400 drop-shadow-md">
-                        Forja do Aventureiro
-                    </h1>
-                    <p class="text-slate-400 text-[11px] leading-tight max-w-2xl mx-auto xl:mx-0 opacity-80">
-                        Simule combinações, acompanhe atributos e visualize o arsenal do seu herói épico.
-                    </p>
+            <header class="mb-4 w-full bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 flex items-center justify-between gap-4">
+                <div class="flex flex-col justify-center">
+                    <h1 class="text-xl font-bold font-cinzel text-blue-400 leading-none">Forja do Aventureiro</h1>
+                    <p class="text-[9px] text-slate-400 uppercase tracking-widest mt-0.5">Simulação de atributos e arsenal</p>
                 </div>
-                <div id="simulador-summary" class="w-full xl:w-auto shrink-0 flex justify-center scale-90 origin-right"></div>
+                
+                <div id="simulador-summary" class="scale-[0.75] origin-right"></div>
             </header>
 
             <div class="flex justify-center border-b border-slate-600 mb-6 flex-wrap w-full gap-2">
-                <button onclick="window.simulador.setTab('race')" id="sim-tab-race" class="sim-tab font-cinzel text-sm px-4 py-2 transition-colors duration-200 border-b-4 border-blue-500 text-blue-400 font-bold tracking-widest outline-none">Raça</button>
-                <button onclick="window.simulador.setTab('class')" id="sim-tab-class" class="sim-tab font-cinzel text-sm px-4 py-2 transition-colors duration-200 border-b-4 border-transparent text-slate-400 hover:text-slate-200 tracking-widest outline-none">Classe</button>
-                <button onclick="window.simulador.setTab('ability')" id="sim-tab-ability" class="sim-tab font-cinzel text-sm px-4 py-2 transition-colors duration-200 border-b-4 border-transparent text-slate-400 hover:text-slate-200 tracking-widest outline-none">Habilidades</button>
-                <button onclick="window.simulador.setTab('profession')" id="sim-tab-profession" class="sim-tab font-cinzel text-sm px-4 py-2 transition-colors duration-200 border-b-4 border-transparent text-slate-400 hover:text-slate-200 tracking-widest outline-none">Profissões</button>
+                <button onclick="window.simulador.setTab('race')" id="sim-tab-race" class="sim-tab font-cinzel text-[11px] px-3 py-1.5 transition-colors duration-200 border-b-2 border-blue-500 text-blue-400 font-bold tracking-widest outline-none">Raça</button>
+                <button onclick="window.simulador.setTab('class')" id="sim-tab-class" class="sim-tab font-cinzel text-[11px] px-3 py-1.5 transition-colors duration-200 border-b-2 border-transparent text-slate-400 hover:text-slate-200 tracking-widest outline-none">Classe</button>
+                <button onclick="window.simulador.setTab('ability')" id="sim-tab-ability" class="sim-tab font-cinzel text-[11px] px-3 py-1.5 transition-colors duration-200 border-b-2 border-transparent text-slate-400 hover:text-slate-200 tracking-widest outline-none">Habilidades</button>
+                <button onclick="window.simulador.setTab('profession')" id="sim-tab-profession" class="sim-tab font-cinzel text-[11px] px-3 py-1.5 transition-colors duration-200 border-b-2 border-transparent text-slate-400 hover:text-slate-200 tracking-widest outline-none">Profissões</button>
             </div>
 
             <div id="simulador-carousel-area" class="w-full flex-grow flex flex-col items-center"></div>
