@@ -143,18 +143,18 @@ export function renderConhecaMundoTab() {
                     <h2 class="text-2xl font-cinzel font-bold text-slate-200 tracking-widest"><i class="fas fa-guitar text-amber-500 mr-3"></i> Acervo dos Bardos</h2>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 bg-slate-900/50 p-6 rounded-2xl border border-slate-800 shadow-2xl">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 bg-slate-900/50 p-6 rounded-2xl border border-slate-800 shadow-2xl items-stretch">
                     
                     <div class="flex flex-col gap-4">
-                        <img src="imagens/usoGeralSite/bardo-conheca-o-mundo.png" alt="Bardo" class="w-full h-auto aspect-square object-cover rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.5)] border border-amber-500/30 object-top">
+                        <img src="imagens/usoGeralSite/bardo-conheca-o-mundo.png" alt="Bardo" class="w-full h-auto aspect-square object-cover rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.5)] border border-amber-500/30 object-top shrink-0">
                         
-                        <div class="bg-slate-950 border border-slate-700 rounded-xl p-4 shadow-inner flex flex-col gap-4">
-                            <div class="text-center overflow-hidden">
+                        <div class="bg-slate-950 border border-slate-700 rounded-xl p-4 shadow-inner flex flex-col gap-4 h-full justify-center min-h-[160px]">
+                            <div class="text-center overflow-hidden shrink-0">
                                 <h4 id="player-title" class="text-amber-400 font-cinzel font-bold truncate">Nenhuma canção selecionada</h4>
                                 <p class="text-[10px] text-slate-500 uppercase tracking-widest">Bardo de Androa</p>
                             </div>
 
-                            <div class="flex flex-col gap-1 w-full">
+                            <div class="flex flex-col gap-1 w-full shrink-0">
                                 <input type="range" id="bardo-progress" min="0" max="100" value="0" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500" oninput="window.conhecaMundo.buscarTempo(this.value)">
                                 <div class="flex justify-between text-[10px] text-slate-400 font-mono font-bold px-1">
                                     <span id="bardo-time-current">0:00</span>
@@ -162,15 +162,17 @@ export function renderConhecaMundoTab() {
                                 </div>
                             </div>
 
-                            <div class="flex items-center justify-center gap-6">
+                            <div class="flex items-center justify-center gap-6 shrink-0">
                                 <button onclick="window.conhecaMundo.musicaAnterior()" class="text-slate-400 hover:text-amber-400 text-lg transition-transform hover:scale-110 outline-none"><i class="fas fa-step-backward"></i></button>
+                                
                                 <button onclick="window.conhecaMundo.togglePlay()" id="bardo-btn-play" class="w-12 h-12 rounded-full bg-amber-600 hover:bg-amber-500 text-black flex items-center justify-center text-xl transition-transform hover:scale-105 shadow-[0_0_10px_rgba(245,158,11,0.4)] outline-none">
                                     <i class="fas fa-play ml-1"></i>
                                 </button>
+                                
                                 <button onclick="window.conhecaMundo.proximaMusica()" class="text-slate-400 hover:text-amber-400 text-lg transition-transform hover:scale-110 outline-none"><i class="fas fa-step-forward"></i></button>
                             </div>
 
-                            <div class="flex items-center justify-center gap-3 pt-3 border-t border-slate-800">
+                            <div class="flex items-center justify-center gap-3 pt-3 border-t border-slate-800 shrink-0">
                                 <i class="fas fa-volume-down text-slate-500 text-xs"></i>
                                 <input type="range" id="bardo-volume" min="0" max="1" step="0.05" value="0.5" oninput="window.conhecaMundo.mudarVolume(this.value)" class="w-24 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-slate-300">
                                 <i class="fas fa-volume-up text-slate-500 text-xs"></i>
@@ -178,20 +180,24 @@ export function renderConhecaMundoTab() {
                         </div>
                     </div>
 
-                    <div class="flex flex-col gap-2 h-[450px] overflow-y-auto custom-scroll pr-2 bg-slate-950/30 p-2 rounded-xl border border-slate-800">
-                        <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2 pl-2">Repertório</h3>
-                        ${bardosHTML}
+                    <div class="relative min-h-[400px] lg:min-h-0 lg:h-full">
+                        <div class="absolute inset-0 flex flex-col bg-slate-950/30 p-3 rounded-xl border border-slate-800">
+                            <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3 pl-1 shrink-0">Repertório</h3>
+                            <div class="flex flex-col gap-2 overflow-y-auto custom-scroll pr-2 flex-grow min-h-0">
+                                ${bardosHTML}
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="bg-slate-950/80 border border-slate-700 rounded-xl p-6 h-[450px] overflow-auto custom-scroll relative">
-                        <h3 id="lyric-title" class="text-amber-500 font-cinzel font-bold text-xl mb-4 border-b border-slate-700 pb-2">As Canções</h3>
-                        <pre id="lyric-text" class="text-slate-300 font-serif whitespace-pre leading-relaxed text-sm">Selecione uma música no repertório ao lado para acompanhar as palavras do bardo.</pre>
+                    <div class="relative min-h-[400px] lg:min-h-0 lg:h-full">
+                        <div class="absolute inset-0 flex flex-col bg-slate-950/80 border border-slate-700 rounded-xl p-6">
+                            <h3 id="lyric-title" class="text-amber-500 font-cinzel font-bold text-xl mb-4 border-b border-slate-700 pb-2 shrink-0">As Canções</h3>
+                            <pre id="lyric-text" class="text-slate-300 font-serif whitespace-pre-wrap leading-relaxed text-sm overflow-y-auto custom-scroll flex-grow min-h-0 pr-2">Selecione uma música no repertório ao lado para acompanhar as palavras do bardo.</pre>
+                        </div>
                     </div>
 
                 </div>
             </div>
-
-        </div>
         
         <audio id="bardo-audio-engine"></audio>
 
