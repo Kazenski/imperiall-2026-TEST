@@ -30,7 +30,7 @@ h1, h2, h3, h4, h5, h6, .font-cinzel {
    AJUSTE DE ESCALA GLOBAL (ZOOM OUT TAILWIND)
    ========================================================================== */
 html {
-    font-size: 14px; /* Reduz a escala base do rem. Diminui tudo proporcionalmente. */
+    font-size: 12px; /* Reduz a escala base do rem. Diminui tudo proporcionalmente. */
 }
 
 /* Scrollbar */
