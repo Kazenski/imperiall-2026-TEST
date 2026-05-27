@@ -19,28 +19,32 @@ export function renderSimularFichaTab() {
     updateAbilitiesForCurrentClass();
 
     container.innerHTML = `
-        <div class="w-full h-full fade-in flex flex-col p-4 overflow-y-auto custom-scroll relative pb-16">
+        <div class="w-full h-full fade-in flex flex-col p-2 md:p-4 overflow-y-auto overflow-x-hidden custom-scroll relative pb-16">
             
-            <header class="mb-4 w-full bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 flex items-center justify-between gap-4">
-                <div class="flex flex-col justify-center">
-                    <h1 class="text-xl font-bold font-cinzel text-blue-400 leading-none">Forja do Aventureiro</h1>
-                    <p class="text-[9px] text-slate-400 uppercase tracking-widest mt-0.5">Simulação de atributos e arsenal</p>
+            <header class="mb-4 w-full bg-slate-900/50 p-3 md:p-4 rounded-xl border border-slate-700/50 flex flex-col xl:flex-row items-center justify-between gap-3 shrink-0">
+                <div class="flex flex-col justify-center text-center xl:text-left shrink-0">
+                    <h1 class="text-3xl md:text-4xl font-bold font-cinzel text-blue-400 leading-none drop-shadow-md">Forja do Aventureiro</h1>
+                    <p class="text-[10px] md:text-xs text-slate-400 uppercase tracking-widest mt-1.5">Simulação de atributos e arsenal</p>
                 </div>
                 
-                <div id="simulador-summary" class="scale-[0.75] origin-right"></div>
+                <div id="simulador-summary" class="scale-[0.80] md:scale-95 xl:scale-100 origin-center xl:origin-right shrink-0"></div>
             </header>
 
-            <div class="flex justify-center border-b border-slate-600 mb-6 flex-wrap w-full gap-2">
-                <button onclick="window.simulador.setTab('race')" id="sim-tab-race" class="sim-tab font-cinzel text-[11px] px-3 py-1.5 transition-colors duration-200 border-b-2 border-blue-500 text-blue-400 font-bold tracking-widest outline-none">Raça</button>
-                <button onclick="window.simulador.setTab('class')" id="sim-tab-class" class="sim-tab font-cinzel text-[11px] px-3 py-1.5 transition-colors duration-200 border-b-2 border-transparent text-slate-400 hover:text-slate-200 tracking-widest outline-none">Classe</button>
-                <button onclick="window.simulador.setTab('ability')" id="sim-tab-ability" class="sim-tab font-cinzel text-[11px] px-3 py-1.5 transition-colors duration-200 border-b-2 border-transparent text-slate-400 hover:text-slate-200 tracking-widest outline-none">Habilidades</button>
-                <button onclick="window.simulador.setTab('profession')" id="sim-tab-profession" class="sim-tab font-cinzel text-[11px] px-3 py-1.5 transition-colors duration-200 border-b-2 border-transparent text-slate-400 hover:text-slate-200 tracking-widest outline-none">Profissões</button>
+            <div class="flex justify-center border-b border-slate-600 mb-6 flex-wrap w-full gap-2 shrink-0">
+                <button onclick="window.simulador.setTab('race')" id="sim-tab-race" class="sim-tab font-cinzel text-xs md:text-sm px-4 py-2 transition-colors duration-200 border-b-2 border-blue-500 text-blue-400 font-bold tracking-widest outline-none">Raça</button>
+                <button onclick="window.simulador.setTab('class')" id="sim-tab-class" class="sim-tab font-cinzel text-xs md:text-sm px-4 py-2 transition-colors duration-200 border-b-2 border-transparent text-slate-400 hover:text-slate-200 tracking-widest outline-none">Classe</button>
+                <button onclick="window.simulador.setTab('ability')" id="sim-tab-ability" class="sim-tab font-cinzel text-xs md:text-sm px-4 py-2 transition-colors duration-200 border-b-2 border-transparent text-slate-400 hover:text-slate-200 tracking-widest outline-none">Habilidades</button>
+                <button onclick="window.simulador.setTab('profession')" id="sim-tab-profession" class="sim-tab font-cinzel text-xs md:text-sm px-4 py-2 transition-colors duration-200 border-b-2 border-transparent text-slate-400 hover:text-slate-200 tracking-widest outline-none">Profissões</button>
             </div>
 
             <div id="simulador-carousel-area" class="w-full flex-grow flex flex-col items-center"></div>
         </div>
-        
-        `;
+
+        <div id="simulador-image-modal" class="fixed inset-0 bg-black/95 hidden items-center justify-center z-[100] p-4 cursor-pointer animate-fade-in" onclick="this.classList.add('hidden'); this.classList.remove('flex');">
+            <button class="absolute top-6 right-8 text-slate-300 hover:text-amber-400 text-5xl transition-colors outline-none">&times;</button>
+            <img id="simulador-modal-img" src="" class="max-w-[95vw] max-h-[95vh] rounded-2xl border-4 border-slate-700 shadow-2xl object-contain">
+        </div>
+    `;
 
     renderUI();
 }
@@ -147,10 +151,10 @@ function renderCarouselOrGrid() {
         const clsName = simState.data.classes[simState.indices.class]?.nome || 'Nenhuma';
 
         extraHeader = `
-            <div class="text-center mb-6 w-full">
+            <div class="text-center mb-6 w-full shrink-0">
                 <h4 class="font-cinzel text-lg text-slate-400 mb-1">Grimório de Habilidades</h4>
                 <p class="text-4xl font-bold text-amber-500 mb-4 drop-shadow-md">${escapeHTML(clsName)}</p>
-                <div class="bg-blue-900/20 border border-blue-500/30 p-4 rounded-xl max-w-3xl mx-auto inline-block">
+                <div class="bg-blue-900/20 border border-blue-500/30 p-3 rounded-xl max-w-3xl mx-auto inline-block">
                     <p class="text-sm text-slate-300 italic">
                         Quantidade inicial: <strong class="text-amber-400">1d6</strong> | Nível máximo: <strong class="text-amber-400">1d20</strong>.
                     </p>
@@ -167,7 +171,6 @@ function renderCarouselOrGrid() {
 
         items.forEach((hab, idx) => {
             const desc = hab.descricaoEfeito || hab.efeito || 'Não informado.';
-
             const imgHTML = hab.imagemUrl
                 ? `<img src="${hab.imagemUrl}" alt="Icon" class="w-20 h-20 rounded-full object-cover border-2 border-slate-500 shadow-md shrink-0 cursor-pointer hover:scale-105 hover:border-amber-400 transition-all" onclick="window.simulador.openImage('${hab.imagemUrl}')">`
                 : `<div class="w-20 h-20 rounded-full border-2 border-slate-600 bg-slate-800 flex items-center justify-center shrink-0 shadow-md"><i class="fas fa-magic text-3xl text-slate-500"></i></div>`;
@@ -199,13 +202,13 @@ function renderCarouselOrGrid() {
         return;
     }
 
-    // --- CARROSSEL CONTIDO COM BOTÕES LATERAIS ---
+    // --- CARROSSEL CONTIDO COM BOTÕES FORÇADOS À FRENTE ---
 
     if (simState.tab === 'profession') {
         extraHeader = `
-            <div class="text-center mb-6 w-full z-10 relative">
-                <div class="bg-amber-900/20 border border-amber-500/30 p-4 rounded-xl max-w-3xl mx-auto inline-block shadow-md">
-                    <p class="text-sm md:text-base text-slate-300 italic leading-relaxed">
+            <div class="text-center mb-6 w-full z-10 relative shrink-0">
+                <div class="bg-amber-900/20 border border-amber-500/30 p-3 rounded-xl max-w-3xl mx-auto inline-block shadow-md">
+                    <p class="text-sm text-slate-300 italic leading-relaxed">
                         Requer Guilda ou Mestre. <strong class="text-amber-500">Permitido registrar apenas a partir do Nível 5.</strong>
                     </p>
                 </div>
@@ -221,28 +224,27 @@ function renderCarouselOrGrid() {
 
     const currentIndex = simState.indices[simState.tab];
     const currentItem = items[currentIndex];
-
     const cardHTML = generateCardHTML(currentItem, simState.tab);
 
     area.innerHTML = `
         ${extraHeader}
-        <div class="relative w-full flex items-center justify-center pt-2">
+        <div class="relative w-full flex items-center justify-center pt-2 min-h-0 shrink-0">
             
-            <button onclick="window.simulador.prev()" class="absolute left-0 lg:-left-4 xl:-left-8 z-20 bg-slate-900 hover:bg-amber-600 text-amber-500 hover:text-black border border-amber-500/50 w-12 h-12 flex items-center justify-center rounded-full text-2xl transition-all shadow-[0_0_15px_rgba(0,0,0,0.8)] outline-none">
+            <button onclick="window.simulador.prev()" class="absolute left-1 md:left-2 z-[60] bg-slate-900 hover:bg-amber-600 text-amber-500 hover:text-black border border-amber-500 w-12 h-12 md:w-14 md:h-14 flex items-center justify-center rounded-full text-xl md:text-2xl transition-all shadow-[0_0_20px_rgba(0,0,0,0.8)] outline-none cursor-pointer">
                 <i class="fas fa-chevron-left"></i>
             </button>
 
-            <div class="w-full flex justify-center px-12 lg:px-6">
+            <div class="w-full flex justify-center px-14 md:px-20 h-[65vh] min-h-[450px]">
                 ${cardHTML}
             </div>
 
-            <button onclick="window.simulador.next()" class="absolute right-0 lg:-right-4 xl:-right-8 z-20 bg-slate-900 hover:bg-amber-600 text-amber-500 hover:text-black border border-amber-500/50 w-12 h-12 flex items-center justify-center rounded-full text-2xl transition-all shadow-[0_0_15px_rgba(0,0,0,0.8)] outline-none">
+            <button onclick="window.simulador.next()" class="absolute right-1 md:right-2 z-[60] bg-slate-900 hover:bg-amber-600 text-amber-500 hover:text-black border border-amber-500 w-12 h-12 md:w-14 md:h-14 flex items-center justify-center rounded-full text-xl md:text-2xl transition-all shadow-[0_0_20px_rgba(0,0,0,0.8)] outline-none cursor-pointer">
                 <i class="fas fa-chevron-right"></i>
             </button>
             
         </div>
         
-        <div class="mt-6 flex justify-center w-full z-10 relative">
+        <div class="mt-4 flex justify-center w-full z-10 relative shrink-0">
             <div class="font-mono text-xl text-slate-200 font-bold text-center bg-slate-900/80 px-6 py-2 rounded-xl border border-slate-700 shadow-lg backdrop-blur-sm tracking-widest">
                 ${currentIndex + 1} <span class="text-slate-500 mx-2">/</span> ${items.length}
             </div>
@@ -255,11 +257,11 @@ function generateCardHTML(item, type) {
     const isRace = type === 'race';
     const desc = item.descricao || item.habilidadeEspecialClasse || 'Não informado.';
 
-    // Tratamento de Imagem Vertical
+    // Tratamento de Imagem Vertical - Largura Fixa, Textos Expandem
     let leftImgHTML = '';
     if (item.imagemUrl) {
         leftImgHTML = `
-            <div class="w-full lg:w-1/3 xl:w-2/5 h-64 lg:h-full shrink-0 relative bg-black border-b lg:border-b-0 lg:border-r border-slate-700/80 cursor-pointer group" onclick="window.simulador.openImage('${item.imagemUrl}')">
+            <div class="w-full lg:w-[300px] xl:w-[400px] h-64 lg:h-full shrink-0 relative bg-black border-b lg:border-b-0 lg:border-r border-slate-700/80 cursor-pointer group" onclick="window.simulador.openImage('${item.imagemUrl}')">
                 <img src="${item.imagemUrl}" alt="${escapeHTML(item.nome)}" class="w-full h-full object-cover object-top opacity-90 transition-opacity duration-500 group-hover:opacity-100">
                 <div class="absolute inset-0 bg-gradient-to-t from-[#0a0f18] via-transparent to-transparent pointer-events-none lg:hidden"></div>
                 <div class="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-[#0a0f18] pointer-events-none hidden lg:block"></div>
@@ -277,14 +279,14 @@ function generateCardHTML(item, type) {
         const hasLendas = !!item.lendasConhecidas;
         specificContentHTML += `
             <div class="w-full grid grid-cols-1 ${hasLendas ? 'xl:grid-cols-2' : ''} gap-6">
-                <div class="bg-slate-900/60 p-5 rounded-2xl border border-slate-700/50 shadow-inner">
+                <div class="bg-slate-900/60 p-5 md:p-8 rounded-2xl border border-slate-700/50 shadow-inner">
                     <h4 class="font-cinzel text-lg mb-3 text-blue-400 flex items-center gap-3 border-b border-slate-700/50 pb-2"><i class="fas fa-landmark text-slate-500"></i> Cultura e Sociedade</h4>
                     <p class="text-slate-300 text-sm leading-loose">${escapeHTML(item.culturaSociedade || '').replace(/\n/g, '<br>')}</p>
                 </div>
         `;
         if (hasLendas) {
             specificContentHTML += `
-                <div class="bg-amber-900/10 p-5 rounded-2xl border border-amber-900/30 shadow-inner">
+                <div class="bg-amber-900/10 p-5 md:p-8 rounded-2xl border border-amber-900/30 shadow-inner">
                     <h4 class="font-cinzel text-lg mb-3 text-amber-500 flex items-center gap-3 border-b border-amber-900/40 pb-2"><i class="fas fa-book-dead text-slate-500"></i> Lendas Conhecidas</h4>
                     <p class="text-amber-100/80 text-sm leading-loose italic">${escapeHTML(item.lendasConhecidas).replace(/\n/g, '<br>')}</p>
                 </div>
@@ -305,14 +307,14 @@ function generateCardHTML(item, type) {
 
         specificContentHTML += `
             <div class="w-full flex flex-col gap-6">
-                <div class="w-full bg-slate-900/60 p-5 rounded-2xl border border-slate-700/50 shadow-inner">
+                <div class="w-full bg-slate-900/60 p-5 md:p-8 rounded-2xl border border-slate-700/50 shadow-inner">
                     <h4 class="font-cinzel text-lg mb-3 text-blue-400 border-b border-slate-700/50 pb-2 flex items-center gap-3"><i class="fas fa-scroll text-slate-500"></i> Descrição</h4>
                     <p class="text-slate-300 text-sm leading-loose">${escapeHTML(desc).replace(/\n/g, '<br>')}</p>
                 </div>
         `;
         if (attrs.length > 0) {
             specificContentHTML += `
-                <div class="w-full bg-slate-900/80 p-5 rounded-2xl border border-slate-700 shadow-inner">
+                <div class="w-full bg-slate-900/80 p-5 md:p-8 rounded-2xl border border-slate-700 shadow-inner">
                     <h4 class="font-cinzel text-lg mb-4 text-emerald-400 flex items-center gap-3 border-b border-slate-700/50 pb-2"><i class="fas fa-chart-radar text-slate-500"></i> Atributos em Foco</h4>
                     <div class="flex flex-wrap gap-2">
                         ${attrs.map(a => `<span class="bg-slate-950 border border-emerald-900/50 text-slate-200 px-3 py-1.5 rounded-lg text-xs shadow-md font-medium tracking-wide cursor-default">${a.k} <span class="text-amber-400 font-bold ml-1">${a.v}</span></span>`).join('')}
@@ -325,7 +327,7 @@ function generateCardHTML(item, type) {
 
     if (!isRace && !isClass) {
         specificContentHTML += `
-            <div class="w-full bg-slate-900/60 p-5 rounded-2xl border border-slate-700/50 shadow-inner">
+            <div class="w-full bg-slate-900/60 p-5 md:p-8 rounded-2xl border border-slate-700/50 shadow-inner">
                 <h4 class="font-cinzel text-lg mb-3 text-blue-400 border-b border-slate-700/50 pb-2 flex items-center gap-3"><i class="fas fa-scroll text-slate-500"></i> Descrição</h4>
                 <p class="text-slate-300 text-sm leading-loose">${escapeHTML(desc).replace(/\n/g, '<br>')}</p>
             </div>
@@ -333,11 +335,11 @@ function generateCardHTML(item, type) {
     }
 
     return `
-        <div class="animate-fade-in flex flex-col lg:flex-row bg-[#0a0f18] border-2 border-slate-700/80 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] w-full max-w-6xl h-[65vh] min-h-[500px] overflow-hidden">
+        <div class="animate-fade-in flex flex-col lg:flex-row bg-[#0a0f18] border-2 border-slate-700/80 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] w-full overflow-hidden">
             
             ${leftImgHTML}
             
-            <div class="w-full ${item.imagemUrl ? 'lg:w-2/3 xl:w-3/5' : 'w-full'} flex flex-col p-6 lg:p-10 h-full relative z-10">
+            <div class="flex-1 w-full min-w-0 flex flex-col p-6 lg:p-10 relative z-10">
                 <div class="shrink-0 mb-6">
                     <h3 class="font-cinzel text-3xl lg:text-4xl xl:text-5xl font-bold text-white tracking-wide w-full drop-shadow-md pb-2 border-b-2 border-amber-500/50">
                         ${escapeHTML(item.nome || 'Desconhecido')}
