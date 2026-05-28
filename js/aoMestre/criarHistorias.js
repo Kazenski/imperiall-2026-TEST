@@ -686,7 +686,7 @@ window.criarHistorias = {
 
             snap.forEach(docSnap => {
                 const camp = docSnap.data();
-                if (camp.idMestre === uidAtual) return; // Não mostra as próprias histórias na comunidade
+                //if (camp.idMestre === uidAtual) return; // Não mostra as próprias histórias na comunidade
 
                 const card = document.createElement("div");
                 card.className = "bg-slate-950 border border-slate-700 rounded-lg p-5 flex flex-col justify-between shadow-lg hover:border-amber-500/50 transition-colors";
