@@ -26,11 +26,15 @@ export async function renderCriarHistoriasTab() {
         <div class="w-full h-full fade-in flex flex-col p-6 overflow-hidden bg-slate-950">
             
             <header class="text-left mb-6 border-b border-slate-700 pb-4 shrink-0 flex justify-between items-end">
-                <div>
-                    <h1 class="text-3xl font-bold font-cinzel text-amber-500 tracking-widest drop-shadow-md"><i class="fas fa-project-diagram mr-2"></i> Criar Histórias</h1>
-                    <p class="text-slate-400 mt-1 text-xs italic">Crie campanhas, capítulos e interligue anotações num mural digital.</p>
+                <div>
+                    <h1 class="text-3xl font-bold font-cinzel text-amber-500 tracking-widest drop-shadow-md"><i class="fas fa-project-diagram mr-2"></i> Criar Histórias</h1>
+                    <p class="text-slate-400 mt-1 text-xs italic">Crie campanhas, capítulos e interligue anotações num mural digital.</p>
+                </div>
+                <div class="flex gap-2">
+                    <button id="tab-minhas-historias" onclick="window.criarHistorias.mostrarWorkspace()" class="bg-amber-600/20 border border-amber-500 text-amber-500 px-4 py-2 rounded text-xs font-bold uppercase tracking-wider transition-all">Minhas Campanhas</button>
+                    <button id="tab-comunidade" onclick="window.criarHistorias.abrirComunidade()" class="bg-slate-800 border border-slate-600 text-slate-400 px-4 py-2 rounded text-xs font-bold uppercase tracking-wider transition-all hover:bg-slate-700">Modelos da Comunidade</button>
                 </div>
-            </header>
+            </header>
 
             <div id="historias-sync-screen" class="${historiasState.sincronizado ? 'hidden' : 'flex'} flex-1 flex-col items-center justify-center p-6 text-center">
                 <div class="max-w-md bg-slate-900 border border-amber-500/30 p-8 rounded-xl shadow-2xl space-y-6">
@@ -96,6 +100,13 @@ export async function renderCriarHistoriasTab() {
                     </div>
                 </section>
             </div>
+
+            </div> <div id="historias-comunidade" class="hidden flex-1 flex-col overflow-hidden bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-6 relative">
+                <h2 class="text-xl font-cinzel font-bold text-amber-500 mb-4 border-b border-slate-700 pb-2">Acervo de Campanhas Públicas</h2>
+                <div id="lista-comunidade-grid" class="flex-1 overflow-y-auto custom-scroll grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-10">
+                    </div>
+            </div>
+        </div>
         </div>
     `;
 
@@ -196,6 +207,46 @@ window.criarHistorias = {
             listaCaps.innerHTML = '<p class="text-[10px] text-slate-500 italic text-center mt-4 px-2">Selecione uma campanha acima para gerenciar.</p>';
             return;
         }
+
+        btnNovoCap.classList.remove("hidden");
+        this.renderizarListaCapitulos();
+    },
+
+    selecionarCampanha: function (idCampanha) {
+        historiasState.idCampanhaAtiva = idCampanha;
+        historiasState.idCapituloAtivo = null;
+        this.limparMural();
+
+        const btnNovoCap = document.getElementById("btn-novo-capitulo");
+        const listaCaps = document.getElementById("lista-capitulos-container");
+
+        // NOVO: Controle de Visibilidade Pública da Campanha Ativa
+        let containerVisibilidade = document.getElementById("controle-visibilidade-campanha");
+        if (!containerVisibilidade) {
+            containerVisibilidade = document.createElement("div");
+            containerVisibilidade.id = "controle-visibilidade-campanha";
+            containerVisibilidade.className = "p-2 bg-slate-950 border-b border-slate-700 shrink-0 text-center";
+            listaCaps.parentNode.insertBefore(containerVisibilidade, listaCaps);
+        }
+
+        if (!idCampanha) {
+            btnNovoCap.classList.add("hidden");
+            containerVisibilidade.innerHTML = "";
+            containerVisibilidade.classList.add("hidden");
+            listaCaps.innerHTML = '<p class="text-[10px] text-slate-500 italic text-center mt-4 px-2">Selecione uma campanha acima para gerenciar.</p>';
+            return;
+        }
+
+        const camp = historiasState.campanhas.find(c => c.id === idCampanha);
+        const isPublica = camp.isPublic || false;
+
+        containerVisibilidade.classList.remove("hidden");
+        containerVisibilidade.innerHTML = `
+            <label class="flex items-center justify-center gap-2 cursor-pointer text-[10px] uppercase font-bold tracking-widest ${isPublica ? 'text-emerald-400' : 'text-slate-500'}">
+                <input type="checkbox" ${isPublica ? 'checked' : ''} onchange="window.criarHistorias.alternarVisibilidadeCampanha('${idCampanha}', this.checked)" class="accent-amber-500">
+                Compartilhar na Comunidade
+            </label>
+        `;
 
         btnNovoCap.classList.remove("hidden");
         this.renderizarListaCapitulos();
@@ -576,5 +627,152 @@ window.criarHistorias = {
         `;
 
         document.body.insertAdjacentHTML('beforeend', modalHTML);
+    },
+
+    alternarVisibilidadeCampanha: async function (idCampanha, isPublic) {
+        try {
+            const camp = historiasState.campanhas.find(c => c.id === idCampanha);
+            if (camp) {
+                camp.isPublic = isPublic;
+                // Atualiza o documento principal no Firebase
+                await setDoc(doc(db, COLLECTION_HISTORIAS, idCampanha), { isPublic: isPublic }, { merge: true });
+
+                const label = document.querySelector("#controle-visibilidade-campanha label");
+                if (isPublic) {
+                    label.classList.replace('text-slate-500', 'text-emerald-400');
+                } else {
+                    label.classList.replace('text-emerald-400', 'text-slate-500');
+                }
+            }
+        } catch (error) {
+            console.error("Erro ao alterar visibilidade:", error);
+            alert("Não foi possível atualizar a visibilidade.");
+        }
+    },
+
+    mostrarWorkspace: function () {
+        document.getElementById('historias-workspace').classList.remove('hidden');
+        document.getElementById('historias-workspace').classList.add('flex');
+        document.getElementById('historias-comunidade').classList.add('hidden');
+        document.getElementById('historias-comunidade').classList.remove('flex');
+
+        document.getElementById('tab-minhas-historias').className = "bg-amber-600/20 border border-amber-500 text-amber-500 px-4 py-2 rounded text-xs font-bold uppercase tracking-wider transition-all";
+        document.getElementById('tab-comunidade').className = "bg-slate-800 border border-slate-600 text-slate-400 px-4 py-2 rounded text-xs font-bold uppercase tracking-wider transition-all hover:bg-slate-700";
+    },
+
+    abrirComunidade: async function () {
+        document.getElementById('historias-workspace').classList.add('hidden');
+        document.getElementById('historias-workspace').classList.remove('flex');
+        document.getElementById('historias-comunidade').classList.remove('hidden');
+        document.getElementById('historias-comunidade').classList.add('flex');
+
+        document.getElementById('tab-comunidade').className = "bg-amber-600/20 border border-amber-500 text-amber-500 px-4 py-2 rounded text-xs font-bold uppercase tracking-wider transition-all";
+        document.getElementById('tab-minhas-historias').className = "bg-slate-800 border border-slate-600 text-slate-400 px-4 py-2 rounded text-xs font-bold uppercase tracking-wider transition-all hover:bg-slate-700";
+
+        const grid = document.getElementById("lista-comunidade-grid");
+        grid.innerHTML = `<div class="col-span-full text-center text-slate-400 py-10"><i class="fas fa-spinner fa-spin text-3xl mb-4 text-amber-500"></i><p>Buscando pergaminhos na biblioteca central...</p></div>`;
+
+        try {
+            const q = query(collection(db, COLLECTION_HISTORIAS), where("isPublic", "==", true));
+            const snap = await getDocs(q);
+
+            grid.innerHTML = "";
+            const uidAtual = globalState.userId || globalState.currentUser.uid;
+
+            if (snap.empty) {
+                grid.innerHTML = `<p class="col-span-full text-center text-slate-500 italic mt-10">Nenhuma campanha foi compartilhada publicamente ainda.</p>`;
+                return;
+            }
+
+            snap.forEach(docSnap => {
+                const camp = docSnap.data();
+                if (camp.idMestre === uidAtual) return; // Não mostra as próprias histórias na comunidade
+
+                const card = document.createElement("div");
+                card.className = "bg-slate-950 border border-slate-700 rounded-lg p-5 flex flex-col justify-between shadow-lg hover:border-amber-500/50 transition-colors";
+
+                // Conta total de capítulos e notas para exibir um "Resumo"
+                const totalCapitulos = camp.capitulos ? camp.capitulos.length : 0;
+                let totalNotas = 0;
+                if (camp.capitulos) {
+                    camp.capitulos.forEach(cap => totalNotas += cap.notas ? cap.notas.length : 0);
+                }
+
+                card.innerHTML = `
+                    <div>
+                        <h3 class="text-amber-500 font-cinzel text-lg font-bold uppercase tracking-widest mb-2"><i class="fas fa-book mr-2"></i>${escapeHTML(camp.nomeCampanha)}</h3>
+                        <div class="text-xs text-slate-400 space-y-1 mt-4">
+                            <p><i class="fas fa-folder-open mr-2 w-4 text-center"></i> ${totalCapitulos} Capítulos</p>
+                            <p><i class="fas fa-sticky-note mr-2 w-4 text-center"></i> ${totalNotas} Anotações/Eventos</p>
+                        </div>
+                    </div>
+                    <button onclick="window.criarHistorias.duplicarCampanhaComunidade('${docSnap.id}')" class="mt-6 w-full bg-slate-800 hover:bg-amber-600 hover:text-black border border-slate-600 hover:border-amber-500 text-slate-300 font-bold uppercase text-xs py-2 rounded transition-all">
+                        <i class="fas fa-copy mr-2"></i> Duplicar para Mim
+                    </button>
+                `;
+                grid.appendChild(card);
+            });
+
+            if (grid.innerHTML === "") {
+                grid.innerHTML = `<p class="col-span-full text-center text-slate-500 italic mt-10">As únicas campanhas públicas no momento são as suas próprias.</p>`;
+            }
+
+        } catch (error) {
+            console.error("Erro ao carregar comunidade:", error);
+            grid.innerHTML = `<p class="col-span-full text-center text-red-500 mt-10">Erro ao carregar a biblioteca de histórias.</p>`;
+        }
+    },
+
+    duplicarCampanhaComunidade: async function (idCampanhaOriginal) {
+        if (!confirm("Deseja copiar toda essa campanha para o seu painel de Histórias?")) return;
+
+        const uidMestre = globalState.userId || globalState.currentUser.uid;
+
+        try {
+            // Busca o documento original atualizado
+            const snap = await getDocs(query(collection(db, COLLECTION_HISTORIAS)));
+            const docOriginal = snap.docs.find(d => d.id === idCampanhaOriginal);
+
+            if (!docOriginal) {
+                alert("Campanha original não encontrada.");
+                return;
+            }
+
+            const dadosOriginais = docOriginal.data();
+
+            // Monta o objeto de cópia
+            const novaCampanha = {
+                ...dadosOriginais,
+                idMestre: uidMestre,
+                nomeCampanha: dadosOriginais.nomeCampanha + " (Cópia)",
+                isPublic: false, // A cópia sempre nasce privada
+                dataCriacao: serverTimestamp()
+            };
+
+            // Remove o ID original para gerar um novo no Firestore
+            delete novaCampanha.id;
+
+            // Salva no banco de dados como uma nova entrada
+            const novaRef = doc(collection(db, COLLECTION_HISTORIAS));
+            await setDoc(novaRef, novaCampanha);
+
+            novaCampanha.id = novaRef.id;
+
+            // Adiciona a cópia no State Local do mestre
+            historiasState.campanhas.push(novaCampanha);
+            this.atualizarSelectCampanhas();
+
+            alert("História duplicada com sucesso! Você já pode acessá-la em 'Minhas Campanhas'.");
+
+            // Força a atualização e volta para a área de trabalho
+            this.mostrarWorkspace();
+            document.getElementById('select-campanha-ativa').value = novaCampanha.id;
+            this.selecionarCampanha(novaCampanha.id);
+
+        } catch (error) {
+            console.error("Erro ao duplicar:", error);
+            alert("Ocorreu um erro ao tentar duplicar a campanha.");
+        }
     }
+
 };
