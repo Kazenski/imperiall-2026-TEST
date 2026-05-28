@@ -99,16 +99,15 @@ export async function renderCriarHistoriasTab() {
                         <div id="mural-notes-grid" class="absolute inset-0 w-[4000px] h-[4000px] pointer-events-none z-10"></div>
                     </div>
                 </section>
-            </div>
+            </div>                         
 
-            </div> <div id="historias-comunidade" class="hidden flex-1 flex-col overflow-hidden bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-6 relative">
-                <h2 class="text-xl font-cinzel font-bold text-amber-500 mb-4 border-b border-slate-700 pb-2">Acervo de Campanhas Públicas</h2>
-                <div id="lista-comunidade-grid" class="flex-1 overflow-y-auto custom-scroll grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-10">
-                    </div>
-            </div>
+            <div id="historias-comunidade" class="hidden flex-1 flex-col overflow-hidden bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-6 relative">
+                            <h2 class="text-2xl font-cinzel font-bold text-amber-500 mb-6 border-b border-slate-700 pb-2 drop-shadow-md">Acervo de Campanhas Públicas</h2>
+                            <div id="lista-comunidade-grid" class="flex-1 overflow-y-auto custom-scroll grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-10 content-start">
+                                    </div>
+            </div>
         </div>
-        </div>
-    `;
+    `;
 
     if (historiasState.sincronizado) {
         window.criarHistorias.atualizarSelectCampanhas();
@@ -202,25 +201,7 @@ window.criarHistorias = {
         const btnNovoCap = document.getElementById("btn-novo-capitulo");
         const listaCaps = document.getElementById("lista-capitulos-container");
 
-        if (!idCampanha) {
-            btnNovoCap.classList.add("hidden");
-            listaCaps.innerHTML = '<p class="text-[10px] text-slate-500 italic text-center mt-4 px-2">Selecione uma campanha acima para gerenciar.</p>';
-            return;
-        }
-
-        btnNovoCap.classList.remove("hidden");
-        this.renderizarListaCapitulos();
-    },
-
-    selecionarCampanha: function (idCampanha) {
-        historiasState.idCampanhaAtiva = idCampanha;
-        historiasState.idCapituloAtivo = null;
-        this.limparMural();
-
-        const btnNovoCap = document.getElementById("btn-novo-capitulo");
-        const listaCaps = document.getElementById("lista-capitulos-container");
-
-        // NOVO: Controle de Visibilidade Pública da Campanha Ativa
+        // Controle de Visibilidade Pública da Campanha Ativa
         let containerVisibilidade = document.getElementById("controle-visibilidade-campanha");
         if (!containerVisibilidade) {
             containerVisibilidade = document.createElement("div");
@@ -686,12 +667,12 @@ window.criarHistorias = {
 
             snap.forEach(docSnap => {
                 const camp = docSnap.data();
-                //if (camp.idMestre === uidAtual) return; // Não mostra as próprias histórias na comunidade
+                // NOVO: Verifica se a história pertence ao próprio usuário logado
+                const isMinha = camp.idMestre === uidAtual;
 
                 const card = document.createElement("div");
                 card.className = "bg-slate-950 border border-slate-700 rounded-lg p-5 flex flex-col justify-between shadow-lg hover:border-amber-500/50 transition-colors";
 
-                // Conta total de capítulos e notas para exibir um "Resumo"
                 const totalCapitulos = camp.capitulos ? camp.capitulos.length : 0;
                 let totalNotas = 0;
                 if (camp.capitulos) {
@@ -699,17 +680,20 @@ window.criarHistorias = {
                 }
 
                 card.innerHTML = `
-                    <div>
-                        <h3 class="text-amber-500 font-cinzel text-lg font-bold uppercase tracking-widest mb-2"><i class="fas fa-book mr-2"></i>${escapeHTML(camp.nomeCampanha)}</h3>
-                        <div class="text-xs text-slate-400 space-y-1 mt-4">
-                            <p><i class="fas fa-folder-open mr-2 w-4 text-center"></i> ${totalCapitulos} Capítulos</p>
-                            <p><i class="fas fa-sticky-note mr-2 w-4 text-center"></i> ${totalNotas} Anotações/Eventos</p>
-                        </div>
-                    </div>
-                    <button onclick="window.criarHistorias.duplicarCampanhaComunidade('${docSnap.id}')" class="mt-6 w-full bg-slate-800 hover:bg-amber-600 hover:text-black border border-slate-600 hover:border-amber-500 text-slate-300 font-bold uppercase text-xs py-2 rounded transition-all">
-                        <i class="fas fa-copy mr-2"></i> Duplicar para Mim
-                    </button>
-                `;
+                    <div>
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="text-amber-500 font-cinzel text-lg font-bold uppercase tracking-widest"><i class="fas fa-book mr-2"></i>${escapeHTML(camp.nomeCampanha)}</h3>
+                            ${isMinha ? '<span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 text-[9px] px-2 py-1 rounded uppercase tracking-widest">Sua Autoria</span>' : ''}
+                        </div>
+                        <div class="text-xs text-slate-400 space-y-1 mt-4">
+                            <p><i class="fas fa-folder-open mr-2 w-4 text-center"></i> ${totalCapitulos} Capítulos</p>
+                            <p><i class="fas fa-sticky-note mr-2 w-4 text-center"></i> ${totalNotas} Anotações/Eventos</p>
+                        </div>
+                    </div>
+                    <button ${isMinha ? 'disabled' : `onclick="window.criarHistorias.duplicarCampanhaComunidade('${docSnap.id}')"`} class="mt-6 w-full ${isMinha ? 'bg-slate-800/50 text-slate-600 cursor-not-allowed border-slate-700' : 'bg-slate-800 hover:bg-amber-600 hover:text-black border border-slate-600 hover:border-amber-500 text-slate-300'} font-bold uppercase text-xs py-2 rounded transition-all">
+                        <i class="fas ${isMinha ? 'fa-check' : 'fa-copy'} mr-2"></i> ${isMinha ? 'Campanha Original' : 'Duplicar para Mim'}
+                    </button>
+                `;
                 grid.appendChild(card);
             });
 
