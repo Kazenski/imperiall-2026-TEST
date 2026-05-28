@@ -670,7 +670,8 @@ window.criarHistorias = {
                 const isMinha = camp.idMestre === uidAtual;
 
                 const card = document.createElement("div");
-                card.className = "bg-slate-950 border border-slate-700 rounded-lg p-5 flex flex-col shadow-lg hover:border-amber-500/50 transition-colors h-full";
+                // Reduzimos o padding (p-3) e o arredondamento (rounded-md)
+                card.className = "bg-slate-950 border border-slate-700 rounded-md p-3 flex flex-col justify-between shadow-md hover:border-amber-500/50 transition-colors";
 
                 const totalCapitulos = camp.capitulos ? camp.capitulos.length : 0;
                 let totalNotas = 0;
@@ -678,39 +679,24 @@ window.criarHistorias = {
                     camp.capitulos.forEach(cap => totalNotas += cap.notas ? cap.notas.length : 0);
                 }
 
+                // Layout super enxuto: título em uma linha, ícones pequenos lado a lado e botão menor
                 card.innerHTML = `
-                    <div class="flex justify-between items-start mb-4 border-b border-slate-800 pb-3">
-                        <h3 class="text-amber-500 font-cinzel text-base md:text-lg font-bold uppercase tracking-widest pr-2 leading-tight">
-                            <i class="fas fa-book-journal-whills mr-2 text-slate-500"></i>${escapeHTML(camp.nomeCampanha)}
-                        </h3>
-                        ${isMinha ? '<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[9px] px-2 py-1 rounded uppercase tracking-widest shrink-0 mt-1 shadow-sm">Sua Autoria</span>' : ''}
-                    </div>
-                    
-                    <div class="grid grid-cols-2 gap-3 mb-6 flex-grow">
-                        <div class="bg-slate-900 rounded border border-slate-800 p-3 flex items-center gap-3">
-                            <div class="bg-slate-950 p-2 rounded border border-slate-800/50">
-                                <i class="fas fa-folder-open text-amber-600/70 text-xl w-6 text-center"></i>
-                            </div>
-                            <div class="flex flex-col">
-                                <span class="text-xl font-bold text-slate-200 leading-none">${totalCapitulos}</span>
-                                <span class="text-[9px] text-slate-500 uppercase tracking-widest mt-1">Capítulos</span>
-                            </div>
-                        </div>
-                        <div class="bg-slate-900 rounded border border-slate-800 p-3 flex items-center gap-3">
-                            <div class="bg-slate-950 p-2 rounded border border-slate-800/50">
-                                <i class="fas fa-sticky-note text-sky-600/70 text-xl w-6 text-center"></i>
-                            </div>
-                            <div class="flex flex-col">
-                                <span class="text-xl font-bold text-slate-200 leading-none">${totalNotas}</span>
-                                <span class="text-[9px] text-slate-500 uppercase tracking-widest mt-1">Anotações</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button onclick="window.criarHistorias.duplicarCampanhaComunidade('${docSnap.id}')" class="mt-auto w-full bg-slate-800 hover:bg-amber-600 hover:text-black border border-slate-600 hover:border-amber-500 text-slate-300 font-bold uppercase text-[10px] tracking-widest py-3 rounded transition-all shadow-md">
-                        <i class="fas fa-copy mr-2"></i> Duplicar Campanha
-                    </button>
-                `;
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <h3 class="text-amber-500 font-cinzel text-sm font-bold uppercase tracking-widest truncate" title="${escapeHTML(camp.nomeCampanha)}">
+                                <i class="fas fa-book mr-1 text-slate-500"></i> ${escapeHTML(camp.nomeCampanha)}
+                            </h3>
+                            ${isMinha ? '<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[8px] px-1.5 py-0.5 rounded uppercase tracking-widest shrink-0 ml-2">Sua Autoria</span>' : ''}
+                        </div>
+                        <div class="text-[10px] text-slate-400 mb-3 flex gap-4">
+                            <span title="${totalCapitulos} Capítulos"><i class="fas fa-folder-open text-amber-600/70 mr-1"></i> ${totalCapitulos} Cap</span>
+                            <span title="${totalNotas} Anotações/Eventos"><i class="fas fa-sticky-note text-sky-600/70 mr-1"></i> ${totalNotas} Notas</span>
+                        </div>
+                    </div>
+                    <button onclick="window.criarHistorias.duplicarCampanhaComunidade('${docSnap.id}')" class="w-full bg-slate-800 hover:bg-amber-600 hover:text-black border border-slate-600 hover:border-amber-500 text-slate-300 font-bold uppercase text-[9px] tracking-widest py-1.5 rounded transition-all">
+                        <i class="fas fa-copy mr-1"></i> Duplicar Campanha
+                    </button>
+                `;
                 grid.appendChild(card);
             });
 
@@ -725,15 +711,13 @@ window.criarHistorias = {
     },
 
     duplicarCampanhaComunidade: async function (idCampanhaOriginal) {
-        if (!confirm("Deseja copiar toda essa campanha para o seu painel de Histórias?")) return;
-
         const uidMestre = globalState.userId || globalState.currentUser.uid;
 
         try {
-            // Busca o documento original atualizado
+            // 1. Busca os dados originais primeiro para saber o nome antigo
             const snap = await getDocs(query(collection(db, COLLECTION_HISTORIAS)));
             const docOriginal = snap.docs.find(d => d.id === idCampanhaOriginal);
-
+            
             if (!docOriginal) {
                 alert("Campanha original não encontrada.");
                 return;
@@ -741,31 +725,38 @@ window.criarHistorias = {
 
             const dadosOriginais = docOriginal.data();
 
-            // Monta o objeto de cópia
+            // 2. Pergunta ao usuário qual será o nome da NOVA campanha, sugerindo um padrão
+            const novoNome = prompt(
+                "Deseja copiar esta campanha para sua gaveta?\n\nDigite o nome da sua nova campanha:", 
+                dadosOriginais.nomeCampanha + " (Minha Versão)"
+            );
+            
+            // Se o usuário clicar em "Cancelar" no prompt ou deixar vazio, cancela a duplicação
+            if (!novoNome || !novoNome.trim()) return;
+
+            // 3. Monta o objeto de cópia com o nome escolhido
             const novaCampanha = {
                 ...dadosOriginais,
                 idMestre: uidMestre,
-                nomeCampanha: dadosOriginais.nomeCampanha + " (Cópia)",
-                isPublic: false, // A cópia sempre nasce privada
+                nomeCampanha: novoNome.trim(), // Usa o nome digitado no prompt
+                isPublic: false, 
                 dataCriacao: serverTimestamp()
             };
 
-            // Remove o ID original para gerar um novo no Firestore
             delete novaCampanha.id;
 
-            // Salva no banco de dados como uma nova entrada
+            // 4. Salva no banco de dados
             const novaRef = doc(collection(db, COLLECTION_HISTORIAS));
             await setDoc(novaRef, novaCampanha);
 
             novaCampanha.id = novaRef.id;
-
-            // Adiciona a cópia no State Local do mestre
+            
             historiasState.campanhas.push(novaCampanha);
             this.atualizarSelectCampanhas();
 
-            alert("História duplicada com sucesso! Você já pode acessá-la em 'Minhas Campanhas'.");
-
-            // Força a atualização e volta para a área de trabalho
+            alert(`História "${novoNome.trim()}" criada com sucesso na sua gaveta!`);
+            
+            // Força a atualização e abre a campanha recém-criada
             this.mostrarWorkspace();
             document.getElementById('select-campanha-ativa').value = novaCampanha.id;
             this.selecionarCampanha(novaCampanha.id);
