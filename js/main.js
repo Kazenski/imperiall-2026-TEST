@@ -58,6 +58,7 @@ import { renderTeiaConexoesTab } from './tabs/teiaConexoes.js';
 import { renderCadastroSetsEspeciaisTab } from './aoMestre/cadastroSetsEspeciais.js';
 import { renderBestiarioTab } from './oMundo/bestiario.js';
 import { renderCriarHistoriasTab } from './aoMestre/criarHistorias.js';
+import { renderComandosDashMestreTab } from './aoMestre/comandosDashMestre.js';
 
 import { rtdb, rtdbRef, push, set, onValue, off, rtdbQuery, limitToLast, rtdbServerTimestamp } from './core/firebase.js';
 
@@ -263,6 +264,13 @@ window.showTab = function (tabId) {
     if (tabId === 'comandos-mestre-content' || tabId === 'comandos-mestre') {
         target.innerHTML = '';
         if (typeof renderComandosMestreTab === 'function') renderComandosMestreTab();
+        return;
+    }
+
+    // DASHBOARD DO MESTRE
+    if (tabId === 'comandos-dash-mestre-content' || tabId === 'comandos-dash-mestre') {
+        target.innerHTML = '';
+        if (typeof renderComandosDashMestreTab === 'function') renderComandosDashMestreTab();
         return;
     }
 
@@ -512,8 +520,8 @@ const MASTER_ARCHITECTURE = {
         { id: 'cadastro-reputacao', icon: 'fa-chess-rook', label: 'Gestor Império', render: () => window.showTab('cadastro-reputacao-content'), requiresAdmin: true },
         { id: 'lore-personagens', icon: 'fa-scroll', label: 'Lore Personagens', render: () => window.showTab('lore-personagens-content') },
         { id: 'drops-monstros', icon: 'fa-gift', label: 'Drops Monstros', render: () => window.showTab('drops-monstros-content') },
-        { id: 'mapa-mundial', icon: 'fa-map', label: 'Mapa (Fog of War)', render: () => window.showTab('mapa-mundial-content') }
-
+        { id: 'mapa-mundial', icon: 'fa-map', label: 'Mapa (Fog of War)', render: () => window.showTab('mapa-mundial-content') },
+        { id: 'comandos-dash-mestre', icon: 'fa-chess-board', label: 'Dash Mestre', render: () => window.showTab('comandos-dash-mestre-content') }
 
     ],
     'Painel Admin': [

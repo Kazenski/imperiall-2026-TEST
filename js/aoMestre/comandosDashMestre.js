@@ -1,5 +1,5 @@
 import { db } from '../core/firebase.js';
-import { collection, getDocs, doc, onSnapshot, updateDoc, deleteDoc, increment, deleteField, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, getDocs, doc, onSnapshot, updateDoc, deleteDoc, increment, deleteField, query, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { escapeHTML } from '../core/utils.js';
 import { COINS } from '../core/state.js'; // Moedas puxadas diretamente do seu state!
 
@@ -9,11 +9,12 @@ let gmState = {
     unsubscribe: null, 
     caches: { items: [], skills: [], races: [], classes: [], subs: [] },
     selectedItemId: null,
-    selectedSkillId: null
+    selectedSkillId: null,
+    dashboard: { sessionId: null, characters: [], selectedChars: new Set(), unsubscribeListener: null }
 };
 
-export async function renderComandosMestreTab() {
-    const container = document.getElementById('comandos-mestre-content');
+export async function renderComandosDashMestreTab() {
+    const container = document.getElementById('comandos-dash-mestre-content');
     if (!container) return;
 
     container.innerHTML = `
@@ -24,7 +25,7 @@ export async function renderComandosMestreTab() {
                 
                 <div class="flex-grow w-full max-w-md bg-slate-950 p-3 rounded-xl border border-slate-800">
                     <label for="gm-target-select" class="text-xs font-cinzel text-slate-400 uppercase tracking-widest block mb-1">Foco Divino (Alvo)</label>
-                    <select id="gm-target-select" class="w-full bg-transparent text-amber-500 font-bold focus:outline-none cursor-pointer" onchange="window.gmTools.selectTarget(this.value)">
+                    <select id="gm-target-select" class="w-full bg-transparent text-amber-500 font-bold focus:outline-none cursor-pointer" onchange="window.gmDashTools.selectTarget(this.value)">
                         <option value="" class="bg-slate-900 text-slate-400">-- Carregando Personagens --</option>
                     </select>
                 </div>
@@ -35,6 +36,7 @@ export async function renderComandosMestreTab() {
                 <button class="gm-tab-btn bg-slate-900 text-slate-400 border-t-2 border-l-2 border-r-2 border-transparent hover:bg-slate-800 rounded-t-lg px-6 py-3 font-bold text-sm uppercase tracking-widest transition-colors" data-tab="gm-itens">Injetor de Itens</button>
                 <button class="gm-tab-btn bg-slate-900 text-slate-400 border-t-2 border-l-2 border-r-2 border-transparent hover:bg-slate-800 rounded-t-lg px-6 py-3 font-bold text-sm uppercase tracking-widest transition-colors" data-tab="gm-skills">Ensinar Habilidades</button>
                 <button class="gm-tab-btn bg-slate-900 text-slate-400 border-t-2 border-l-2 border-r-2 border-transparent hover:bg-slate-800 rounded-t-lg px-6 py-3 font-bold text-sm uppercase tracking-widest transition-colors" data-tab="gm-economia">Economia & Rep.</button>
+                <button class="gm-tab-btn bg-slate-900 text-slate-400 border-t-2 border-l-2 border-r-2 border-transparent hover:bg-slate-800 rounded-t-lg px-6 py-3 font-bold text-sm uppercase tracking-widest transition-colors" data-tab="gm-dashboard"><i class="fas fa-users mr-2"></i> Painel da Sessão</button>
                 <button class="gm-tab-btn bg-red-950/20 text-red-500 border-t-2 border-l-2 border-r-2 border-transparent hover:bg-red-900/30 rounded-t-lg px-6 py-3 font-bold text-sm uppercase tracking-widest transition-colors ml-auto" data-tab="gm-perigo"><i class="fas fa-skull mr-2"></i> Zona de Perigo</button>
             </nav>
 
@@ -47,7 +49,7 @@ export async function renderComandosMestreTab() {
                 <div id="gm-status-content" class="gm-tab-content block">
                     <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
                         <h2 class="text-2xl font-cinzel text-amber-400 m-0"><i class="fas fa-user-edit mr-2"></i> Editar Ficha</h2>
-                        <button onclick="window.gmTools.saveStats()" class="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded shadow-lg transition-colors uppercase text-sm tracking-widest"><i class="fas fa-save mr-2"></i> Salvar Ficha</button>
+                        <button onclick="window.gmDashTools.saveStats()" class="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded shadow-lg transition-colors uppercase text-sm tracking-widest"><i class="fas fa-save mr-2"></i> Salvar Ficha</button>
                     </div>
                     
                     <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
@@ -77,7 +79,7 @@ export async function renderComandosMestreTab() {
                     <div class="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 grid grid-cols-1 lg:grid-cols-4 gap-6">
                         
                         <div class="lg:col-span-3 flex flex-col gap-4">
-                            <input type="text" id="gm-item-search" placeholder="Procurar item pelo nome..." class="w-full bg-slate-900 border border-slate-600 p-4 rounded-xl text-white focus:border-emerald-500 focus:outline-none" onkeyup="window.gmTools.renderItems()">
+                            <input type="text" id="gm-item-search" placeholder="Procurar item pelo nome..." class="w-full bg-slate-900 border border-slate-600 p-4 rounded-xl text-white focus:border-emerald-500 focus:outline-none" onkeyup="window.gmDashTools.renderItems()">
                             
                             <div id="gm-item-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto custom-scroll p-4 bg-slate-950 rounded-xl border border-slate-800">
                                 </div>
@@ -91,7 +93,7 @@ export async function renderComandosMestreTab() {
                             <label class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 mt-auto">Quantidade a Injetar</label>
                             <input type="number" id="gm-item-qtd" value="1" min="1" class="w-full bg-slate-950 border border-slate-600 p-3 rounded text-center text-white font-mono text-xl mb-6 outline-none focus:border-emerald-500">
                             
-                            <button onclick="window.gmTools.injectItem()" class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded shadow-lg transition-colors uppercase tracking-widest">
+                            <button onclick="window.gmDashTools.injectItem()" class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded shadow-lg transition-colors uppercase tracking-widest">
                                 <i class="fas fa-paper-plane mr-2"></i> Enviar
                             </button>
                         </div>
@@ -104,8 +106,8 @@ export async function renderComandosMestreTab() {
                         
                         <div class="lg:col-span-3 flex flex-col gap-4">
                             <div class="flex gap-4">
-                                <input type="text" id="gm-skill-search" placeholder="Procurar técnica..." class="flex-grow bg-slate-900 border border-slate-600 p-4 rounded-xl text-white focus:border-purple-500 focus:outline-none" onkeyup="window.gmTools.renderSkills()">
-                                <select id="gm-skill-class-filter" class="w-1/3 bg-slate-900 border border-slate-600 p-4 rounded-xl text-slate-300 focus:border-purple-500 focus:outline-none" onchange="window.gmTools.renderSkills()">
+                                <input type="text" id="gm-skill-search" placeholder="Procurar técnica..." class="flex-grow bg-slate-900 border border-slate-600 p-4 rounded-xl text-white focus:border-purple-500 focus:outline-none" onkeyup="window.gmDashTools.renderSkills()">
+                                <select id="gm-skill-class-filter" class="w-1/3 bg-slate-900 border border-slate-600 p-4 rounded-xl text-slate-300 focus:border-purple-500 focus:outline-none" onchange="window.gmDashTools.renderSkills()">
                                     <option value="" class="bg-slate-900 text-slate-300">Todas as Classes</option>
                                 </select>
                             </div>
@@ -119,7 +121,7 @@ export async function renderComandosMestreTab() {
                             <div id="gm-skill-preview-name" class="text-purple-400 font-bold text-lg mb-6 min-h-[56px] border-b border-slate-700 pb-2">Nenhuma Magia</div>
                             <input type="hidden" id="gm-selected-skill-id">
                             
-                            <button onclick="window.gmTools.injectSkill()" class="w-full py-4 mt-auto bg-purple-600 hover:bg-purple-500 text-white font-bold rounded shadow-lg transition-colors uppercase tracking-widest">
+                            <button onclick="window.gmDashTools.injectSkill()" class="w-full py-4 mt-auto bg-purple-600 hover:bg-purple-500 text-white font-bold rounded shadow-lg transition-colors uppercase tracking-widest">
                                 <i class="fas fa-bolt mr-2"></i> Ensinar
                             </button>
                         </div>
@@ -136,25 +138,25 @@ export async function renderComandosMestreTab() {
                                 <div class="flex justify-between items-center bg-slate-900 p-4 rounded-xl border border-slate-700 shadow-inner">
                                     <span class="text-yellow-500 font-bold font-cinzel tracking-widest uppercase">Ouro</span>
                                     <div class="flex gap-3 items-center">
-                                        <button onclick="window.gmTools.modMoney('gold', -10)" class="px-3 py-1 bg-slate-700 hover:bg-red-900/50 rounded font-mono border border-slate-600 text-sm transition-colors">-10</button>
+                                        <button onclick="window.gmDashTools.modMoney('gold', -10)" class="px-3 py-1 bg-slate-700 hover:bg-red-900/50 rounded font-mono border border-slate-600 text-sm transition-colors">-10</button>
                                         <span id="disp-gold" class="font-mono w-20 text-center text-white font-black text-xl">0</span>
-                                        <button onclick="window.gmTools.modMoney('gold', 10)" class="px-3 py-1 bg-slate-700 hover:bg-emerald-900/50 rounded font-mono border border-slate-600 text-sm transition-colors">+10</button>
+                                        <button onclick="window.gmDashTools.modMoney('gold', 10)" class="px-3 py-1 bg-slate-700 hover:bg-emerald-900/50 rounded font-mono border border-slate-600 text-sm transition-colors">+10</button>
                                     </div>
                                 </div>
                                 <div class="flex justify-between items-center bg-slate-900 p-4 rounded-xl border border-slate-700 shadow-inner">
                                     <span class="text-slate-300 font-bold font-cinzel tracking-widest uppercase">Prata</span>
                                     <div class="flex gap-3 items-center">
-                                        <button onclick="window.gmTools.modMoney('silver', -10)" class="px-3 py-1 bg-slate-700 hover:bg-red-900/50 rounded font-mono border border-slate-600 text-sm transition-colors">-10</button>
+                                        <button onclick="window.gmDashTools.modMoney('silver', -10)" class="px-3 py-1 bg-slate-700 hover:bg-red-900/50 rounded font-mono border border-slate-600 text-sm transition-colors">-10</button>
                                         <span id="disp-silver" class="font-mono w-20 text-center text-white font-black text-xl">0</span>
-                                        <button onclick="window.gmTools.modMoney('silver', 10)" class="px-3 py-1 bg-slate-700 hover:bg-emerald-900/50 rounded font-mono border border-slate-600 text-sm transition-colors">+10</button>
+                                        <button onclick="window.gmDashTools.modMoney('silver', 10)" class="px-3 py-1 bg-slate-700 hover:bg-emerald-900/50 rounded font-mono border border-slate-600 text-sm transition-colors">+10</button>
                                     </div>
                                 </div>
                                 <div class="flex justify-between items-center bg-slate-900 p-4 rounded-xl border border-slate-700 shadow-inner">
                                     <span class="text-orange-600 font-bold font-cinzel tracking-widest uppercase">Bronze</span>
                                     <div class="flex gap-3 items-center">
-                                        <button onclick="window.gmTools.modMoney('bronze', -50)" class="px-3 py-1 bg-slate-700 hover:bg-red-900/50 rounded font-mono border border-slate-600 text-sm transition-colors">-50</button>
+                                        <button onclick="window.gmDashTools.modMoney('bronze', -50)" class="px-3 py-1 bg-slate-700 hover:bg-red-900/50 rounded font-mono border border-slate-600 text-sm transition-colors">-50</button>
                                         <span id="disp-bronze" class="font-mono w-20 text-center text-white font-black text-xl">0</span>
-                                        <button onclick="window.gmTools.modMoney('bronze', 50)" class="px-3 py-1 bg-slate-700 hover:bg-emerald-900/50 rounded font-mono border border-slate-600 text-sm transition-colors">+50</button>
+                                        <button onclick="window.gmDashTools.modMoney('bronze', 50)" class="px-3 py-1 bg-slate-700 hover:bg-emerald-900/50 rounded font-mono border border-slate-600 text-sm transition-colors">+50</button>
                                     </div>
                                 </div>
                             </div>
@@ -166,9 +168,9 @@ export async function renderComandosMestreTab() {
                                 <div class="flex justify-between items-center bg-slate-950 p-4 rounded-xl border border-purple-900 shadow-inner">
                                     <span class="text-purple-300 font-bold font-cinzel tracking-widest uppercase">Orbes da Ascensão</span>
                                     <div class="flex gap-3 items-center">
-                                        <button onclick="window.gmTools.modMoney('orbs', -1)" class="px-4 py-2 bg-slate-800 hover:bg-red-900/50 rounded font-mono border border-slate-700 text-sm transition-colors">-1</button>
+                                        <button onclick="window.gmDashTools.modMoney('orbs', -1)" class="px-4 py-2 bg-slate-800 hover:bg-red-900/50 rounded font-mono border border-slate-700 text-sm transition-colors">-1</button>
                                         <span id="disp-orbs" class="font-mono w-16 text-center text-white font-black text-2xl">0</span>
-                                        <button onclick="window.gmTools.modMoney('orbs', 1)" class="px-4 py-2 bg-slate-800 hover:bg-emerald-900/50 rounded font-mono border border-slate-700 text-sm transition-colors">+1</button>
+                                        <button onclick="window.gmDashTools.modMoney('orbs', 1)" class="px-4 py-2 bg-slate-800 hover:bg-emerald-900/50 rounded font-mono border border-slate-700 text-sm transition-colors">+1</button>
                                     </div>
                                 </div>
                             </div>
@@ -178,7 +180,7 @@ export async function renderComandosMestreTab() {
                                 <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Bônus de Reputação Imputado (Oculto)</label>
                                 <div class="flex gap-2">
                                     <input type="number" id="gm-rep-bonus" class="flex-grow bg-slate-950 border border-sky-900 p-3 rounded text-white font-mono text-center text-xl outline-none focus:border-sky-500">
-                                    <button onclick="window.gmTools.saveReputation()" class="px-6 py-3 bg-sky-700 hover:bg-sky-600 text-white font-bold rounded uppercase tracking-widest transition-colors shadow-lg">Aplicar</button>
+                                    <button onclick="window.gmDashTools.saveReputation()" class="px-6 py-3 bg-sky-700 hover:bg-sky-600 text-white font-bold rounded uppercase tracking-widest transition-colors shadow-lg">Aplicar</button>
                                 </div>
                             </div>
                         </div>
@@ -188,7 +190,7 @@ export async function renderComandosMestreTab() {
                 <div id="gm-dashboard-content" class="gm-tab-content hidden">
                     <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
                         <h2 class="text-2xl font-cinzel text-sky-400 m-0"><i class="fas fa-chess-board mr-2"></i> Painel Interativo da Sessão</h2>
-                        <select id="gm-sessao-select" class="bg-slate-900 border border-slate-600 p-3 rounded-xl text-slate-300 font-bold focus:outline-none focus:border-sky-500 shadow-inner" onchange="window.gmTools.loadDashboardSession(this.value)">
+                        <select id="gm-sessao-select" class="bg-slate-900 border border-slate-600 p-3 rounded-xl text-slate-300 font-bold focus:outline-none focus:border-sky-500 shadow-inner" onchange="window.gmDashTools.loadDashboardSession(this.value)">
                             <option value="">-- Carregando Sessões --</option>
                         </select>
                     </div>
@@ -204,7 +206,7 @@ export async function renderComandosMestreTab() {
                                 <option value="pontosDistribuidosEva">EVA Base</option>
                             </select>
                             <input type="number" id="gm-mass-value" placeholder="Valor (ex: 10 ou -5)" class="w-40 bg-slate-950 border border-slate-600 p-3 rounded text-center text-white font-mono focus:outline-none focus:border-sky-500">
-                            <button onclick="window.gmTools.applyMassAttribute()" class="px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg uppercase tracking-widest text-xs transition-colors shadow-lg border border-sky-400/50"><i class="fas fa-bolt mr-2"></i> Aplicar em Massa</button>
+                            <button onclick="window.gmDashTools.applyMassAttribute()" class="px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg uppercase tracking-widest text-xs transition-colors shadow-lg border border-sky-400/50"><i class="fas fa-bolt mr-2"></i> Aplicar em Massa</button>
                         </div>
                         <div class="text-xs text-slate-400 font-mono italic">
                             <i class="fas fa-info-circle text-sky-400 mr-1"></i> Selecione os aventureiros abaixo para manipular.
@@ -225,10 +227,10 @@ export async function renderComandosMestreTab() {
                         <p class="text-slate-400 mb-8 text-lg">Ações executadas aqui são <strong class="text-red-500">irreversíveis</strong>. Exigem o código divino.</p>
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-                            <button onclick="window.gmTools.resetConstellation()" class="py-6 px-4 bg-red-900 hover:bg-red-800 text-white border-2 border-red-500 rounded-xl font-cinzel font-bold text-lg uppercase tracking-widest shadow-[0_0_15px_rgba(220,38,38,0.4)] transition-all transform hover:scale-105">
+                            <button onclick="window.gmDashTools.resetConstellation()" class="py-6 px-4 bg-red-900 hover:bg-red-800 text-white border-2 border-red-500 rounded-xl font-cinzel font-bold text-lg uppercase tracking-widest shadow-[0_0_15px_rgba(220,38,38,0.4)] transition-all transform hover:scale-105">
                                 <i class="fas fa-star-half-alt mb-2 text-3xl block"></i> Resetar Constelação
                             </button>
-                            <button onclick="window.gmTools.deleteCharacter()" class="py-6 px-4 bg-black hover:bg-red-950 text-red-500 hover:text-white border-2 border-red-900 hover:border-red-500 rounded-xl font-cinzel font-bold text-lg uppercase tracking-widest shadow-xl transition-all transform hover:scale-105">
+                            <button onclick="window.gmDashTools.deleteCharacter()" class="py-6 px-4 bg-black hover:bg-red-950 text-red-500 hover:text-white border-2 border-red-900 hover:border-red-500 rounded-xl font-cinzel font-bold text-lg uppercase tracking-widest shadow-xl transition-all transform hover:scale-105">
                                 <i class="fas fa-skull mb-2 text-3xl block"></i> Aniquilar Ficha
                             </button>
                         </div>
@@ -244,7 +246,7 @@ export async function renderComandosMestreTab() {
     setupGMTabs();
     renderGMItems(); 
     renderGMSkills();
-    window.gmTools.loadDashboardSessions();
+    window.gmDashTools.loadDashboardSessions();
 }
 
 async function loadGMCaches() {
@@ -501,7 +503,7 @@ function renderGMSkills() {
 // FUNÇÕES DE AÇÃO DO MESTRE (Expostas no window)
 // -------------------------------------------------------------
 
-window.gmTools = {
+window.gmDashTools = {
     selectTarget: selectGMTarget,
     renderItems: renderGMItems,
     renderSkills: renderGMSkills,
@@ -659,7 +661,7 @@ window.gmTools = {
                 if(sessionData.playerIds.includes(docSnap.id)) {
                     const char = { id: docSnap.id, ...docSnap.data() };
                     gmState.dashboard.characters.push(char);
-                    window.gmTools.renderDashboardCard(char);
+                    window.gmDashTools.renderDashboardCard(char);
                 }
             });
         });
@@ -673,14 +675,14 @@ window.gmTools = {
         // Define o visual de cartão com estilo imperial e destaque se selecionado
         card.className = `relative p-4 rounded-xl border-2 transition-all cursor-pointer overflow-hidden shadow-lg ${isSelected ? 'border-sky-500 bg-sky-900/20 shadow-[0_0_15px_rgba(14,165,233,0.3)]' : 'border-slate-700 bg-slate-900/50 hover:border-slate-500'}`;
         card.onclick = (e) => {
-            if(e.target.tagName !== 'INPUT') { window.gmTools.toggleDashboardCharSelection(char.id); }
+            if(e.target.tagName !== 'INPUT') { window.gmDashTools.toggleDashboardCharSelection(char.id); }
         };
 
         const imgUrl = (char.imagemPrincipal && char.imageUrls && char.imageUrls[char.imagemPrincipal]) ? char.imageUrls[char.imagemPrincipal] : char.imagemUrl || "https://placehold.co/400x400/0f172a/d4af37?text=Sem+Foto";
 
         card.innerHTML = `
             <div class="absolute top-3 right-3 z-10 pointer-events-auto">
-                <input type="checkbox" class="w-5 h-5 accent-sky-500 cursor-pointer" ${isSelected ? 'checked' : ''} onclick="window.gmTools.toggleDashboardCharSelection('${char.id}'); event.stopPropagation();">
+                <input type="checkbox" class="w-5 h-5 accent-sky-500 cursor-pointer" ${isSelected ? 'checked' : ''} onclick="window.gmDashTools.toggleDashboardCharSelection('${char.id}'); event.stopPropagation();">
             </div>
             
             <div class="flex items-center gap-4 mb-4 border-b border-slate-700/50 pb-3">
@@ -730,7 +732,7 @@ window.gmTools = {
         // Força re-renderização suave da grid recriando-a a partir dos dados em cache
         const grid = document.getElementById('gm-dashboard-grid');
         grid.innerHTML = '';
-        gmState.dashboard.characters.forEach(char => window.gmTools.renderDashboardCard(char));
+        gmState.dashboard.characters.forEach(char => window.gmDashTools.renderDashboardCard(char));
     },
 
     applyMassAttribute: async () => {
