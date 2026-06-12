@@ -32,7 +32,7 @@ import { renderClassesTab } from './manualRegras/classes.js';
 import { renderSubclassesTab } from './manualRegras/subclasses.js';
 import { renderHabilidadesTab } from './manualRegras/habilidades.js';
 import { renderProfissoesTab } from './manualRegras/profissoes.js';
-import { renderComandosMestreTab } from './aoMestre/comandos.js';
+// { renderComandosMestreTab } from './aoMestre/comandos.js';
 import { renderCadastroNpcsTab } from './aoMestre/cadastroNpcs.js';
 import { renderCadastroMonstrosTab } from './aoMestre/cadastroMonstrosSeres.js';
 import { renderCadastroItensTab } from './aoMestre/cadastroItens.js';
@@ -260,12 +260,12 @@ window.showTab = function (tabId) {
         return;
     }
 
-    // COMANDOS DO MESTRE 
-    if (tabId === 'comandos-mestre-content' || tabId === 'comandos-mestre') {
-        target.innerHTML = '';
-        if (typeof renderComandosMestreTab === 'function') renderComandosMestreTab();
-        return;
-    }
+    // // COMANDOS DO MESTRE 
+    // if (tabId === 'comandos-mestre-content' || tabId === 'comandos-mestre') {
+    //     target.innerHTML = '';
+    //     if (typeof renderComandosMestreTab === 'function') renderComandosMestreTab();
+    //     return;
+    // }
 
     // DASHBOARD DO MESTRE
     if (tabId === 'comandos-dash-mestre-content' || tabId === 'comandos-dash-mestre') {
@@ -508,7 +508,8 @@ const MASTER_ARCHITECTURE = {
         { id: 'profissoes-regras', icon: 'fa-hammer', label: 'Profissões', render: () => window.showTab('profissoes-regras-content') }
     ],
     'Ao Mestre': [
-        { id: 'comandos-mestre', icon: 'fa-crown', label: 'Comandos Mestre', render: () => window.showTab('comandos-mestre-content') },
+        // { id: 'comandos-mestre', icon: 'fa-crown', label: 'Comandos Mestre', render: () => window.showTab('comandos-mestre-content') },
+        { id: 'comandos-dash-mestre', icon: 'fa-chess-board', label: 'Dash Mestre', render: () => window.showTab('comandos-dash-mestre-content') },
         { id: 'criar-historias', icon: 'fa-project-diagram', label: 'Criar Histórias', render: () => window.showTab('criar-historias-content') },
         { id: 'cadastro-npcs', icon: 'fa-user-plus', label: 'Cad. NPCs', render: () => window.showTab('cadastro-npcs-content') },
         //{ id: 'blank', icon: 'fa-tools', label: 'Cad. Crafts', render: () => window.renderBlankPage('Cad. Crafts') },
@@ -520,8 +521,8 @@ const MASTER_ARCHITECTURE = {
         { id: 'cadastro-reputacao', icon: 'fa-chess-rook', label: 'Gestor Império', render: () => window.showTab('cadastro-reputacao-content'), requiresAdmin: true },
         { id: 'lore-personagens', icon: 'fa-scroll', label: 'Lore Personagens', render: () => window.showTab('lore-personagens-content') },
         { id: 'drops-monstros', icon: 'fa-gift', label: 'Drops Monstros', render: () => window.showTab('drops-monstros-content') },
-        { id: 'mapa-mundial', icon: 'fa-map', label: 'Mapa (Fog of War)', render: () => window.showTab('mapa-mundial-content') },
-        { id: 'comandos-dash-mestre', icon: 'fa-chess-board', label: 'Dash Mestre', render: () => window.showTab('comandos-dash-mestre-content') }
+        { id: 'mapa-mundial', icon: 'fa-map', label: 'Mapa (Fog of War)', render: () => window.showTab('mapa-mundial-content') }
+        
 
     ],
     'Painel Admin': [
