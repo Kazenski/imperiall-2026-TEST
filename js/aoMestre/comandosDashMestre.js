@@ -188,35 +188,39 @@ export async function renderComandosDashMestreTab() {
                 </div>
 
                 <div id="gm-dashboard-content" class="gm-tab-content hidden">
-                    <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
-                        <h2 class="text-2xl font-cinzel text-sky-400 m-0"><i class="fas fa-chess-board mr-2"></i> Painel Interativo da Sessão</h2>
-                        <select id="gm-sessao-select" class="bg-slate-900 border border-slate-600 p-3 rounded-xl text-slate-300 font-bold focus:outline-none focus:border-sky-500 shadow-inner" onchange="window.gmDashTools.loadDashboardSession(this.value)">
-                            <option value="">-- Carregando Sessões --</option>
+                    <div class="flex justify-between items-center mb-10 border-b border-slate-700 pb-6">
+                        <h2 class="text-3xl font-cinzel text-sky-400 m-0 drop-shadow-md"><i class="fas fa-chess-board mr-3"></i> Painel Interativo</h2>
+                        <select id="gm-sessao-select" class="bg-slate-900/80 border-2 border-slate-600 p-3 rounded-xl text-slate-300 font-bold focus:outline-none focus:border-sky-500 shadow-inner w-64 transition-colors" onchange="window.gmDashTools.loadDashboardSession(this.value)">
+                            <option value="">-- Selecione a Sessão --</option>
                         </select>
                     </div>
                     
-                    <div class="bg-slate-800/80 p-5 rounded-2xl border border-slate-700 mb-6 flex flex-wrap gap-4 items-center justify-between">
-                        <div class="flex items-center gap-4 flex-wrap">
-                            <select id="gm-mass-attr" class="bg-slate-950 border border-slate-600 p-3 rounded text-slate-300 focus:outline-none focus:border-sky-500">
-                                <option value="hpPersonagemBase">HP Atual</option>
-                                <option value="mpPersonagemBase">MP Atual</option>
-                                <option value="fomeAtual">Fome</option>
-                                <option value="pontosDistribuidosAtk">ATK Base</option>
-                                <option value="pontosDistribuidosDef">DEF Base</option>
-                                <option value="pontosDistribuidosEva">EVA Base</option>
-                            </select>
-                            <input type="number" id="gm-mass-value" placeholder="Valor (ex: 10 ou -5)" class="w-40 bg-slate-950 border border-slate-600 p-3 rounded text-center text-white font-mono focus:outline-none focus:border-sky-500">
-                            <button onclick="window.gmDashTools.applyMassAttribute()" class="px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg uppercase tracking-widest text-xs transition-colors shadow-lg border border-sky-400/50"><i class="fas fa-bolt mr-2"></i> Aplicar em Massa</button>
+                    <div class="bg-slate-800/60 p-6 rounded-2xl border-2 border-slate-700/80 mb-8 flex flex-wrap gap-6 items-center justify-between shadow-lg">
+                        <div class="flex items-center gap-6 w-full md:w-auto flex-wrap">
+                            <span class="text-xs font-cinzel text-slate-400 uppercase tracking-widest block w-full md:w-auto text-center md:text-left">Atributo Alvo:</span>
+                            
+                            <div class="flex gap-2 bg-slate-900 p-2 rounded-xl border border-slate-700" id="gm-attr-icons">
+                                <button data-attr="hpPersonagemBase" title="HP Atual" class="attr-btn w-12 h-12 rounded-lg bg-slate-800 hover:bg-emerald-900/50 border border-slate-600 text-emerald-500 flex items-center justify-center text-xl transition-all"><i class="fas fa-heart"></i></button>
+                                <button data-attr="mpPersonagemBase" title="MP Atual" class="attr-btn w-12 h-12 rounded-lg bg-slate-800 hover:bg-blue-900/50 border border-slate-600 text-blue-500 flex items-center justify-center text-xl transition-all"><i class="fas fa-tint"></i></button>
+                                <button data-attr="fomeAtual" title="Fome" class="attr-btn w-12 h-12 rounded-lg bg-slate-800 hover:bg-orange-900/50 border border-slate-600 text-orange-500 flex items-center justify-center text-xl transition-all"><i class="fas fa-drumstick-bite"></i></button>
+                                <div class="w-px bg-slate-700 mx-1"></div> <button data-attr="pontosDistribuidosAtk" title="ATK Base" class="attr-btn w-12 h-12 rounded-lg bg-slate-800 hover:bg-rose-900/50 border border-slate-600 text-rose-500 flex items-center justify-center text-xl transition-all"><i class="fas fa-khanda"></i></button>
+                                <button data-attr="pontosDistribuidosDef" title="DEF Base" class="attr-btn w-12 h-12 rounded-lg bg-slate-800 hover:bg-sky-900/50 border border-slate-600 text-sky-500 flex items-center justify-center text-xl transition-all"><i class="fas fa-shield-alt"></i></button>
+                                <button data-attr="pontosDistribuidosEva" title="EVA Base" class="attr-btn w-12 h-12 rounded-lg bg-slate-800 hover:bg-amber-900/50 border border-slate-600 text-amber-500 flex items-center justify-center text-xl transition-all"><i class="fas fa-wind"></i></button>
+                            </div>
+                            
+                            <input type="hidden" id="gm-mass-attr" value="">
                         </div>
-                        <div class="text-xs text-slate-400 font-mono italic">
-                            <i class="fas fa-info-circle text-sky-400 mr-1"></i> Selecione os aventureiros abaixo para manipular.
+
+                        <div class="flex items-center gap-3 w-full md:w-auto">
+                            <input type="number" id="gm-mass-value" placeholder="+10 ou -5" class="w-32 bg-slate-900 border-2 border-slate-600 p-4 rounded-xl text-center text-white font-mono text-lg focus:outline-none focus:border-sky-500 transition-colors shadow-inner">
+                            <button onclick="window.gmDashTools.applyMassAttribute()" class="px-8 py-4 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-xl uppercase tracking-widest text-sm transition-all shadow-[0_0_15px_rgba(14,165,233,0.3)] hover:shadow-[0_0_25px_rgba(14,165,233,0.5)] border border-sky-400/50 transform hover:-translate-y-1"><i class="fas fa-bolt mr-2"></i> Executar</button>
                         </div>
                     </div>
 
-                    <div id="gm-dashboard-grid" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto custom-scroll p-2">
-                        <div class="col-span-full text-center text-slate-500 mt-10">
-                            <i class="fas fa-users text-5xl mb-4 opacity-30"></i>
-                            <p class="font-cinzel text-lg uppercase tracking-widest">Selecione uma sessão acima para ver os aventureiros.</p>
+                    <div id="gm-dashboard-grid" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 max-h-[600px] overflow-y-auto custom-scroll p-4">
+                        <div class="col-span-full text-center text-slate-500 mt-16">
+                            <i class="fas fa-users text-6xl mb-6 opacity-20"></i>
+                            <p class="font-cinzel text-xl uppercase tracking-widest">Aguardando Conexão Divina</p>
                         </div>
                     </div>
                 </div>
@@ -247,6 +251,31 @@ export async function renderComandosDashMestreTab() {
     renderGMItems(); 
     renderGMSkills();
     window.gmDashTools.loadDashboardSessions();
+    setupDashboardIcons();
+}
+
+// Ativa os cliques nos botões de ícone do Dashboard
+function setupDashboardIcons() {
+    const container = document.getElementById('gm-attr-icons');
+    if (!container) return;
+
+    container.addEventListener('click', (e) => {
+        const btn = e.target.closest('.attr-btn');
+        if (!btn) return;
+
+        // Limpa a seleção anterior
+        document.querySelectorAll('.attr-btn').forEach(b => {
+            b.classList.remove('border-sky-500', 'bg-sky-900/40', 'scale-110', 'shadow-[0_0_10px_rgba(14,165,233,0.5)]');
+            b.classList.add('bg-slate-800', 'border-slate-600');
+        });
+
+        // Adiciona destaque ao botão clicado
+        btn.classList.remove('bg-slate-800', 'border-slate-600');
+        btn.classList.add('border-sky-500', 'bg-sky-900/40', 'scale-110', 'shadow-[0_0_10px_rgba(14,165,233,0.5)]');
+
+        // Salva o atributo no input hidden
+        document.getElementById('gm-mass-attr').value = btn.dataset.attr;
+    });
 }
 
 async function loadGMCaches() {
@@ -681,42 +710,53 @@ window.gmDashTools = {
         const imgUrl = (char.imagemPrincipal && char.imageUrls && char.imageUrls[char.imagemPrincipal]) ? char.imageUrls[char.imagemPrincipal] : char.imagemUrl || "https://placehold.co/400x400/0f172a/d4af37?text=Sem+Foto";
 
         card.innerHTML = `
-            <div class="absolute top-3 right-3 z-10 pointer-events-auto">
-                <input type="checkbox" class="w-5 h-5 accent-sky-500 cursor-pointer" ${isSelected ? 'checked' : ''} onclick="window.gmDashTools.toggleDashboardCharSelection('${char.id}'); event.stopPropagation();">
+            <div class="absolute top-4 right-4 z-10 pointer-events-auto">
+                <div class="bg-slate-900/80 p-1 rounded-full border border-slate-600/50 shadow-lg backdrop-blur-sm">
+                    <input type="checkbox" class="w-6 h-6 accent-sky-500 cursor-pointer rounded" ${isSelected ? 'checked' : ''} onclick="window.gmDashTools.toggleDashboardCharSelection('${char.id}'); event.stopPropagation();">
+                </div>
             </div>
             
-            <div class="flex items-center gap-4 mb-4 border-b border-slate-700/50 pb-3">
-                <img src="${imgUrl}" class="w-14 h-14 rounded-full object-cover border-2 border-slate-600 shadow-inner">
-                <div>
-                    <h4 class="font-cinzel font-bold text-amber-400 text-lg leading-none mb-1">${escapeHTML(char.nome)}</h4>
-                    <p class="text-[10px] text-slate-400 uppercase tracking-widest">${char.jogador || '???'}</p>
+            <div class="flex items-center gap-5 mb-5 border-b border-slate-700/50 pb-4">
+                <div class="relative">
+                    <img src="${imgUrl}" class="w-20 h-20 rounded-full object-cover border-4 border-slate-700 shadow-[0_0_15px_rgba(0,0,0,0.5)]">
+                    ${isSelected ? '<div class="absolute inset-0 rounded-full border-4 border-sky-500 animate-pulse"></div>' : ''}
+                </div>
+                <div class="flex-1 min-w-0 pr-10">
+                    <h4 class="font-cinzel font-bold text-amber-400 text-xl leading-tight mb-1 truncate drop-shadow-md">${escapeHTML(char.nome)}</h4>
+                    <p class="text-[11px] text-slate-400 uppercase tracking-widest truncate"><i class="fas fa-gamepad mr-1 opacity-50"></i> ${char.jogador || '???'}</p>
                 </div>
             </div>
 
-            <div class="grid grid-cols-3 gap-2">
-                <div class="bg-slate-950 p-2 rounded border border-slate-800 text-center shadow-inner">
-                    <div class="text-[9px] text-emerald-500 font-bold uppercase mb-0.5">HP</div>
-                    <div class="font-mono text-white text-sm">${char.hpPersonagemBase || 0}</div>
+            <div class="grid grid-cols-3 gap-3">
+                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-center shadow-inner relative overflow-hidden group hover:border-emerald-500/50 transition-colors">
+                    <div class="absolute top-0 right-0 opacity-10 text-3xl transform translate-x-1 -translate-y-1"><i class="fas fa-heart"></i></div>
+                    <div class="text-[10px] text-emerald-500 font-bold uppercase mb-1 relative z-10">HP</div>
+                    <div class="font-mono text-white text-base relative z-10">${char.hpPersonagemBase || 0}</div>
                 </div>
-                <div class="bg-slate-950 p-2 rounded border border-slate-800 text-center shadow-inner">
-                    <div class="text-[9px] text-blue-500 font-bold uppercase mb-0.5">MP</div>
-                    <div class="font-mono text-white text-sm">${char.mpPersonagemBase || 0}</div>
+                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-center shadow-inner relative overflow-hidden group hover:border-blue-500/50 transition-colors">
+                    <div class="absolute top-0 right-0 opacity-10 text-3xl transform translate-x-1 -translate-y-1"><i class="fas fa-tint"></i></div>
+                    <div class="text-[10px] text-blue-500 font-bold uppercase mb-1 relative z-10">MP</div>
+                    <div class="font-mono text-white text-base relative z-10">${char.mpPersonagemBase || 0}</div>
                 </div>
-                <div class="bg-slate-950 p-2 rounded border border-slate-800 text-center shadow-inner">
-                    <div class="text-[9px] text-orange-500 font-bold uppercase mb-0.5">Fome</div>
-                    <div class="font-mono text-white text-sm">${char.fomeAtual || 100}</div>
+                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-center shadow-inner relative overflow-hidden group hover:border-orange-500/50 transition-colors">
+                    <div class="absolute top-0 right-0 opacity-10 text-3xl transform translate-x-1 -translate-y-1"><i class="fas fa-drumstick-bite"></i></div>
+                    <div class="text-[10px] text-orange-500 font-bold uppercase mb-1 relative z-10">Fome</div>
+                    <div class="font-mono text-white text-base relative z-10">${char.fomeAtual || 100}</div>
                 </div>
-                <div class="bg-slate-950 p-2 rounded border border-slate-800 text-center shadow-inner">
-                    <div class="text-[9px] text-rose-500 font-bold uppercase mb-0.5">ATK</div>
-                    <div class="font-mono text-slate-300 text-sm">${char.pontosDistribuidosAtk || 0}</div>
+                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-center shadow-inner relative overflow-hidden group hover:border-rose-500/50 transition-colors">
+                    <div class="absolute top-0 right-0 opacity-10 text-3xl transform translate-x-1 -translate-y-1"><i class="fas fa-khanda"></i></div>
+                    <div class="text-[10px] text-rose-500 font-bold uppercase mb-1 relative z-10">ATK</div>
+                    <div class="font-mono text-slate-300 text-base relative z-10">${char.pontosDistribuidosAtk || 0}</div>
                 </div>
-                <div class="bg-slate-950 p-2 rounded border border-slate-800 text-center shadow-inner">
-                    <div class="text-[9px] text-sky-500 font-bold uppercase mb-0.5">DEF</div>
-                    <div class="font-mono text-slate-300 text-sm">${char.pontosDistribuidosDef || 0}</div>
+                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-center shadow-inner relative overflow-hidden group hover:border-sky-500/50 transition-colors">
+                    <div class="absolute top-0 right-0 opacity-10 text-3xl transform translate-x-1 -translate-y-1"><i class="fas fa-shield-alt"></i></div>
+                    <div class="text-[10px] text-sky-500 font-bold uppercase mb-1 relative z-10">DEF</div>
+                    <div class="font-mono text-slate-300 text-base relative z-10">${char.pontosDistribuidosDef || 0}</div>
                 </div>
-                <div class="bg-slate-950 p-2 rounded border border-slate-800 text-center shadow-inner">
-                    <div class="text-[9px] text-amber-500 font-bold uppercase mb-0.5">EVA</div>
-                    <div class="font-mono text-slate-300 text-sm">${char.pontosDistribuidosEva || 0}</div>
+                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-center shadow-inner relative overflow-hidden group hover:border-amber-500/50 transition-colors">
+                    <div class="absolute top-0 right-0 opacity-10 text-3xl transform translate-x-1 -translate-y-1"><i class="fas fa-wind"></i></div>
+                    <div class="text-[10px] text-amber-500 font-bold uppercase mb-1 relative z-10">EVA</div>
+                    <div class="font-mono text-slate-300 text-base relative z-10">${char.pontosDistribuidosEva || 0}</div>
                 </div>
             </div>
         `;
@@ -736,13 +776,15 @@ window.gmDashTools = {
     },
 
     applyMassAttribute: async () => {
-        if(gmState.dashboard.selectedChars.size === 0) return alert("Selecione pelo menos um aventureiro na lista abaixo clicando no card.");
+        if(gmState.dashboard.selectedChars.size === 0) return alert("Selecione pelo menos um aventureiro clicando no cartão.");
         
         const atributo = document.getElementById('gm-mass-attr').value;
+        if (!atributo) return alert("Selecione um Atributo (clicando em um dos ícones: Coração, Gota, Fome, etc.) antes de executar a magia.");
+
         const inputVal = document.getElementById('gm-mass-value').value;
         const valorNum = parseFloat(inputVal);
 
-        if(isNaN(valorNum)) return alert("Digite um valor numérico válido (ex: 10 ou -5).");
+        if(isNaN(valorNum)) return alert("Digite um valor numérico válido (+10 ou -5).");
 
         try {
             const batch = writeBatch(db);
