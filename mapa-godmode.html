@@ -21,6 +21,10 @@
 
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
 </head>
 
 <body class="bg-[#020617] text-slate-200 font-sans h-screen w-screen overflow-hidden godmode-body">
@@ -29,17 +33,24 @@
 
     <script type="text/babel">
 
-        let db, auth;
-        let collection, doc, onSnapshot, updateDoc, addDoc, serverTimestamp, deleteDoc, query, orderBy;
+        // Configuração e Inicialização segura do Firebase em Modo de Compatibilidade
+        const firebaseConfig = {
+            apiKey: "AIzaSyDLvrHJrPvmqR5PTbn4B9FZO2nIt0iTTU0",
+            authDomain: "kazenski-a1bb2.firebaseapp.com",
+            projectId: "kazenski-a1bb2",
+            storageBucket: "kazenski-a1bb2.firebasestorage.app"
+        };
+
+        // Inicializa o app global se ainda não existir
+        const app = !firebase.apps.length ? firebase.initializeApp(firebaseConfig) : firebase.app();
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp;
 
         // Importando do ambiente global do HTML
         const React = window.React;
         const ReactDOM = window.ReactDOM;
         const e = React.createElement;
-
-        // IMPORTANTE: Importando as suas configurações globais do Firebase
-        // import { db, auth } from './js/core/firebase.js';
-        // import { collection, doc, onSnapshot, updateDoc, addDoc, serverTimestamp, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         // --- 2. CONSTANTES ---
         const WORLD_MAP_URL = "https://firebasestorage.googleapis.com/v0/b/kazenski-a1bb2.firebasestorage.app/o/imagens_rpg%2FJna1SPdTpRYoo5jGrzZUem.jpg?alt=media";
@@ -901,32 +912,9 @@
             );
         };
 
-        Promise.all([
-            import('./js/core/firebase.js'),
-            import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js')
-        ]).then(([coreFirebase, firestore]) => {
-            // Atribuindo Firebase local
-            db = coreFirebase.db;
-            auth = coreFirebase.auth;
-
-            // Atribuindo Firebase remoto
-            collection = firestore.collection;
-            doc = firestore.doc;
-            onSnapshot = firestore.onSnapshot;
-            updateDoc = firestore.updateDoc;
-            addDoc = firestore.addDoc;
-            serverTimestamp = firestore.serverTimestamp;
-            deleteDoc = firestore.deleteDoc;
-            query = firestore.query;
-            orderBy = firestore.orderBy;
-
-            // Renderiza o App APÓS garantir que o Firebase existe
-            const root = ReactDOM.createRoot(document.getElementById('root'));
-            root.render(e(App));
-
-        }).catch(err => {
-            console.error("Erro fatal ao carregar módulos do Firebase:", err);
-        });
+        // Renderização limpa e direta do App
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(e(App));
 
     </script>
 

@@ -529,7 +529,7 @@ const MASTER_ARCHITECTURE = {
         { id: 'lore-personagens', icon: 'fa-scroll', label: 'Lore Personagens', render: () => window.showTab('lore-personagens-content') },
         { id: 'drops-monstros', icon: 'fa-gift', label: 'Drops Monstros', render: () => window.showTab('drops-monstros-content') },
         { id: 'mapa-mundial', icon: 'fa-map', label: 'Mapa (Fog of War)', render: () => window.showTab('mapa-mundial-content') },
-        { id: 'mapa-godmode', icon: 'fa-chess-knight', label: 'God Mode (Novo)', render: () => window.showTab('mapa-godmode-content') }
+        // { id: 'mapa-godmode', icon: 'fa-chess-knight', label: 'God Mode (Novo)', render: () => window.showTab('mapa-godmode-content') }
         
 
     ],
