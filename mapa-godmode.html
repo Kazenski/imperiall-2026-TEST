@@ -12,45 +12,27 @@
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/lucide@0.474.0/dist/umd/lucide.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
 
     <link rel="stylesheet" href="style.css" />
 
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-
 </head>
 
 <body class="bg-[#020617] text-slate-200 font-sans h-screen w-screen overflow-hidden godmode-body">
 
     <div id="root" class="h-full w-full"></div>
 
-    <script type="text/babel">
-
-        // Configuração e Inicialização segura do Firebase em Modo de Compatibilidade
-        const firebaseConfig = {
-            apiKey: "AIzaSyDLvrHJrPvmqR5PTbn4B9FZO2nIt0iTTU0",
-            authDomain: "kazenski-a1bb2.firebaseapp.com",
-            projectId: "kazenski-a1bb2",
-            storageBucket: "kazenski-a1bb2.firebasestorage.app"
-        };
-
-        // Inicializa o app global se ainda não existir
-        const app = !firebase.apps.length ? firebase.initializeApp(firebaseConfig) : firebase.app();
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-        const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp;
-
+    <script type="module">
         // Importando do ambiente global do HTML
         const React = window.React;
         const ReactDOM = window.ReactDOM;
         const e = React.createElement;
+
+        // IMPORTANTE: Importando as suas configurações globais do Firebase
+        import { db, auth } from './js/core/firebase.js';
+        import { collection, doc, onSnapshot, updateDoc, addDoc, serverTimestamp, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         // --- 2. CONSTANTES ---
         const WORLD_MAP_URL = "https://firebasestorage.googleapis.com/v0/b/kazenski-a1bb2.firebasestorage.app/o/imagens_rpg%2FJna1SPdTpRYoo5jGrzZUem.jpg?alt=media";
@@ -912,12 +894,10 @@
             );
         };
 
-        // Renderização limpa e direta do App
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(e(App));
+        root.render(e(MapaMundialApp));
 
     </script>
-
 </body>
 
 </html>
