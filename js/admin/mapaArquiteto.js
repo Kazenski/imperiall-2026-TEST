@@ -313,25 +313,45 @@ function _attachMapToContainer(wrapperId) {
 function _initFogCanvas() {
     const host = document.getElementById('arq-map-fog') || document.getElementById('arq-leaflet-host');
     if (!host) return;
-    const old = host.querySelector('.arq-fog-canvas');
-    if (old) old.remove();
-
-    const canvas = document.createElement('canvas');
-    canvas.className = 'arq-fog-canvas';
-    canvas.width = host.clientWidth || 800;
-    canvas.height = host.clientHeight || 600;
-    host.appendChild(canvas);
+    
+    let canvas = host.querySelector('.arq-fog-canvas');
+    if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvas.className = 'arq-fog-canvas';
+        canvas.style.position = 'absolute';
+        canvas.style.top = '0';
+        canvas.style.left = '0';
+        canvas.style.pointerEvents = 'none';
+        canvas.style.zIndex = '400';
+        host.appendChild(canvas);
+    }
+    
     state.fogCanvas = canvas;
     state.fogCtx = canvas.getContext('2d');
 
-    // Atualizar tamanho no resize
-    new ResizeObserver(() => {
-        if (state.fogCanvas) {
-            state.fogCanvas.width = host.clientWidth;
-            state.fogCanvas.height = host.clientHeight;
-            _redrawFog();
-        }
-    }).observe(host);
+    // Sincroniza o tamanho do canvas com o container
+    canvas.width = host.clientWidth || 800;
+    canvas.height = host.clientHeight || 600;
+
+    // Remove listeners antigos de mapa se houver para evitar duplicidade
+    if (state.mapInstance) {
+        state.mapInstance.off('viewreset zoom move moveend zoomend', _redrawFog);
+        
+        // Atribui os listeners para redesenhar perfeitamente em qualquer mudança de escala/posição
+        state.mapInstance.on('viewreset zoom move moveend zoomend', _redrawFog);
+    }
+
+    // Monitora redimensionamento da janela/painel
+    if (!state._fogResizeObserver) {
+        state._fogResizeObserver = new ResizeObserver(() => {
+            if (state.fogCanvas && host) {
+                state.fogCanvas.width = host.clientWidth;
+                state.fogCanvas.height = host.clientHeight;
+                _redrawFog();
+            }
+        });
+        state._fogResizeObserver.observe(host);
+    }
 
     _redrawFog();
 }
@@ -360,9 +380,11 @@ function _pixelToHexId(mapLat, mapLng) {
 }
 
 function _redrawFog() {
-    if (!state.fogCtx || !state.mapInstance) return;
+    if (!state.fogCtx || !state.mapInstance || !state.fogCanvas) return;
     const ctx = state.fogCtx;
     const map = state.mapInstance;
+    
+    // Limpa o canvas antes do novo frame
     ctx.clearRect(0, 0, state.fogCanvas.width, state.fogCanvas.height);
 
     const revealed = state.fogLocalRevealed;
@@ -376,13 +398,14 @@ function _redrawFog() {
             const id = _hexId(r, c);
             const isRevealed = revealed.has(id);
 
-            // Converter coordenada do mapa para pixel do canvas
-            const screenPt = map.latLngToContainerPoint([cy, cx]);
-
+            // Converte a coordenada estável do mapa (Lat/Lng) para o ponto dinâmico do container atual
             const hexCorners = _getHexScreenCorners(map, cx, cy);
+            
             ctx.beginPath();
             ctx.moveTo(hexCorners[0].x, hexCorners[0].y);
-            for (let i = 1; i < 6; i++) ctx.lineTo(hexCorners[i].x, hexCorners[i].y);
+            for (let i = 1; i < 6; i++) {
+                ctx.lineTo(hexCorners[i].x, hexCorners[i].y);
+            }
             ctx.closePath();
 
             if (isRevealed) {
@@ -1049,6 +1072,9 @@ function _renderSessionMap(main) {
             _initFogCanvas();
             _setupFogMouseEvents();
         } else {
+            if (state.mapInstance) {
+                state.mapInstance.off('viewreset zoom move moveend zoomend', _redrawFog);
+            }
             _destroyFogCanvas();
             document.getElementById('arq-fogmap-tools').style.display = 'none';
         }
