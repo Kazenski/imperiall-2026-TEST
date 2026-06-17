@@ -27,7 +27,11 @@
 
     <div id="root" class="h-full w-full"></div>
 
-    <script type="text/babel" data-type="module">
+    <script type="text/babel">
+
+        let db, auth;
+        let collection, doc, onSnapshot, updateDoc, addDoc, serverTimestamp, deleteDoc, query, orderBy;
+
         // Importando do ambiente global do HTML
         const React = window.React;
         const ReactDOM = window.ReactDOM;
@@ -897,10 +901,35 @@
             );
         };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(e(App));
+        Promise.all([
+            import('./js/core/firebase.js'),
+            import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js')
+        ]).then(([coreFirebase, firestore]) => {
+            // Atribuindo Firebase local
+            db = coreFirebase.db;
+            auth = coreFirebase.auth;
+
+            // Atribuindo Firebase remoto
+            collection = firestore.collection;
+            doc = firestore.doc;
+            onSnapshot = firestore.onSnapshot;
+            updateDoc = firestore.updateDoc;
+            addDoc = firestore.addDoc;
+            serverTimestamp = firestore.serverTimestamp;
+            deleteDoc = firestore.deleteDoc;
+            query = firestore.query;
+            orderBy = firestore.orderBy;
+
+            // Renderiza o App APÓS garantir que o Firebase existe
+            const root = ReactDOM.createRoot(document.getElementById('root'));
+            root.render(e(App));
+
+        }).catch(err => {
+            console.error("Erro fatal ao carregar módulos do Firebase:", err);
+        });
 
     </script>
+
 </body>
 
 </html>
