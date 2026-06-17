@@ -1,27 +1,33 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RPG World Architect</title>
-    
+
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;500;700&display=swap"
+        rel="stylesheet">
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    
+
     <link rel="stylesheet" href="style.css" />
-    
+
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
 </head>
+
 <body class="bg-[#020617] text-slate-200 font-sans h-screen w-screen overflow-hidden godmode-body">
-    
+
     <div id="root" class="h-full w-full"></div>
 
-    <script type="module">
+    <script type="text/babel" data-type="module">
         // Importando do ambiente global do HTML
         const React = window.React;
         const ReactDOM = window.ReactDOM;
@@ -30,11 +36,11 @@
         // IMPORTANTE: Importando as suas configurações globais do Firebase
         import { db, auth } from './js/core/firebase.js';
         import { collection, doc, onSnapshot, updateDoc, addDoc, serverTimestamp, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        
+
         // --- 2. CONSTANTES ---
         const WORLD_MAP_URL = "https://firebasestorage.googleapis.com/v0/b/kazenski-a1bb2.firebasestorage.app/o/imagens_rpg%2FJna1SPdTpRYoo5jGrzZUem.jpg?alt=media";
         const MAP_W = 2048; const MAP_H = 1536; const HEX_RADIUS = 10;
-        
+
         const COLS = {
             LOCATIONS: 'rpg_locations', ROUTES: 'rpg_routes', ROUTE_TYPES: 'rpg_route_types',
             EVENTS: 'rpg_events', ISOLATED: 'rpg_isolated_encounters', SEASONS: 'rpg_seasons',
@@ -47,7 +53,7 @@
             const iconRef = React.useRef(null);
             React.useEffect(() => {
                 if (window.lucide && iconRef.current) {
-                    iconRef.current.innerHTML = ''; 
+                    iconRef.current.innerHTML = '';
                     const i = document.createElement('i');
                     i.setAttribute('data-lucide', name);
                     i.style.width = `${size}px`; i.style.height = `${size}px`;
@@ -68,17 +74,17 @@
             React.useEffect(() => {
                 if (!mapRef.current || mapInstance.current) return;
                 const map = L.map(mapRef.current, { crs: L.CRS.Simple, minZoom: -1, maxZoom: 2, zoomControl: false, preferCanvas: true });
-                const bounds = [[0,0], [MAP_H, MAP_W]];
+                const bounds = [[0, 0], [MAP_H, MAP_W]];
                 L.imageOverlay(WORLD_MAP_URL, bounds).addTo(map);
                 map.fitBounds(bounds);
-                map.on('click', (e) => { if(onMapClick) onMapClick({lat: e.latlng.lat, lng: e.latlng.lng}); });
+                map.on('click', (e) => { if (onMapClick) onMapClick({ lat: e.latlng.lat, lng: e.latlng.lng }); });
                 mapInstance.current = map;
             }, []);
 
             React.useEffect(() => {
                 if (!mapInstance.current) return;
                 const map = mapInstance.current;
-                
+
                 // Limpeza
                 Object.values(layersRef.current).forEach(g => g.forEach(l => map.removeLayer(l)));
                 layersRef.current = { markers: [], lines: [], hexes: [], circles: [] };
@@ -88,7 +94,7 @@
                     const HEX_W = Math.sqrt(3) * HEX_RADIUS;
                     const VERT_DIST = HEX_RADIUS * 2 * 0.75;
                     const hexRenderer = L.canvas({ padding: 0.5 });
-                    
+
                     for (let r = 0; r < Math.ceil(MAP_H / VERT_DIST) + 1; r++) {
                         for (let c = 0; c < Math.ceil(MAP_W / HEX_W) + 1; c++) {
                             const xOffset = (r % 2 === 1) ? HEX_W / 2 : 0;
@@ -111,7 +117,7 @@
                                 weight: 1, interactive: !!onHexClick
                             }).addTo(map);
 
-                            if(onHexClick) poly.on('mousedown', () => onHexClick(hexId));
+                            if (onHexClick) poly.on('mousedown', () => onHexClick(hexId));
                             layersRef.current.hexes.push(poly);
                         }
                     }
@@ -140,7 +146,7 @@
 
             return <div ref={mapRef} className="w-full h-full bg-slate-950"></div>;
         };
-        
+
         // --- 1. MÓDULO GLOBAL ---
         const GlobalModule = () => {
             const [data, setData] = React.useState({ locations: [], routes: [], dungeons: [], events: [], isolated: [], types: {}, world: {}, npcs: [] });
@@ -148,11 +154,11 @@
 
             React.useEffect(() => {
                 const unsubs = [
-                    db.collection(COLS.LOCATIONS).onSnapshot(s => setData(p => ({...p, locations: s.docs.map(d => d.data())}))),
-                    db.collection(COLS.DUNGEONS).onSnapshot(s => setData(p => ({...p, dungeons: s.docs.map(d => d.data())}))),
-                    db.collection(COLS.ROUTES).onSnapshot(s => setData(p => ({...p, routes: s.docs.map(d => d.data())}))),
-                    db.collection(COLS.ROUTE_TYPES).onSnapshot(s => { const t = {}; s.docs.forEach(d => t[d.id] = d.data()); setData(p => ({...p, types: t})); }),
-                    db.collection(COLS.WORLD).doc('main').onSnapshot(d => setData(p => ({...p, world: d.data() || {}})))
+                    db.collection(COLS.LOCATIONS).onSnapshot(s => setData(p => ({ ...p, locations: s.docs.map(d => d.data()) }))),
+                    db.collection(COLS.DUNGEONS).onSnapshot(s => setData(p => ({ ...p, dungeons: s.docs.map(d => d.data()) }))),
+                    db.collection(COLS.ROUTES).onSnapshot(s => setData(p => ({ ...p, routes: s.docs.map(d => d.data()) }))),
+                    db.collection(COLS.ROUTE_TYPES).onSnapshot(s => { const t = {}; s.docs.forEach(d => t[d.id] = d.data()); setData(p => ({ ...p, types: t })); }),
+                    db.collection(COLS.WORLD).doc('main').onSnapshot(d => setData(p => ({ ...p, world: d.data() || {} })))
                 ];
                 return () => unsubs.forEach(u => u());
             }, []);
@@ -160,7 +166,7 @@
             return (
                 <div className="w-full h-full relative">
                     <RPGMap data={data} filters={filters} locations={data.locations} dungeons={data.dungeons} routes={data.routes} routeTypes={data.types} />
-                    
+
                     <div className="absolute top-4 right-4 z-[1000] bg-slate-900/90 p-4 rounded-lg border border-slate-700 shadow-2xl backdrop-blur-md w-64">
                         <h3 className="font-cinzel text-amber-500 text-xs font-bold uppercase tracking-widest mb-4 border-b border-slate-800 pb-2 flex items-center gap-2">
                             <Icon name="layers" size={14} /> Filtros de Visão
@@ -169,7 +175,7 @@
                             {Object.keys(filters).map(f => (
                                 <label key={f} className="flex items-center gap-3 cursor-pointer group">
                                     <div className="relative flex items-center">
-                                        <input type="checkbox" checked={filters[f]} onChange={e => setFilters(prev => ({...prev, [f]: e.target.checked}))} className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-slate-600 bg-slate-800 checked:bg-amber-600 transition-all" />
+                                        <input type="checkbox" checked={filters[f]} onChange={e => setFilters(prev => ({ ...prev, [f]: e.target.checked }))} className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-slate-600 bg-slate-800 checked:bg-amber-600 transition-all" />
                                         <Icon name="check" size={10} className="absolute left-0.5 text-white opacity-0 peer-checked:opacity-100 pointer-events-none" />
                                     </div>
                                     <span className="text-xs text-slate-400 group-hover:text-slate-200 capitalize">{f === 'locations' ? 'Cidades e Vilas' : f}</span>
@@ -190,7 +196,7 @@
                 </div>
             );
         };
-        
+
         // --- 2. MÓDULO DE SESSÕES (JOGADORES E TEMPO INDIVIDUAL) ---
         const SessionsModule = ({ showAlert }) => {
             const [sessions, setSessions] = React.useState([]);
@@ -232,22 +238,22 @@
                             ))}
                         </div>
                     </div>
-                    
+
                     <div className="flex-1 p-8 overflow-y-auto custom-scroll relative">
                         {editing ? (
                             <div className="max-w-2xl mx-auto bg-slate-900 border border-slate-700 rounded-lg p-8 shadow-2xl relative">
                                 <button onClick={() => setEditing(null)} className="absolute top-6 right-6 text-slate-500 hover:text-white"><Icon name="x" /></button>
                                 <h2 className="font-cinzel text-indigo-400 text-2xl mb-8 border-b border-slate-800 pb-4">Gestão de Sessão</h2>
-                                
+
                                 <div className="space-y-6">
                                     <div>
                                         <label className="input-label">Nome da Sessão</label>
-                                        <input value={editing.name} onChange={e => setEditing({...editing, name: e.target.value})} className="input-field text-lg" placeholder="Ex: Grupo de Quinta-feira" />
+                                        <input value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} className="input-field text-lg" placeholder="Ex: Grupo de Quinta-feira" />
                                     </div>
-                                    
+
                                     <div className="grid grid-cols-2 gap-6 bg-slate-950/50 p-4 rounded border border-slate-800">
-                                        <div><label className="input-label">Hora Específica</label><input type="time" value={editing.customTime} onChange={e => setEditing({...editing, customTime: e.target.value})} className="input-field text-center font-mono text-xl" /></div>
-                                        <div><label className="input-label">Dia Específico</label><input type="number" value={editing.customDay} onChange={e => setEditing({...editing, customDay: parseInt(e.target.value)})} className="input-field text-center text-xl" /></div>
+                                        <div><label className="input-label">Hora Específica</label><input type="time" value={editing.customTime} onChange={e => setEditing({ ...editing, customTime: e.target.value })} className="input-field text-center font-mono text-xl" /></div>
+                                        <div><label className="input-label">Dia Específico</label><input type="number" value={editing.customDay} onChange={e => setEditing({ ...editing, customDay: parseInt(e.target.value) })} className="input-field text-center text-xl" /></div>
                                     </div>
 
                                     <div>
@@ -259,7 +265,7 @@
                                                     <label key={p.id} className={`flex items-center gap-3 p-2 rounded cursor-pointer border transition ${isSelected ? 'bg-indigo-900/30 border-indigo-500/50' : 'border-transparent hover:bg-slate-800'}`}>
                                                         <input type="checkbox" checked={isSelected} onChange={e => {
                                                             const ids = editing.playerIds || [];
-                                                            setEditing({...editing, playerIds: e.target.checked ? [...ids, p.id] : ids.filter(id => id !== p.id)});
+                                                            setEditing({ ...editing, playerIds: e.target.checked ? [...ids, p.id] : ids.filter(id => id !== p.id) });
                                                         }} className="accent-indigo-500 w-4 h-4" />
                                                         <span className={`text-sm ${isSelected ? 'text-indigo-200 font-bold' : 'text-slate-400'}`}>{p.nome}</span>
                                                     </label>
@@ -271,7 +277,7 @@
 
                                 <div className="mt-8 pt-6 border-t border-slate-800 flex gap-4">
                                     <button onClick={saveSession} className="flex-1 bg-green-700 hover:bg-green-600 text-white py-3 rounded font-bold shadow-lg uppercase tracking-wider text-xs transition">SALVAR DADOS DA SESSÃO</button>
-                                    {editing.id && <button onClick={() => { if(confirm('Excluir sessão?')) { db.collection(COLS.SESSIONS).doc(editing.id).delete(); setEditing(null); } }} className="px-6 bg-red-900 hover:bg-red-800 text-white rounded font-bold text-xs uppercase transition">Excluir</button>}
+                                    {editing.id && <button onClick={() => { if (confirm('Excluir sessão?')) { db.collection(COLS.SESSIONS).doc(editing.id).delete(); setEditing(null); } }} className="px-6 bg-red-900 hover:bg-red-800 text-white rounded font-bold text-xs uppercase transition">Excluir</button>}
                                 </div>
                             </div>
                         ) : (
@@ -284,12 +290,12 @@
                 </div>
             );
         };
-        
+
         // --- 3. MÓDULO DE MAPA DE SESSÕES (FOG OF WAR) ---
         const SessionMapModule = ({ showAlert }) => {
             const [sessions, setSessions] = React.useState([]);
             const [selectedSession, setSelectedSession] = React.useState(null);
-            const [toolMode, setToolMode] = React.useState('reveal'); 
+            const [toolMode, setToolMode] = React.useState('reveal');
             const [localRevealed, setLocalRevealed] = React.useState([]);
             const [locations, setLocations] = React.useState([]);
 
@@ -313,7 +319,7 @@
                         <h3 className="font-cinzel text-sky-400 text-sm font-bold uppercase border-b border-slate-800 pb-2 flex items-center gap-2">
                             <Icon name="map" size={16} /> Controlo de Visão
                         </h3>
-                        
+
                         <div>
                             <label className="input-label mb-1">Mesa Activa</label>
                             <select className="input-field cursor-pointer font-bold" onChange={ev => {
@@ -332,16 +338,16 @@
                                     <label className="input-label mb-2">Ferramenta Rápida</label>
                                     <div className="flex gap-2">
                                         <button onClick={() => setToolMode('reveal')} className={`flex-1 py-3 rounded font-bold text-xs flex items-center justify-center gap-2 transition ${toolMode === 'reveal' ? 'bg-sky-600 border border-sky-400 text-white shadow-lg scale-105' : 'bg-slate-800 border border-slate-700 text-slate-400 hover:text-white'}`}>
-                                            <Icon name="eye" size={14}/> REVELAR
+                                            <Icon name="eye" size={14} /> REVELAR
                                         </button>
                                         <button onClick={() => setToolMode('hide')} className={`flex-1 py-3 rounded font-bold text-xs flex items-center justify-center gap-2 transition ${toolMode === 'hide' ? 'bg-red-900 border border-red-700 text-white shadow-lg scale-105' : 'bg-slate-800 border border-slate-700 text-slate-400 hover:text-white'}`}>
-                                            <Icon name="eye-off" size={14}/> OCULTAR
+                                            <Icon name="eye-off" size={14} /> OCULTAR
                                         </button>
                                     </div>
                                 </div>
 
                                 <div className="text-[10px] text-slate-400 bg-slate-950 p-3 rounded border border-slate-800 italic">
-                                    <p className="mb-1 text-amber-500 font-bold"><Icon name="info" size={10} className="inline mr-1"/>Pinta o mapa (Buffer Local).</p>
+                                    <p className="mb-1 text-amber-500 font-bold"><Icon name="info" size={10} className="inline mr-1" />Pinta o mapa (Buffer Local).</p>
                                     Quando terminares, clica abaixo para validar as alterações no Firebase.
                                 </div>
 
@@ -362,7 +368,7 @@
                     <div className="flex-1 bg-slate-950 relative">
                         {/* Cursor muda dependendo da ferramenta */}
                         <div className={`absolute inset-0 z-0 ${toolMode === 'reveal' ? 'cursor-crosshair' : 'cursor-not-allowed'}`}>
-                            <RPGMap 
+                            <RPGMap
                                 mode="fog"
                                 locations={locations}
                                 revealedHexes={localRevealed}
@@ -390,7 +396,7 @@
             const [editing, setEditing] = React.useState(null);
 
             React.useEffect(() => {
-                return db.collection(COLS.DUNGEONS).onSnapshot(s => setDungeons(s.docs.map(d => ({id: d.id, ...d.data()}))));
+                return db.collection(COLS.DUNGEONS).onSnapshot(s => setDungeons(s.docs.map(d => ({ id: d.id, ...d.data() }))));
             }, []);
 
             const saveDungeon = async () => {
@@ -405,7 +411,7 @@
                 <div className="flex h-full animate-fade-in bg-slate-950">
                     <div className="w-72 bg-slate-900/50 border-r border-slate-700 flex flex-col z-20">
                         <div className="p-4 border-b border-slate-800">
-                            <button onClick={() => setEditing({name: '', difficulty: 1, floors: 1, baseEnemies: 5})} className="w-full bg-red-800 hover:bg-red-700 text-white py-2 rounded font-bold text-xs shadow-lg transition">+ NOVA DUNGEON</button>
+                            <button onClick={() => setEditing({ name: '', difficulty: 1, floors: 1, baseEnemies: 5 })} className="w-full bg-red-800 hover:bg-red-700 text-white py-2 rounded font-bold text-xs shadow-lg transition">+ NOVA DUNGEON</button>
                         </div>
                         <div className="flex-1 overflow-y-auto p-2 space-y-2">
                             {dungeons.map(d => (
@@ -418,7 +424,7 @@
                     </div>
                     <div className="flex-1 relative">
                         <div className="absolute inset-0 z-0">
-                            <RPGMap mode="dungeon" dungeons={dungeons} filters={{dungeons: true}} />
+                            <RPGMap mode="dungeon" dungeons={dungeons} filters={{ dungeons: true }} />
                         </div>
                         {editing && (
                             <div className="absolute top-4 left-4 z-[500] w-[450px] bg-slate-900/95 backdrop-blur-md border border-slate-700 rounded-lg shadow-2xl p-6 space-y-4">
@@ -426,11 +432,11 @@
                                     <h2 className="font-cinzel text-red-500 text-lg">Arquiteto de Dungeons</h2>
                                     <button onClick={() => setEditing(null)} className="text-slate-500 hover:text-white"><Icon name="x" /></button>
                                 </div>
-                                <div><label className="input-label">Nome</label><input value={editing.name} onChange={e => setEditing({...editing, name: e.target.value})} className="input-field" /></div>
+                                <div><label className="input-label">Nome</label><input value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} className="input-field" /></div>
                                 <div className="grid grid-cols-3 gap-4">
-                                    <div><label className="input-label">Dificuldade</label><input type="number" value={editing.difficulty} onChange={e => setEditing({...editing, difficulty: parseInt(e.target.value)})} className="input-field" /></div>
-                                    <div><label className="input-label">Andares</label><input type="number" value={editing.floors} onChange={e => setEditing({...editing, floors: parseInt(e.target.value)})} className="input-field" /></div>
-                                    <div><label className="input-label">Inimigos</label><input type="number" value={editing.baseEnemies} onChange={e => setEditing({...editing, baseEnemies: parseInt(e.target.value)})} className="input-field" /></div>
+                                    <div><label className="input-label">Dificuldade</label><input type="number" value={editing.difficulty} onChange={e => setEditing({ ...editing, difficulty: parseInt(e.target.value) })} className="input-field" /></div>
+                                    <div><label className="input-label">Andares</label><input type="number" value={editing.floors} onChange={e => setEditing({ ...editing, floors: parseInt(e.target.value) })} className="input-field" /></div>
+                                    <div><label className="input-label">Inimigos</label><input type="number" value={editing.baseEnemies} onChange={e => setEditing({ ...editing, baseEnemies: parseInt(e.target.value) })} className="input-field" /></div>
                                 </div>
                                 <div className="pt-4"><button onClick={saveDungeon} className="w-full bg-red-700 hover:bg-red-600 text-white py-2 rounded font-bold text-xs transition">GUARDAR PROJETO</button></div>
                             </div>
@@ -447,7 +453,7 @@
             const [activeTab, setActiveTab] = React.useState('basic');
 
             React.useEffect(() => {
-                return db.collection(COLS.LOCATIONS).orderBy('name').onSnapshot(s => setList(s.docs.map(d => ({id: d.id, ...d.data()}))));
+                return db.collection(COLS.LOCATIONS).orderBy('name').onSnapshot(s => setList(s.docs.map(d => ({ id: d.id, ...d.data() }))));
             }, []);
 
             const handleSave = async (e) => {
@@ -456,10 +462,10 @@
                 const data = Object.fromEntries(fd.entries());
                 data.pop = parseInt(data.pop) || 0;
                 data.x = editing.x || 0; data.y = editing.y || 0;
-                
+
                 if (editing.id) await db.collection(COLS.LOCATIONS).doc(editing.id).update(data);
                 else await db.collection(COLS.LOCATIONS).add(data);
-                
+
                 setEditing(null);
                 showAlert("Local guardado com sucesso!");
             };
@@ -468,13 +474,13 @@
                 <div className="flex h-full animate-fade-in relative">
                     <div className="w-72 bg-slate-900/80 border-r border-slate-700 flex flex-col z-20">
                         <div className="p-4 border-b border-slate-800">
-                            <button onClick={() => { setEditing({name: '', type: 'Cidade', x:0, y:0}); setActiveTab('basic'); }} className="w-full bg-emerald-700 hover:bg-emerald-600 text-white py-2 rounded font-bold text-xs shadow-lg transition">
+                            <button onClick={() => { setEditing({ name: '', type: 'Cidade', x: 0, y: 0 }); setActiveTab('basic'); }} className="w-full bg-emerald-700 hover:bg-emerald-600 text-white py-2 rounded font-bold text-xs shadow-lg transition">
                                 + NOVO LOCAL
                             </button>
                         </div>
                         <div className="flex-1 overflow-y-auto p-2 space-y-1">
                             {list.map(i => (
-                                <div key={i.id} onClick={() => {setEditing(i); setActiveTab('basic');}} className={`p-3 rounded cursor-pointer border transition ${editing?.id === i.id ? 'bg-slate-800 border-emerald-500/50' : 'bg-slate-900/30 border-transparent hover:bg-slate-800'}`}>
+                                <div key={i.id} onClick={() => { setEditing(i); setActiveTab('basic'); }} className={`p-3 rounded cursor-pointer border transition ${editing?.id === i.id ? 'bg-slate-800 border-emerald-500/50' : 'bg-slate-900/30 border-transparent hover:bg-slate-800'}`}>
                                     <div className="font-bold text-slate-200 text-sm">{i.name}</div>
                                     <div className="text-[10px] text-slate-500 uppercase">{i.type}</div>
                                 </div>
@@ -483,7 +489,7 @@
                     </div>
                     <div className="flex-1 relative bg-slate-950">
                         <div className="absolute inset-0 z-0">
-                            <RPGMap mode="point" locations={list} tempPoint={editing?.x ? {lat: editing.y, lng: editing.x} : null} onMapClick={(pt) => editing && setEditing({...editing, x: pt.lng, y: pt.lat})} filters={{locations: true}} />
+                            <RPGMap mode="point" locations={list} tempPoint={editing?.x ? { lat: editing.y, lng: editing.x } : null} onMapClick={(pt) => editing && setEditing({ ...editing, x: pt.lng, y: pt.lat })} filters={{ locations: true }} />
                         </div>
                         {editing && (
                             <div className="absolute top-4 left-4 z-[500] w-[450px] max-h-[90%] bg-slate-900/95 backdrop-blur-md border border-slate-700 rounded-lg shadow-2xl flex flex-col">
@@ -492,8 +498,8 @@
                                     <button onClick={() => setEditing(null)} className="text-slate-500 hover:text-white"><Icon name="x" /></button>
                                 </div>
                                 <div className="flex px-2 pt-2 border-b border-slate-800 gap-1 bg-slate-950/50 overflow-x-auto">
-                                    {['basic','infra','society','conflicts'].map(id => (
-                                        <button key={id} onClick={()=>setActiveTab(id)} className={`px-3 py-1 text-[10px] font-bold uppercase rounded-t transition ${activeTab===id?'bg-slate-800 text-emerald-400 border-t border-x border-slate-700':'text-slate-500 hover:text-slate-300'}`}>{id === 'basic' ? 'Geral' : id}</button>
+                                    {['basic', 'infra', 'society', 'conflicts'].map(id => (
+                                        <button key={id} onClick={() => setActiveTab(id)} className={`px-3 py-1 text-[10px] font-bold uppercase rounded-t transition ${activeTab === id ? 'bg-slate-800 text-emerald-400 border-t border-x border-slate-700' : 'text-slate-500 hover:text-slate-300'}`}>{id === 'basic' ? 'Geral' : id}</button>
                                     ))}
                                 </div>
                                 <form onSubmit={handleSave} className="p-6 overflow-y-auto flex-1 space-y-4">
@@ -508,7 +514,7 @@
                                     )}
                                     <div className="pt-4 flex gap-2">
                                         <button type="submit" className="flex-1 bg-emerald-700 hover:bg-emerald-600 text-white py-2 rounded font-bold text-xs transition">GUARDAR</button>
-                                        {editing.id && <button type="button" onClick={() => {if(confirm('Excluir?')) { db.collection(COLS.LOCATIONS).doc(editing.id).delete(); setEditing(null); }}} className="px-4 bg-red-900/50 text-red-500 rounded border border-red-900"><Icon name="trash" size={14}/></button>}
+                                        {editing.id && <button type="button" onClick={() => { if (confirm('Excluir?')) { db.collection(COLS.LOCATIONS).doc(editing.id).delete(); setEditing(null); } }} className="px-4 bg-red-900/50 text-red-500 rounded border border-red-900"><Icon name="trash" size={14} /></button>}
                                     </div>
                                 </form>
                             </div>
@@ -517,7 +523,7 @@
                 </div>
             );
         };
-        
+
         // --- 6. MÓDULO DE ROTAS ---
         const RoutesModule = ({ showAlert }) => {
             const [routes, setRoutes] = React.useState([]);
@@ -526,8 +532,8 @@
             const [tempPoints, setTempPoints] = React.useState([]);
 
             React.useEffect(() => {
-                const unsubR = db.collection(COLS.ROUTES).onSnapshot(s => setRoutes(s.docs.map(d => ({id: d.id, ...d.data()}))));
-                const unsubT = db.collection(COLS.ROUTE_TYPES).onSnapshot(s => setTypes(s.docs.map(d => ({id: d.id, ...d.data()}))));
+                const unsubR = db.collection(COLS.ROUTES).onSnapshot(s => setRoutes(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+                const unsubT = db.collection(COLS.ROUTE_TYPES).onSnapshot(s => setTypes(s.docs.map(d => ({ id: d.id, ...d.data() }))));
                 return () => { unsubR(); unsubT(); };
             }, []);
 
@@ -545,7 +551,7 @@
                 <div className="flex h-full animate-fade-in relative">
                     <div className="w-72 bg-slate-900/80 border-r border-slate-700 flex flex-col z-20">
                         <div className="p-4 border-b border-slate-800">
-                            <button onClick={() => { setEditing({name: '', typeId: '', duration: 60}); setTempPoints([]); }} className="w-full bg-amber-600 hover:bg-amber-500 text-white py-2 rounded font-bold text-xs shadow-lg transition">
+                            <button onClick={() => { setEditing({ name: '', typeId: '', duration: 60 }); setTempPoints([]); }} className="w-full bg-amber-600 hover:bg-amber-500 text-white py-2 rounded font-bold text-xs shadow-lg transition">
                                 + NOVA ROTA
                             </button>
                         </div>
@@ -553,7 +559,7 @@
                             {routes.map(r => {
                                 const type = types.find(t => t.id === r.typeId);
                                 return (
-                                    <div key={r.id} onClick={() => {setEditing(r); setTempPoints(r.points || []);}} className={`p-3 rounded cursor-pointer border-l-4 transition ${editing?.id === r.id ? 'bg-slate-800 border-amber-500' : 'bg-slate-900/30 border-transparent hover:bg-slate-800'}`} style={{ borderLeftColor: type?.color || '#475569' }}>
+                                    <div key={r.id} onClick={() => { setEditing(r); setTempPoints(r.points || []); }} className={`p-3 rounded cursor-pointer border-l-4 transition ${editing?.id === r.id ? 'bg-slate-800 border-amber-500' : 'bg-slate-900/30 border-transparent hover:bg-slate-800'}`} style={{ borderLeftColor: type?.color || '#475569' }}>
                                         <div className="text-sm font-bold text-slate-200">{r.name}</div>
                                         <div className="text-[10px] text-slate-500 mt-1 uppercase flex justify-between"><span>{type?.name || 'Estrada'}</span><span>{r.duration} min</span></div>
                                     </div>
@@ -563,7 +569,7 @@
                     </div>
                     <div className="flex-1 relative bg-slate-950">
                         <div className="absolute inset-0 z-0">
-                            <RPGMap mode="route" tempPoints={tempPoints} onMapClick={(pt) => editing && setTempPoints(p => [...p, pt])} filters={{locations: true, routes: true}} routes={routes.filter(r => r.id !== editing?.id)} routeTypes={types.reduce((acc, t) => ({ ...acc, [t.id]: t }), {})} />
+                            <RPGMap mode="route" tempPoints={tempPoints} onMapClick={(pt) => editing && setTempPoints(p => [...p, pt])} filters={{ locations: true, routes: true }} routes={routes.filter(r => r.id !== editing?.id)} routeTypes={types.reduce((acc, t) => ({ ...acc, [t.id]: t }), {})} />
                         </div>
                         {editing && (
                             <div className="absolute top-4 left-4 z-[500] w-80 bg-slate-900/95 backdrop-blur-md border border-slate-700 rounded-lg shadow-2xl p-6 space-y-4">
@@ -571,15 +577,15 @@
                                     <h3 className="font-cinzel text-amber-500 text-lg">Editor de Rota</h3>
                                     <button onClick={() => setEditing(null)} className="text-slate-500 hover:text-white"><Icon name="x" /></button>
                                 </div>
-                                <div><label className="input-label">Nome da Rota</label><input value={editing.name} onChange={e => setEditing({...editing, name: e.target.value})} className="input-field" /></div>
+                                <div><label className="input-label">Nome da Rota</label><input value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} className="input-field" /></div>
                                 <div>
                                     <label className="input-label">Tipo de Rota</label>
-                                    <select value={editing.typeId} onChange={e => setEditing({...editing, typeId: e.target.value})} className="input-field">
+                                    <select value={editing.typeId} onChange={e => setEditing({ ...editing, typeId: e.target.value })} className="input-field">
                                         <option value="">Selecione...</option>
                                         {types.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                                     </select>
                                 </div>
-                                <div><label className="input-label">Ciclo (minutos reais)</label><input type="number" value={editing.duration} onChange={e => setEditing({...editing, duration: parseInt(e.target.value)})} className="input-field" /></div>
+                                <div><label className="input-label">Ciclo (minutos reais)</label><input type="number" value={editing.duration} onChange={e => setEditing({ ...editing, duration: parseInt(e.target.value) })} className="input-field" /></div>
                                 <div className="flex justify-between text-[10px] text-slate-400 bg-slate-950 p-2 rounded border border-slate-800">
                                     <span>Pontos marcados: <b>{tempPoints.length}</b></span>
                                     <button onClick={() => setTempPoints([])} className="text-red-500 hover:text-red-400 uppercase font-bold">Limpar</button>
@@ -598,7 +604,7 @@
             const [editing, setEditing] = React.useState(null);
 
             React.useEffect(() => {
-                return db.collection(COLS.EVENTS).onSnapshot(s => setEvents(s.docs.map(d => ({id: d.id, ...d.data()}))));
+                return db.collection(COLS.EVENTS).onSnapshot(s => setEvents(s.docs.map(d => ({ id: d.id, ...d.data() }))));
             }, []);
 
             const saveEvent = async () => {
@@ -614,7 +620,7 @@
                 <div className="flex h-full animate-fade-in relative">
                     <div className="w-72 bg-slate-900/80 border-r border-slate-700 flex flex-col z-20">
                         <div className="p-4 border-b border-slate-800">
-                            <button onClick={() => setEditing({name: '', radius: 150, chance: 10, color: '#9333ea', icon: 'zap'})} className="w-full bg-purple-700 hover:bg-purple-600 text-white py-2 rounded font-bold text-xs shadow-lg transition">
+                            <button onClick={() => setEditing({ name: '', radius: 150, chance: 10, color: '#9333ea', icon: 'zap' })} className="w-full bg-purple-700 hover:bg-purple-600 text-white py-2 rounded font-bold text-xs shadow-lg transition">
                                 + NOVO EVENTO
                             </button>
                         </div>
@@ -629,7 +635,7 @@
                     </div>
                     <div className="flex-1 relative bg-slate-950">
                         <div className="absolute inset-0 z-0">
-                            <RPGMap mode="circle" tempPoint={editing?.x ? {lat: editing.y, lng: editing.x} : null} tempRadius={editing?.radius} onMapClick={(pt) => editing && setEditing({...editing, x: pt.lng, y: pt.lat})} filters={{locations: true, events: true}} events={events.filter(e => e.id !== editing?.id)} />
+                            <RPGMap mode="circle" tempPoint={editing?.x ? { lat: editing.y, lng: editing.x } : null} tempRadius={editing?.radius} onMapClick={(pt) => editing && setEditing({ ...editing, x: pt.lng, y: pt.lat })} filters={{ locations: true, events: true }} events={events.filter(e => e.id !== editing?.id)} />
                         </div>
                         {editing && (
                             <div className="absolute top-4 left-4 z-[500] w-80 bg-slate-900/95 backdrop-blur-md border border-slate-700 rounded-lg shadow-2xl p-6 space-y-4">
@@ -637,14 +643,14 @@
                                     <h3 className="font-cinzel text-purple-400 text-lg">Configurar Evento</h3>
                                     <button onClick={() => setEditing(null)} className="text-slate-500 hover:text-white"><Icon name="x" /></button>
                                 </div>
-                                <div><label className="input-label">Nome</label><input value={editing.name} onChange={e => setEditing({...editing, name: e.target.value})} className="input-field" /></div>
+                                <div><label className="input-label">Nome</label><input value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} className="input-field" /></div>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div><label className="input-label">Chance %</label><input type="number" value={editing.chance} onChange={e => setEditing({...editing, chance: parseInt(e.target.value)})} className="input-field" /></div>
-                                    <div><label className="input-label">Cor</label><input type="color" value={editing.color} onChange={e => setEditing({...editing, color: e.target.value})} className="w-full h-9 bg-slate-800 border border-slate-700 rounded cursor-pointer p-1 outline-none" /></div>
+                                    <div><label className="input-label">Chance %</label><input type="number" value={editing.chance} onChange={e => setEditing({ ...editing, chance: parseInt(e.target.value) })} className="input-field" /></div>
+                                    <div><label className="input-label">Cor</label><input type="color" value={editing.color} onChange={e => setEditing({ ...editing, color: e.target.value })} className="w-full h-9 bg-slate-800 border border-slate-700 rounded cursor-pointer p-1 outline-none" /></div>
                                 </div>
                                 <div>
                                     <label className="input-label flex justify-between">Raio de Alcance <span>{editing.radius}m</span></label>
-                                    <input type="range" min="50" max="1500" step="10" value={editing.radius} onChange={e => setEditing({...editing, radius: parseInt(e.target.value)})} className="w-full accent-purple-500 mt-2" />
+                                    <input type="range" min="50" max="1500" step="10" value={editing.radius} onChange={e => setEditing({ ...editing, radius: parseInt(e.target.value) })} className="w-full accent-purple-500 mt-2" />
                                 </div>
                                 <button onClick={saveEvent} className="w-full bg-purple-700 hover:bg-purple-600 text-white py-2 rounded font-bold text-xs transition mt-4">GUARDAR EVENTO</button>
                             </div>
@@ -661,13 +667,13 @@
             const [tempPoints, setTempPoints] = React.useState([]);
 
             React.useEffect(() => {
-                return db.collection(COLS.ISOLATED).onSnapshot(s => setList(s.docs.map(d => ({id: d.id, ...d.data()}))));
+                return db.collection(COLS.ISOLATED).onSnapshot(s => setList(s.docs.map(d => ({ id: d.id, ...d.data() }))));
             }, []);
 
             const saveIsolated = async () => {
-                if(!editing.name || tempPoints.length === 0) return showAlert("Nome e pelo menos um local são obrigatórios.");
+                if (!editing.name || tempPoints.length === 0) return showAlert("Nome e pelo menos um local são obrigatórios.");
                 const data = { ...editing, spots: tempPoints.map(p => ({ lat: p.lat, lng: p.lng, chance: p.chance || 10 })) };
-                if(editing.id) await db.collection(COLS.ISOLATED).doc(editing.id).update(data);
+                if (editing.id) await db.collection(COLS.ISOLATED).doc(editing.id).update(data);
                 else await db.collection(COLS.ISOLATED).add(data);
                 setEditing(null);
                 setTempPoints([]);
@@ -678,13 +684,13 @@
                 <div className="flex h-full animate-fade-in relative">
                     <div className="w-72 bg-slate-900/80 border-r border-slate-700 flex flex-col z-20">
                         <div className="p-4 border-b border-slate-800">
-                            <button onClick={() => {setEditing({name: '', frequency: 24}); setTempPoints([]);}} className="w-full bg-red-800 hover:bg-red-700 text-white py-2 rounded font-bold text-xs shadow-lg transition">
+                            <button onClick={() => { setEditing({ name: '', frequency: 24 }); setTempPoints([]); }} className="w-full bg-red-800 hover:bg-red-700 text-white py-2 rounded font-bold text-xs shadow-lg transition">
                                 + NOVO ENCONTRO
                             </button>
                         </div>
                         <div className="flex-1 overflow-y-auto p-2 space-y-2">
                             {list.map(i => (
-                                <div key={i.id} onClick={() => {setEditing(i); setTempPoints(i.spots || []);}} className={`p-3 rounded cursor-pointer border-l-4 border-red-500 transition ${editing?.id === i.id ? 'bg-slate-800' : 'bg-slate-900/30 hover:bg-slate-800'}`}>
+                                <div key={i.id} onClick={() => { setEditing(i); setTempPoints(i.spots || []); }} className={`p-3 rounded cursor-pointer border-l-4 border-red-500 transition ${editing?.id === i.id ? 'bg-slate-800' : 'bg-slate-900/30 hover:bg-slate-800'}`}>
                                     <div className="text-sm font-bold text-slate-200">{i.name}</div>
                                     <div className="text-[10px] text-slate-500 mt-1 uppercase">{(i.spots?.length || 0)} locais • {i.frequency}h</div>
                                 </div>
@@ -693,7 +699,7 @@
                     </div>
                     <div className="flex-1 relative bg-slate-950">
                         <div className="absolute inset-0 z-0">
-                            <RPGMap mode="isolated" tempPoints={tempPoints} onMapClick={pt => editing && setTempPoints(p => [...p, { ...pt, chance: 10 }])} filters={{isolated: true, locations: true}} isolated={list.filter(l => l.id !== editing?.id)} />
+                            <RPGMap mode="isolated" tempPoints={tempPoints} onMapClick={pt => editing && setTempPoints(p => [...p, { ...pt, chance: 10 }])} filters={{ isolated: true, locations: true }} isolated={list.filter(l => l.id !== editing?.id)} />
                         </div>
                         {editing && (
                             <div className="absolute top-4 left-4 z-[500] w-80 bg-slate-900/95 backdrop-blur-md border border-red-900/30 rounded-lg shadow-2xl p-6 space-y-4 max-h-[90%] overflow-y-auto custom-scroll">
@@ -701,16 +707,16 @@
                                     <h3 className="font-cinzel text-red-500 text-lg">Encontro Isolado</h3>
                                     <button onClick={() => setEditing(null)} className="text-slate-500 hover:text-white"><Icon name="x" /></button>
                                 </div>
-                                <div><label className="input-label">Nome do Evento</label><input value={editing.name} onChange={e => setEditing({...editing, name: e.target.value})} className="input-field" /></div>
-                                <div><label className="input-label">Frequência (horas)</label><input type="number" value={editing.frequency} onChange={e => setEditing({...editing, frequency: parseInt(e.target.value)})} className="input-field" /></div>
+                                <div><label className="input-label">Nome do Evento</label><input value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} className="input-field" /></div>
+                                <div><label className="input-label">Frequência (horas)</label><input type="number" value={editing.frequency} onChange={e => setEditing({ ...editing, frequency: parseInt(e.target.value) })} className="input-field" /></div>
                                 <div className="bg-slate-950 p-3 rounded border border-slate-800 space-y-2 mt-4">
                                     <label className="text-[10px] font-bold text-slate-400 uppercase block">Locais de Spawn ({tempPoints.length})</label>
                                     {tempPoints.map((p, i) => (
                                         <div key={i} className="flex items-center gap-2 text-[10px] bg-slate-900 p-1 rounded">
-                                            <span className="text-slate-600 w-4">#{i+1}</span>
+                                            <span className="text-slate-600 w-4">#{i + 1}</span>
                                             <input type="number" value={p.chance} onChange={e => { const n = [...tempPoints]; n[i].chance = parseInt(e.target.value); setTempPoints(n); }} className="w-12 bg-slate-800 border border-slate-700 rounded text-center text-red-400 font-bold outline-none" />
                                             <span className="text-slate-500">%</span>
-                                            <button onClick={() => setTempPoints(tempPoints.filter((_, idx) => idx !== i))} className="ml-auto text-red-500 hover:text-red-400"><Icon name="x" size={12}/></button>
+                                            <button onClick={() => setTempPoints(tempPoints.filter((_, idx) => idx !== i))} className="ml-auto text-red-500 hover:text-red-400"><Icon name="x" size={12} /></button>
                                         </div>
                                     ))}
                                     {tempPoints.length === 0 && <p className="text-[9px] text-slate-600 italic text-center">Clique no mapa para marcar locais.</p>}
@@ -725,20 +731,20 @@
 
         // --- 9. MÓDULO DE CRONOLOGIA (TEMPO) ---
         const ChronologyModule = () => {
-            const [state, setState] = React.useState({ year:1, month:1, day:1, time:'12:00', seasonId:'' });
+            const [state, setState] = React.useState({ year: 1, month: 1, day: 1, time: '12:00', seasonId: '' });
             const [seasons, setSeasons] = React.useState([]);
 
             React.useEffect(() => {
                 const unsubW = db.collection(COLS.WORLD).doc('main').onSnapshot(d => setState(d.data() || {}));
-                const unsubS = db.collection(COLS.SEASONS).onSnapshot(s => setSeasons(s.docs.map(d => ({id: d.id, ...d.data()}))));
+                const unsubS = db.collection(COLS.SEASONS).onSnapshot(s => setSeasons(s.docs.map(d => ({ id: d.id, ...d.data() }))));
                 return () => { unsubW(); unsubS(); };
             }, []);
 
             const updateWorld = (key, val) => db.collection(COLS.WORLD).doc('main').update({ [key]: val });
-            
+
             const [h] = (state.time || "00:00").split(':').map(Number);
             const isNight = h >= 19 || h < 6;
-            
+
             // Simulação de Fases Lunares
             const totalDays = (state.year * 360) + (state.month * 30) + state.day;
             const moonPhases = [
@@ -769,7 +775,7 @@
                             <div className="flex-1">
                                 <h4 className="font-cinzel text-slate-200 text-lg uppercase tracking-widest">{currentMoon.name}</h4>
                                 <div className="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
-                                    <div className="h-full bg-indigo-500 transition-all duration-1000" style={{ width: `${(1 - (currentMoon.daysToNext/28))*100}%` }}></div>
+                                    <div className="h-full bg-indigo-500 transition-all duration-1000" style={{ width: `${(1 - (currentMoon.daysToNext / 28)) * 100}%` }}></div>
                                 </div>
                                 <p className="text-[10px] text-slate-500 mt-2 uppercase font-bold">Próxima fase em {currentMoon.daysToNext} dias</p>
                             </div>
@@ -800,7 +806,7 @@
 
         // --- 10. ORQUESTRADOR PRINCIPAL (A APP) ---
         const App = () => {
-            const [user, setUser] = React.useState(null); 
+            const [user, setUser] = React.useState(null);
             const [page, setPage] = React.useState('view');
             const [modal, setModal] = React.useState(null);
 
@@ -809,10 +815,10 @@
                 return () => unsubscribe();
             }, []);
 
-            const login = (e) => { 
-                e.preventDefault(); 
+            const login = (e) => {
+                e.preventDefault();
                 auth.signInWithEmailAndPassword(e.target.email.value, e.target.pass.value)
-                    .catch(err => setModal({ message: "Erro no login: " + err.message })); 
+                    .catch(err => setModal({ message: "Erro no login: " + err.message }));
             };
 
             const showAlert = (message) => setModal({ message });
@@ -892,8 +898,9 @@
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(e(MapaMundialApp));
+        root.render(e(App));
 
     </script>
 </body>
+
 </html>
