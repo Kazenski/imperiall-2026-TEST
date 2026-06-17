@@ -514,7 +514,7 @@ function _rebuildLayer(name) {
         case 'npcs':      _buildNpcsLayer(layer);      break;
     }
 
-    // Aplica visibilidade do filtro
+    // Aplica visibilidade baseada na página/aba atual ativa
     _applyFilters();
 }
 
@@ -522,19 +522,34 @@ function _applyFilters() {
     const map = state.mapInstance;
     if (!map) return;
     const f = state.filters;
+    const p = state.page; // Aba atual ativa
+
     const toggle = (layerName, visible) => {
         const lg = state.layers[layerName];
         if (!lg) return;
         if (visible) { if (!map.hasLayer(lg)) map.addLayer(lg); }
         else { if (map.hasLayer(lg)) map.removeLayer(lg); }
     };
-    toggle('locations', f.locations);
-    toggle('dungeons',  f.dungeons);
-    toggle('routes',    f.routes);
-    toggle('events',    f.events);
-    toggle('isolated',  f.isolated);
-    toggle('groups',    true);
-    toggle('npcs',      f.npcs);
+
+    if (p === 'map') {
+        // Se estiver na aba Global, respeita os checkboxes de filtro do painel lateral
+        toggle('locations', f.locations);
+        toggle('dungeons',  f.dungeons);
+        toggle('routes',    f.routes);
+        toggle('events',    f.events);
+        toggle('isolated',  f.isolated);
+        toggle('npcs',      f.npcs);
+        toggle('groups',    true);
+    } else {
+        // Se estiver em qualquer outra aba, mostra APENAS os dados daquela categoria específica
+        toggle('locations', p === 'locations');
+        toggle('dungeons',  p === 'dungeons');
+        toggle('routes',    p === 'routes');
+        toggle('events',    p === 'events');
+        toggle('isolated',  p === 'isolated');
+        toggle('npcs',      p === 'routes'); // Mantém viajantes vinculados visualmente às rotas se preferir, ou mude para false
+        toggle('groups',    p === 'map');
+    }
 }
 
 function _buildLocationsLayer(layer) {
