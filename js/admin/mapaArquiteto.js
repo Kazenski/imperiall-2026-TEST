@@ -130,6 +130,7 @@ function _shellHTML() {
   </header>
   <main id="arq-main" style="flex:1;display:flex;overflow:hidden;position:relative;min-height:0;"></main>
   <div id="arq-modal-root"></div>
+  <div id="arq-map-parking" style="display:none;position:absolute;width:1px;height:1px;overflow:hidden;pointer-events:none;"></div>
 </div>`;
 }
 
@@ -227,6 +228,13 @@ function _renderPage(pageId) {
         b.classList.toggle('active', b.dataset.page === pageId));
     const main = document.getElementById('arq-main');
     if (!main) return;
+
+    // Salvar o host Leaflet fora do main antes de limpar o innerHTML
+    // (innerHTML = '' destroiria o host e quebraria o mapa na troca de aba)
+    const host = document.getElementById('arq-leaflet-host');
+    const parking = document.getElementById('arq-map-parking');
+    if (host && parking) parking.appendChild(host);
+
     main.innerHTML = '';
 
     const renderers = {
@@ -276,7 +284,7 @@ function _createMapInContainer(containerId) {
     // Primeira inicialização — host como filho direto do container
     const host = document.createElement('div');
     host.id = 'arq-leaflet-host';
-    host.style.cssText = 'width:100%;height:100%;';
+    host.style.cssText = 'position:absolute;inset:0;';
     container.appendChild(host);
 
     const bounds = [[0,0],[MAP_H,MAP_W]];
@@ -692,10 +700,20 @@ const _SVG_PATHS = {
     'eclipse':      '<circle cx="12" cy="12" r="10"/><path d="M12 2a7 7 0 1 0 10 10"/>',
 };
 
-// Retorna SVG string usando o dicionário inline.
-// Fallback para window.lucide.createElement() se disponível, ou círculo genérico.
+// Converte PascalCase/CamelCase (legado Firebase) para kebab-case
+// Ex: 'CloudRain' → 'cloud-rain', 'Zap' → 'zap', 'zap' → 'zap'
+function _normalizeIconName(name) {
+    if (!name) return 'circle';
+    // Já está em kebab-case (minúsculo)
+    if (name === name.toLowerCase()) return name;
+    // PascalCase/CamelCase → inserir hífen antes de cada maiúscula (exceto a primeira)
+    return name
+        .replace(/([A-Z])/g, (m, l, offset) => offset === 0 ? l.toLowerCase() : '-' + l.toLowerCase());
+}
+
 function _svgFromName(name, stroke, size, forUI=false) {
-    const paths = _SVG_PATHS[name] || _SVG_PATHS['circle'];
+    const key = _normalizeIconName(name);
+    const paths = _SVG_PATHS[key] || _SVG_PATHS['circle'];
     const style = forUI ? ' style="display:inline-block;vertical-align:middle;"' : '';
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"${style}>${paths}</svg>`;
 }
