@@ -130,7 +130,7 @@ function _shellHTML() {
   </header>
   <main id="arq-main" style="flex:1;display:flex;overflow:hidden;position:relative;min-height:0;"></main>
   <div id="arq-modal-root"></div>
-  <div id="arq-map-parking" style="display:none;position:absolute;width:1px;height:1px;overflow:hidden;pointer-events:none;"></div>
+
 </div>`;
 }
 
@@ -229,13 +229,17 @@ function _renderPage(pageId) {
     const main = document.getElementById('arq-main');
     if (!main) return;
 
-    // Salvar o host Leaflet fora do main antes de limpar o innerHTML
-    // (innerHTML = '' destroiria o host e quebraria o mapa na troca de aba)
+    // Salvar o host antes de limpar (ele é filho de main e seria destruído)
     const host = document.getElementById('arq-leaflet-host');
-    const parking = document.getElementById('arq-map-parking');
-    if (host && parking) parking.appendChild(host);
+    if (host) main.removeChild(host);  // remove temporariamente sem destruir
 
     main.innerHTML = '';
+
+    // Recolocar o host no main (mas oculto — a aba decide se quer mostrar)
+    if (host) {
+        host.style.display = 'none';
+        main.appendChild(host);
+    }
 
     const renderers = {
         map: _renderGlobalMap, sessions: _renderSessions,
@@ -249,43 +253,19 @@ function _renderPage(pageId) {
 
 // ─── LEAFLET ──────────────────────────────────────────────────────────────────
 function _initLeaflet() {
-    // Destrói instância anterior se existir
     if (state.mapInstance) {
         try { state.mapInstance.remove(); } catch(e) {}
         state.mapInstance = null;
     }
-    // Instância criada sob demanda em _createMapInContainer()
-}
 
-function _createMapInContainer(containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
+    const main = document.getElementById('arq-main');
+    if (!main) return;
 
-    // Garantir que o container tem dimensão real (não depende de position:absolute)
-    container.style.cssText += ';position:relative;overflow:hidden;';
-
-    // Reusar instância existente: move o host para o novo container
-    if (state.mapInstance) {
-        const host = document.getElementById('arq-leaflet-host');
-        if (host && host.parentNode !== container) {
-            container.appendChild(host);
-            // Forçar o host a preencher o container
-            host.style.cssText = 'position:absolute;inset:0;';
-        }
-        // Triplo rAF para garantir que o browser terminou o layout
-        requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => {
-            if (state.mapInstance) {
-                state.mapInstance.invalidateSize({ animate: false });
-            }
-        })));
-        return;
-    }
-
-    // Primeira inicialização — host como filho direto do container
+    // Host fixo no main — nunca sai daqui, apenas reposicionado
     const host = document.createElement('div');
     host.id = 'arq-leaflet-host';
-    host.style.cssText = 'position:absolute;inset:0;';
-    container.appendChild(host);
+    host.style.cssText = 'position:absolute;z-index:1;background:#020617;';
+    main.appendChild(host);
 
     const bounds = [[0,0],[MAP_H,MAP_W]];
     const map = L.map(host, {
@@ -296,7 +276,7 @@ function _createMapInContainer(containerId) {
     });
 
     L.imageOverlay(WORLD_MAP_URL, bounds).addTo(map);
-    L.control.zoom({ position:'bottomright' }).addTo(map);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
     state.mapInstance = map;
 
     state.layers.locations = L.layerGroup().addTo(map);
@@ -308,15 +288,57 @@ function _createMapInContainer(containerId) {
     state.layers.npcs      = L.layerGroup().addTo(map);
     state.layers.temp      = L.layerGroup().addTo(map);
 
-    // fitBounds depois que o browser pintou o container
-    requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => {
-        map.invalidateSize({ animate: false });
-        map.fitBounds(bounds);
-    })));
+    // Inicia oculto; _positionMapHost irá posicioná-lo ao abrir a primeira aba
+    host.style.display = 'none';
+}
+
+
+
+// Posiciona o host Leaflet sobre o elemento alvo e torna visível
+function _positionMapHost(targetId) {
+    const host = document.getElementById('arq-leaflet-host');
+    const main = document.getElementById('arq-main');
+    if (!host || !main || !state.mapInstance) return;
+
+    // Garantir que o host está no main (pode ter sido movido)
+    if (host.parentNode !== main) main.appendChild(host);
+
+    const isFirstTime = !state._mapEverFitBounds;
+
+    const doPosition = () => {
+        const target = document.getElementById(targetId);
+        if (!target) return;
+        const mainRect = main.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        // Usar fallback se getBoundingClientRect retornar zero (elemento ainda sem layout)
+        const left   = targetRect.left - mainRect.left;
+        const top    = targetRect.top  - mainRect.top;
+        const width  = targetRect.width  || mainRect.width;
+        const height = targetRect.height || mainRect.height;
+        if (width < 10 || height < 10) {
+            // Container sem dimensão ainda — tentar de novo em 100ms
+            setTimeout(() => doPosition(), 100);
+            return;
+        }
+        host.style.cssText = `position:absolute;z-index:1;left:${left}px;top:${top}px;width:${width}px;height:${height}px;display:block;`;
+        state.mapInstance.invalidateSize({ animate: false });
+        if (isFirstTime) {
+            state._mapEverFitBounds = true;
+            state.mapInstance.fitBounds([[0,0],[MAP_H,MAP_W]]);
+        }
+    };
+
+    // rAF duplo para garantir que o layout foi calculado
+    requestAnimationFrame(() => requestAnimationFrame(doPosition));
+}
+
+function _hideMapHost() {
+    const host = document.getElementById('arq-leaflet-host');
+    if (host) host.style.display = 'none';
 }
 
 function _attachMapToContainer(wrapperId) {
-    _createMapInContainer(wrapperId);
+    _positionMapHost(wrapperId);
 }
 
 // ─── FOG OF WAR CANVAS ────────────────────────────────────────────────────────
