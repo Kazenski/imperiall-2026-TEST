@@ -228,18 +228,7 @@ function _renderPage(pageId) {
         b.classList.toggle('active', b.dataset.page === pageId));
     const main = document.getElementById('arq-main');
     if (!main) return;
-
-    // Salvar o host antes de limpar (ele é filho de main e seria destruído)
-    const host = document.getElementById('arq-leaflet-host');
-    if (host) main.removeChild(host);  // remove temporariamente sem destruir
-
     main.innerHTML = '';
-
-    // Recolocar o host no main (mas oculto — a aba decide se quer mostrar)
-    if (host) {
-        host.style.display = 'none';
-        main.appendChild(host);
-    }
 
     const renderers = {
         map: _renderGlobalMap, sessions: _renderSessions,
@@ -253,22 +242,36 @@ function _renderPage(pageId) {
 
 // ─── LEAFLET ──────────────────────────────────────────────────────────────────
 function _initLeaflet() {
+    // Apenas garante que não há instância anterior vazada
     if (state.mapInstance) {
         try { state.mapInstance.remove(); } catch(e) {}
         state.mapInstance = null;
     }
+    state._mapZoom = null;
+    state._mapCenter = null;
+}
 
-    const main = document.getElementById('arq-main');
-    if (!main) return;
 
-    // Host fixo no main — nunca sai daqui, apenas reposicionado
-    const host = document.createElement('div');
-    host.id = 'arq-leaflet-host';
-    host.style.cssText = 'position:absolute;z-index:1;background:#020617;';
-    main.appendChild(host);
+
+// Cria (ou recria) a instância Leaflet dentro de um container específico.
+// Os dados já estão em state.data — apenas reconstrói as layers sem rede.
+function _mountLeaflet(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    // Destruir instância anterior se existir
+    if (state.mapInstance) {
+        // Salvar posição atual para restaurar após recriação
+        try {
+            state._mapZoom   = state.mapInstance.getZoom();
+            state._mapCenter = state.mapInstance.getCenter();
+        } catch(e) {}
+        try { state.mapInstance.remove(); } catch(e) {}
+        state.mapInstance = null;
+    }
 
     const bounds = [[0,0],[MAP_H,MAP_W]];
-    const map = L.map(host, {
+    const map = L.map(container, {
         crs: L.CRS.Simple,
         minZoom: -2, maxZoom: 3,
         zoomControl: false, attributionControl: false,
@@ -288,62 +291,27 @@ function _initLeaflet() {
     state.layers.npcs      = L.layerGroup().addTo(map);
     state.layers.temp      = L.layerGroup().addTo(map);
 
-    // Inicia oculto; _positionMapHost irá posicioná-lo ao abrir a primeira aba
-    host.style.display = 'none';
-}
-
-
-
-// Posiciona o host Leaflet sobre o elemento alvo e torna visível
-function _positionMapHost(targetId) {
-    const host = document.getElementById('arq-leaflet-host');
-    const main = document.getElementById('arq-main');
-    if (!host || !main || !state.mapInstance) return;
-
-    // Garantir que o host está no main (pode ter sido movido)
-    if (host.parentNode !== main) main.appendChild(host);
-
-    const isFirstTime = !state._mapEverFitBounds;
-
-    const doPosition = () => {
-        const target = document.getElementById(targetId);
-        if (!target) return;
-        const mainRect = main.getBoundingClientRect();
-        const targetRect = target.getBoundingClientRect();
-        // Usar fallback se getBoundingClientRect retornar zero (elemento ainda sem layout)
-        const left   = targetRect.left - mainRect.left;
-        const top    = targetRect.top  - mainRect.top;
-        const width  = targetRect.width  || mainRect.width;
-        const height = targetRect.height || mainRect.height;
-        if (width < 10 || height < 10) {
-            // Container sem dimensão ainda — tentar de novo em 100ms
-            setTimeout(() => doPosition(), 100);
-            return;
+    // Restaurar posição ou fitBounds
+    requestAnimationFrame(() => {
+        map.invalidateSize({ animate: false });
+        if (state._mapZoom !== null && state._mapCenter) {
+            map.setView(state._mapCenter, state._mapZoom, { animate: false });
+        } else {
+            map.fitBounds(bounds);
         }
-        host.style.cssText = `position:absolute;z-index:1;left:${left}px;top:${top}px;width:${width}px;height:${height}px;display:block;`;
-        state.mapInstance.invalidateSize({ animate: false });
-        if (isFirstTime) {
-            state._mapEverFitBounds = true;
-            state.mapInstance.fitBounds([[0,0],[MAP_H,MAP_W]]);
-        }
-    };
-
-    // rAF duplo para garantir que o layout foi calculado
-    requestAnimationFrame(() => requestAnimationFrame(doPosition));
-}
-
-function _hideMapHost() {
-    const host = document.getElementById('arq-leaflet-host');
-    if (host) host.style.display = 'none';
+        // Reconstruir todas as layers com dados já em memória
+        ['locations','dungeons','routes','events','isolated','groups','npcs'].forEach(n => _rebuildLayer(n));
+        _applyFilters();
+    });
 }
 
 function _attachMapToContainer(wrapperId) {
-    _positionMapHost(wrapperId);
+    _mountLeaflet(wrapperId);
 }
 
 // ─── FOG OF WAR CANVAS ────────────────────────────────────────────────────────
 function _initFogCanvas() {
-    const host = document.getElementById('arq-leaflet-host');
+    const host = document.getElementById('arq-map-fog') || document.getElementById('arq-leaflet-host');
     if (!host) return;
     const old = host.querySelector('.arq-fog-canvas');
     if (old) old.remove();
@@ -826,7 +794,7 @@ function _renderGlobalMap(main) {
     // main é display:flex — o mapa precisa ser um filho flex que ocupa todo o espaço
     main.style.cssText += ';position:relative;';
     main.innerHTML = `
-        <div id="arq-map-global" style="flex:1;min-height:0;min-width:0;position:relative;overflow:hidden;"></div>
+        <div id="arq-map-global" style="flex:1;min-height:0;min-width:0;"></div>
         <div style="position:absolute;top:0.75rem;right:0.75rem;z-index:800;background:rgba(15,23,42,0.95);padding:0.75rem 1rem;border-radius:8px;border:1px solid #334155;width:11rem;backdrop-filter:blur(4px);">
             <div style="font-size:0.65rem;font-weight:700;color:#f59e0b;text-transform:uppercase;margin-bottom:0.5rem">Camadas</div>
             ${[['locations','Locais'],['dungeons','Dungeons'],['routes','Rotas'],['events','Eventos'],['npcs','Viajantes'],['isolated','Encontros']].map(([k,l])=>`
@@ -1037,8 +1005,8 @@ function _renderSessionMap(main) {
                 <button class="arq-btn arq-btn-red arq-btn-sm" id="arq-fog-reset">Redefinir Buffer</button>
             </div>
         </div>
-        <div style="flex:1;min-height:0;min-width:0;position:relative;overflow:hidden;background:#020617;cursor:crosshair;" id="arq-fogmap-area">
-            <div id="arq-map-fog" style="position:absolute;inset:0;"></div>
+        <div style="flex:1;min-height:0;min-width:0;position:relative;background:#020617;cursor:crosshair;" id="arq-fogmap-area">
+            <div id="arq-map-fog" style="width:100%;height:100%;"></div>
         </div>`;
 
     _attachMapToContainer('arq-map-fog');
@@ -1121,8 +1089,8 @@ function _renderLocations(main) {
             </div>
             <div style="flex:1;overflow-y:auto;padding:0.5rem" id="arq-loc-list"></div>
         </div>
-        <div style="flex:1;min-height:0;min-width:0;position:relative;overflow:hidden;">
-            <div id="arq-map-locations" style="position:absolute;inset:0;"></div>
+        <div style="flex:1;min-height:0;min-width:0;position:relative;">
+            <div id="arq-map-locations" style="width:100%;height:100%;"></div>
             <div id="arq-loc-form-wrap"></div>
         </div>`;
 
@@ -1242,8 +1210,8 @@ function _renderRoutes(main) {
             </div>
             <div style="flex:1;overflow-y:auto;padding:0.5rem" id="arq-route-list"></div>
         </div>
-        <div style="flex:1;min-height:0;min-width:0;position:relative;overflow:hidden;">
-            <div id="arq-map-routes" style="position:absolute;inset:0;"></div>
+        <div style="flex:1;min-height:0;min-width:0;position:relative;">
+            <div id="arq-map-routes" style="width:100%;height:100%;"></div>
             <div id="arq-route-form-wrap"></div>
         </div>`;
 
@@ -1386,8 +1354,8 @@ function _renderEvents(main) {
             </div>
             <div style="padding:0.5rem" id="arq-ev-list"></div>
         </div>
-        <div style="flex:1;min-height:0;min-width:0;position:relative;overflow:hidden;">
-            <div id="arq-map-events" style="position:absolute;inset:0;"></div>
+        <div style="flex:1;min-height:0;min-width:0;position:relative;">
+            <div id="arq-map-events" style="width:100%;height:100%;"></div>
             <div id="arq-ev-form-wrap"></div>
         </div>`;
 
@@ -1476,8 +1444,8 @@ function _renderIsolated(main) {
             </div>
             <div style="flex:1;overflow-y:auto;padding:0.5rem" id="arq-iso-list"></div>
         </div>
-        <div style="flex:1;min-height:0;min-width:0;position:relative;overflow:hidden;">
-            <div id="arq-map-isolated" style="position:absolute;inset:0;"></div>
+        <div style="flex:1;min-height:0;min-width:0;position:relative;">
+            <div id="arq-map-isolated" style="width:100%;height:100%;"></div>
             <div id="arq-iso-form-wrap"></div>
         </div>`;
 
@@ -1578,7 +1546,7 @@ function _renderDungeons(main) {
             <div style="flex:1;overflow-y:auto;padding:0.5rem" id="arq-dun-list"></div>
         </div>
         <div style="flex:1;position:relative;overflow-y:auto;min-height:0;" id="arq-dun-panel">
-            <div id="arq-map-dungeons" style="position:absolute;inset:0;"></div>
+            <div id="arq-map-dungeons" style="width:100%;height:100%;"></div>
         </div>`;
 
     main.querySelectorAll('[data-dtab]').forEach(btn => btn.addEventListener('click', () => {
