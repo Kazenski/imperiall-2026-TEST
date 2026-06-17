@@ -59,6 +59,7 @@ import { renderCadastroSetsEspeciaisTab } from './aoMestre/cadastroSetsEspeciais
 import { renderBestiarioTab } from './oMundo/bestiario.js';
 import { renderCriarHistoriasTab } from './aoMestre/criarHistorias.js';
 import { renderComandosDashMestreTab } from './aoMestre/comandosDashMestre.js';
+import { renderMapaGodmodeTab } from './aoMestre/mapaGodmode.js';
 
 import { rtdb, rtdbRef, push, set, onValue, off, rtdbQuery, limitToLast, rtdbServerTimestamp } from './core/firebase.js';
 
@@ -324,6 +325,12 @@ window.showTab = function (tabId) {
         return;
     }
 
+    if (tabId === 'mapa-godmode-content' || tabId === 'mapa-godmode') {
+        target.innerHTML = '';
+        if (typeof renderMapaGodmodeTab === 'function') renderMapaGodmodeTab();
+        return;
+    }
+
     // Aba "Backoffice" (Admin)
     if (tabId === 'backoffice-content' || tabId === 'backoffice') {
         target.innerHTML = '';
@@ -521,7 +528,8 @@ const MASTER_ARCHITECTURE = {
         { id: 'cadastro-reputacao', icon: 'fa-chess-rook', label: 'Gestor Império', render: () => window.showTab('cadastro-reputacao-content'), requiresAdmin: true },
         { id: 'lore-personagens', icon: 'fa-scroll', label: 'Lore Personagens', render: () => window.showTab('lore-personagens-content') },
         { id: 'drops-monstros', icon: 'fa-gift', label: 'Drops Monstros', render: () => window.showTab('drops-monstros-content') },
-        { id: 'mapa-mundial', icon: 'fa-map', label: 'Mapa (Fog of War)', render: () => window.showTab('mapa-mundial-content') }
+        { id: 'mapa-mundial', icon: 'fa-map', label: 'Mapa (Fog of War)', render: () => window.showTab('mapa-mundial-content') },
+        { id: 'mapa-godmode', icon: 'fa-chess-knight', label: 'God Mode (Novo)', render: () => window.showTab('mapa-godmode-content') }
         
 
     ],
