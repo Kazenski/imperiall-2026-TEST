@@ -104,19 +104,31 @@ window.showTab = function (tabId) {
     const subMenuBar = document.getElementById('sub-menu-bar');
     const contentContainer = document.getElementById('content-container');
 
+    const isMapaTab = (tabId === 'mapa-mundial-content' || tabId === 'mapa-mundial');
+
     if (tabId === 'inicio-content' || tabId === 'inicio') {
         if (mainSidebar) mainSidebar.classList.add('hidden');
         if (subMenuBar) subMenuBar.classList.add('hidden');
         if (contentContainer) {
             contentContainer.classList.remove('p-6');
-            contentContainer.classList.add('p-0'); // Remove padding para ocupar 100% da tela
+            contentContainer.classList.add('p-0');
+        }
+    } else if (isMapaTab) {
+        // Mapa ocupa 100% sem padding nem scroll, igual à tela de início
+        if (mainSidebar) mainSidebar.classList.remove('hidden');
+        if (subMenuBar) subMenuBar.classList.remove('hidden');
+        if (contentContainer) {
+            contentContainer.classList.remove('p-6');
+            contentContainer.classList.add('p-0');
+            contentContainer.style.overflowY = 'hidden';
         }
     } else {
         if (mainSidebar) mainSidebar.classList.remove('hidden');
         if (subMenuBar) subMenuBar.classList.remove('hidden');
         if (contentContainer) {
             contentContainer.classList.remove('p-0');
-            contentContainer.classList.add('p-6'); // Devolve o padding padrão
+            contentContainer.classList.add('p-6');
+            contentContainer.style.overflowY = ''; // Restaura scroll
         }
     }
 

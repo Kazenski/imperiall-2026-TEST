@@ -253,24 +253,30 @@ function _createMapInContainer(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    // Reusar instância existente: move o host Leaflet para o novo wrapper
+    // Garantir que o container tem dimensão real (não depende de position:absolute)
+    container.style.cssText += ';position:relative;overflow:hidden;';
+
+    // Reusar instância existente: move o host para o novo container
     if (state.mapInstance) {
         const host = document.getElementById('arq-leaflet-host');
         if (host && host.parentNode !== container) {
             container.appendChild(host);
+            // Forçar o host a preencher o container
+            host.style.cssText = 'position:absolute;inset:0;';
         }
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                if (state.mapInstance) state.mapInstance.invalidateSize();
-            });
-        });
+        // Triplo rAF para garantir que o browser terminou o layout
+        requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => {
+            if (state.mapInstance) {
+                state.mapInstance.invalidateSize({ animate: false });
+            }
+        })));
         return;
     }
 
-    // Primeira vez: cria o host dentro do container que já tem dimensões
+    // Primeira inicialização — host como filho direto do container
     const host = document.createElement('div');
     host.id = 'arq-leaflet-host';
-    host.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
+    host.style.cssText = 'width:100%;height:100%;';
     container.appendChild(host);
 
     const bounds = [[0,0],[MAP_H,MAP_W]];
@@ -285,7 +291,6 @@ function _createMapInContainer(containerId) {
     L.control.zoom({ position:'bottomright' }).addTo(map);
     state.mapInstance = map;
 
-    // Layer groups independentes
     state.layers.locations = L.layerGroup().addTo(map);
     state.layers.dungeons  = L.layerGroup().addTo(map);
     state.layers.routes    = L.layerGroup().addTo(map);
@@ -295,13 +300,11 @@ function _createMapInContainer(containerId) {
     state.layers.npcs      = L.layerGroup().addTo(map);
     state.layers.temp      = L.layerGroup().addTo(map);
 
-    // fitBounds após o browser ter pintado o container (duplo rAF = tamanho real)
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            map.invalidateSize();
-            map.fitBounds(bounds);
-        });
-    });
+    // fitBounds depois que o browser pintou o container
+    requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => {
+        map.invalidateSize({ animate: false });
+        map.fitBounds(bounds);
+    })));
 }
 
 function _attachMapToContainer(wrapperId) {
@@ -780,11 +783,10 @@ function _renderModal(html) {
 
 // ─── PÁGINA: MAPA GLOBAL ──────────────────────────────────────────────────────
 function _renderGlobalMap(main) {
-    // O main DEVE ser position:relative para os filhos absolutos funcionarem
-    main.style.position = 'relative';
-
+    // main é display:flex — o mapa precisa ser um filho flex que ocupa todo o espaço
+    main.style.cssText += ';position:relative;';
     main.innerHTML = `
-        <div id="arq-map-global" style="position:absolute;inset:0;"></div>
+        <div id="arq-map-global" style="flex:1;min-height:0;min-width:0;position:relative;overflow:hidden;"></div>
         <div style="position:absolute;top:0.75rem;right:0.75rem;z-index:800;background:rgba(15,23,42,0.95);padding:0.75rem 1rem;border-radius:8px;border:1px solid #334155;width:11rem;backdrop-filter:blur(4px);">
             <div style="font-size:0.65rem;font-weight:700;color:#f59e0b;text-transform:uppercase;margin-bottom:0.5rem">Camadas</div>
             ${[['locations','Locais'],['dungeons','Dungeons'],['routes','Rotas'],['events','Eventos'],['npcs','Viajantes'],['isolated','Encontros']].map(([k,l])=>`
@@ -995,7 +997,7 @@ function _renderSessionMap(main) {
                 <button class="arq-btn arq-btn-red arq-btn-sm" id="arq-fog-reset">Redefinir Buffer</button>
             </div>
         </div>
-        <div style="flex:1;position:relative;min-height:0;background:#020617;cursor:crosshair" id="arq-fogmap-area">
+        <div style="flex:1;min-height:0;min-width:0;position:relative;overflow:hidden;background:#020617;cursor:crosshair;" id="arq-fogmap-area">
             <div id="arq-map-fog" style="position:absolute;inset:0;"></div>
         </div>`;
 
@@ -1079,7 +1081,7 @@ function _renderLocations(main) {
             </div>
             <div style="flex:1;overflow-y:auto;padding:0.5rem" id="arq-loc-list"></div>
         </div>
-        <div style="flex:1;position:relative;min-height:0;">
+        <div style="flex:1;min-height:0;min-width:0;position:relative;overflow:hidden;">
             <div id="arq-map-locations" style="position:absolute;inset:0;"></div>
             <div id="arq-loc-form-wrap"></div>
         </div>`;
@@ -1200,7 +1202,7 @@ function _renderRoutes(main) {
             </div>
             <div style="flex:1;overflow-y:auto;padding:0.5rem" id="arq-route-list"></div>
         </div>
-        <div style="flex:1;position:relative;min-height:0;">
+        <div style="flex:1;min-height:0;min-width:0;position:relative;overflow:hidden;">
             <div id="arq-map-routes" style="position:absolute;inset:0;"></div>
             <div id="arq-route-form-wrap"></div>
         </div>`;
@@ -1344,7 +1346,7 @@ function _renderEvents(main) {
             </div>
             <div style="padding:0.5rem" id="arq-ev-list"></div>
         </div>
-        <div style="flex:1;position:relative;min-height:0;">
+        <div style="flex:1;min-height:0;min-width:0;position:relative;overflow:hidden;">
             <div id="arq-map-events" style="position:absolute;inset:0;"></div>
             <div id="arq-ev-form-wrap"></div>
         </div>`;
@@ -1434,7 +1436,7 @@ function _renderIsolated(main) {
             </div>
             <div style="flex:1;overflow-y:auto;padding:0.5rem" id="arq-iso-list"></div>
         </div>
-        <div style="flex:1;position:relative;min-height:0;">
+        <div style="flex:1;min-height:0;min-width:0;position:relative;overflow:hidden;">
             <div id="arq-map-isolated" style="position:absolute;inset:0;"></div>
             <div id="arq-iso-form-wrap"></div>
         </div>`;
